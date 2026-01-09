@@ -2,8 +2,11 @@
  * Custom Next.js Server with Socket.IO Integration
  * 
  * This server enables real-time WebSocket connections alongside Next.js
- * for the Informejo ticketing system.
+ * for the Kontado bill tracking system.
  */
+
+// Load environment variables first
+require('dotenv').config()
 
 const { createServer } = require('http')
 const { parse } = require('url')
@@ -12,7 +15,7 @@ const next = require('next')
 const { Server } = require('socket.io')
 
 const dev = process.env.NODE_ENV !== 'production'
-const hostname = 'localhost'
+const hostname = process.env.HOSTNAME || 'localhost'
 const port = parseInt(process.env.PORT || '3003', 10)
 
 // Initialize Next.js app with explicit configuration for production
@@ -95,7 +98,7 @@ app.prepare().then(() => {
     .listen(port, () => {
       console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║                   🚀 Informejo Server                      ║
+║                   🚀 Kontado Server                       ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Environment: ${dev ? 'Development' : 'Production'.padEnd(43)} ║
 ║  HTTP Server: http://${hostname}:${port.toString().padEnd(37)} ║
