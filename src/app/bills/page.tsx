@@ -1,52 +1,64 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
-import BillCard from '@/components/BillCard'
-import { Bill, Category } from '@/types'
-import { Plus, Filter, Search } from 'lucide-react'
+import BillStatusBadge from '@/components/BillStatusBadge'
+import { Bill, Category, Vendor } from '@/types'
+import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { format } from 'date-fns'
+
+type SortColumn = 'title' | 'amount' | 'dueDate' | 'status' | 'category' | 'vendor' | null
+type SortDirection = 'asc' | 'desc' | null
 
 export default function BillsPage() {
   const { data: session } = useSession()
   const [bills, setBills] = useState<Bill[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [vendors, setVendors] = useState<Vendor[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [sortConfig, setSortConfig] = useState<{ column: SortColumn; direction: SortDirection }>({
+    column: 'dueDate',
+    direction: 'asc',
+  })
   const [filters, setFilters] = useState({
     status: '',
     categoryId: '',
+    vendorId: '',
+    dateFrom: '',
+    dateTo: '',
+    isRecurring: '',
     search: '',
+  })
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingBill, setEditingBill] = useState<Bill | null>(null)
+  const [formData, setFormData] = useState({
+    title: '',
+    amount: '',
+    dueDate: '',
+    categoryId: '',
+    vendorId: '',
+    description: '',
+    status: 'PENDING' as const,
+    paidDate: '',
   })
 
   useEffect(() => {
     if (session) {
       fetchBills()
       fetchCategories()
+      fetchVendors()
     }
-  }, [session, filters])
+  }, [session])
 
   const fetchBills = async () => {
     try {
-      const params = new URLSearchParams()
-      if (filters.status) params.append('status', filters.status)
-      if (filters.categoryId) params.append('categoryId', filters.categoryId)
-
-      const response = await fetch(`/api/bills?${params.toString()}`)
+      const response = await fetch('/api/bills')
       if (response.ok) {
         const data = await response.json()
-        let filtered = data
-
-        // Client-side search filter
-        if (filters.search) {
-          filtered = data.filter((bill: Bill) =>
-            bill.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-            bill.description?.toLowerCase().includes(filters.search.toLowerCase())
-          )
-        }
-
-        setBills(filtered)
+        setBills(data)
       } else {
         toast.error('Failed to load bills')
       }
@@ -66,6 +78,220 @@ export default function BillsPage() {
       }
     } catch (error) {
       // Silently fail
+    }
+  }
+
+  const fetchVendors = async () => {
+    try {
+      const response = await fetch('/api/vendors')
+      if (response.ok) {
+        const data = await response.json()
+        setVendors(data)
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  }
+
+  // Filter and sort bills
+  const filteredAndSortedBills = useMemo(() => {
+    let filtered = [...bills]
+
+    // Apply filters
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      filtered = filtered.filter(
+        (bill) =>
+          bill.title.toLowerCase().includes(searchLower) ||
+          bill.description?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (filters.status) {
+      filtered = filtered.filter((bill) => bill.status === filters.status)
+    }
+
+    if (filters.categoryId) {
+      filtered = filtered.filter((bill) => bill.categoryId === filters.categoryId)
+    }
+
+    if (filters.vendorId) {
+      if (filters.vendorId === 'none') {
+        filtered = filtered.filter((bill) => !bill.vendorId)
+      } else {
+        filtered = filtered.filter((bill) => bill.vendorId === filters.vendorId)
+      }
+    }
+
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom)
+      filtered = filtered.filter((bill) => new Date(bill.dueDate) >= fromDate)
+    }
+
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo)
+      toDate.setHours(23, 59, 59, 999)
+      filtered = filtered.filter((bill) => new Date(bill.dueDate) <= toDate)
+    }
+
+    if (filters.isRecurring !== '') {
+      const isRecurring = filters.isRecurring === 'true'
+      filtered = filtered.filter((bill) => bill.isRecurring === isRecurring)
+    }
+
+    // Apply sorting
+    if (sortConfig.column && sortConfig.direction) {
+      filtered.sort((a, b) => {
+        let aValue: any
+        let bValue: any
+
+        switch (sortConfig.column) {
+          case 'title':
+            aValue = a.title.toLowerCase()
+            bValue = b.title.toLowerCase()
+            break
+          case 'amount':
+            aValue = Number(a.amount)
+            bValue = Number(b.amount)
+            break
+          case 'dueDate':
+            aValue = new Date(a.dueDate).getTime()
+            bValue = new Date(b.dueDate).getTime()
+            break
+          case 'status':
+            aValue = a.status
+            bValue = b.status
+            break
+          case 'category':
+            aValue = a.category?.name || ''
+            bValue = b.category?.name || ''
+            break
+          case 'vendor':
+            aValue = a.vendor?.name || ''
+            bValue = b.vendor?.name || ''
+            break
+          default:
+            return 0
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+
+    return filtered
+  }, [bills, filters, sortConfig])
+
+  const handleSort = (column: SortColumn) => {
+    if (sortConfig.column === column) {
+      if (sortConfig.direction === 'asc') {
+        setSortConfig({ column, direction: 'desc' })
+      } else if (sortConfig.direction === 'desc') {
+        setSortConfig({ column: null, direction: null })
+      } else {
+        setSortConfig({ column, direction: 'asc' })
+      }
+    } else {
+      setSortConfig({ column, direction: 'asc' })
+    }
+  }
+
+  const getSortIcon = (column: SortColumn) => {
+    if (sortConfig.column !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 text-gray-400" />
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUp className="w-4 h-4 ml-1 text-primary-600" />
+    }
+    if (sortConfig.direction === 'desc') {
+      return <ArrowDown className="w-4 h-4 ml-1 text-primary-600" />
+    }
+    return <ArrowUpDown className="w-4 h-4 ml-1 text-gray-400" />
+  }
+
+  const openEditModal = (bill: Bill) => {
+    setEditingBill(bill)
+    setFormData({
+      title: bill.title,
+      amount: bill.amount.toString(),
+      dueDate: format(new Date(bill.dueDate), 'yyyy-MM-dd'),
+      categoryId: bill.categoryId,
+      vendorId: bill.vendorId || '',
+      description: bill.description || '',
+      status: bill.status,
+      paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
+    })
+    setIsModalOpen(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const url = editingBill ? `/api/bills/${editingBill.id}` : '/api/bills'
+      const method = editingBill ? 'PATCH' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          amount: parseFloat(formData.amount),
+          dueDate: new Date(formData.dueDate).toISOString(),
+          categoryId: formData.categoryId,
+          vendorId: formData.vendorId || null,
+          description: formData.description || null,
+          status: formData.status,
+          paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success(editingBill ? 'Bill updated' : 'Bill created')
+        setIsModalOpen(false)
+        setEditingBill(null)
+        setFormData({
+          title: '',
+          amount: '',
+          dueDate: '',
+          categoryId: '',
+          vendorId: '',
+          description: '',
+          status: 'PENDING',
+          paidDate: '',
+        })
+        fetchBills()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to save bill')
+      }
+    } catch (error) {
+      toast.error('Failed to save bill')
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this bill?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/bills/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Bill deleted')
+        fetchBills()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to delete bill')
+      }
+    } catch (error) {
+      toast.error('Failed to delete bill')
     }
   }
 
@@ -93,20 +319,35 @@ export default function BillsPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Bills</h1>
-            <p className="mt-2 text-gray-600">Manage your bills and expenses</p>
+            <p className="mt-2 text-gray-600">
+              Manage your bills and expenses • {filteredAndSortedBills.length} bill{filteredAndSortedBills.length !== 1 ? 's' : ''}
+            </p>
           </div>
-          <Link
-            href="/bills/new"
+          <button
+            onClick={() => {
+              setEditingBill(null)
+              setFormData({
+                title: '',
+                amount: '',
+                dueDate: '',
+                categoryId: '',
+                vendorId: '',
+                description: '',
+                status: 'PENDING',
+                paidDate: '',
+              })
+              setIsModalOpen(true)
+            }}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             <Plus className="w-5 h-5 mr-2" />
             New Bill
-          </Link>
+          </button>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Search className="inline w-4 h-4 mr-1" />
@@ -156,9 +397,78 @@ export default function BillsPage() {
               </select>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
+              <select
+                value={filters.vendorId}
+                onChange={(e) => setFilters({ ...filters, vendorId: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">All Vendors</option>
+                <option value="none">No Vendor</option>
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="inline w-4 h-4 mr-1" />
+                Due From
+              </label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="inline w-4 h-4 mr-1" />
+                Due To
+              </label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Repeat className="inline w-4 h-4 mr-1" />
+                Recurring
+              </label>
+              <select
+                value={filters.isRecurring}
+                onChange={(e) => setFilters({ ...filters, isRecurring: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">All Bills</option>
+                <option value="true">Recurring Only</option>
+                <option value="false">Non-Recurring Only</option>
+              </select>
+            </div>
+
             <div className="flex items-end">
               <button
-                onClick={() => setFilters({ status: '', categoryId: '', search: '' })}
+                onClick={() =>
+                  setFilters({
+                    status: '',
+                    categoryId: '',
+                    vendorId: '',
+                    dateFrom: '',
+                    dateTo: '',
+                    isRecurring: '',
+                    search: '',
+                  })
+                }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Clear Filters
@@ -167,7 +477,7 @@ export default function BillsPage() {
           </div>
         </div>
 
-        {/* Bills List */}
+        {/* Bills Table */}
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -175,22 +485,336 @@ export default function BillsPage() {
               <p className="mt-4 text-gray-600">Loading bills...</p>
             </div>
           </div>
-        ) : bills.length === 0 ? (
+        ) : filteredAndSortedBills.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <p className="text-gray-600 mb-4">No bills found</p>
-            <Link
-              href="/bills/new"
+            <button
+              onClick={() => {
+                setEditingBill(null)
+                setFormData({
+                  title: '',
+                  amount: '',
+                  dueDate: '',
+                  categoryId: '',
+                  vendorId: '',
+                  description: '',
+                  status: 'PENDING',
+                  paidDate: '',
+                })
+                setIsModalOpen(true)
+              }}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
             >
               <Plus className="w-5 h-5 mr-2" />
               Create Your First Bill
-            </Link>
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bills.map((bill) => (
-              <BillCard key={bill.id} bill={bill} />
-            ))}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('title')}
+                    >
+                      <div className="flex items-center">
+                        Title
+                        {getSortIcon('title')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('amount')}
+                    >
+                      <div className="flex items-center">
+                        Amount
+                        {getSortIcon('amount')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('dueDate')}
+                    >
+                      <div className="flex items-center">
+                        Due Date
+                        {getSortIcon('dueDate')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {getSortIcon('status')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('category')}
+                    >
+                      <div className="flex items-center">
+                        Category
+                        {getSortIcon('category')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('vendor')}
+                    >
+                      <div className="flex items-center">
+                        Vendor
+                        {getSortIcon('vendor')}
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Recurring
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredAndSortedBills.map((bill) => (
+                    <tr key={bill.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{bill.title}</div>
+                        {bill.description && (
+                          <div className="text-sm text-gray-500 truncate max-w-xs">
+                            {bill.description}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900">
+                          ${Number(bill.amount).toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {format(new Date(bill.dueDate), 'MMM d, yyyy')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <BillStatusBadge status={bill.status} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {bill.category?.color && (
+                            <div
+                              className="w-3 h-3 rounded-full mr-2"
+                              style={{ backgroundColor: bill.category.color }}
+                            />
+                          )}
+                          <span className="text-sm text-gray-900">{bill.category?.name || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {bill.vendor?.name || <span className="text-gray-400">No vendor</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {bill.isRecurring ? (
+                          <Repeat className="w-5 h-5 text-primary-600" />
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => openEditModal(bill)}
+                            className="text-primary-600 hover:text-primary-900"
+                            title="Edit"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(bill.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Edit/Create Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full my-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {editingBill ? 'Edit Bill' : 'New Bill'}
+              </h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Amount *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Due Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      required
+                      value={formData.categoryId}
+                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vendor
+                    </label>
+                    <select
+                      value={formData.vendorId}
+                      onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">No vendor</option>
+                      {vendors.map((vendor) => (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status *
+                    </label>
+                    <select
+                      required
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="DUE_SOON">Due Soon</option>
+                      <option value="OVERDUE">Overdue</option>
+                      <option value="PAID">Paid</option>
+                      <option value="SKIPPED">Skipped</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paid Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.paidDate}
+                      onChange={(e) => setFormData({ ...formData, paidDate: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Additional notes..."
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    {editingBill ? 'Update' : 'Create'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false)
+                      setEditingBill(null)
+                      setFormData({
+                        title: '',
+                        amount: '',
+                        dueDate: '',
+                        categoryId: '',
+                        vendorId: '',
+                        description: '',
+                        status: 'PENDING',
+                        paidDate: '',
+                      })
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </main>
