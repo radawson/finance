@@ -1,31 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Ticket, LogIn, Send, Search } from 'lucide-react'
+import { DollarSign, LogIn, Plus, Calendar, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Home() {
   const router = useRouter()
-  const [magicToken, setMagicToken] = useState('')
-  const [isChecking, setIsChecking] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
+  const [formData, setFormData] = useState({
+    title: '',
+    amount: '',
+    dueDate: '',
+    categoryId: '',
+    description: '',
+  })
 
-  const handleCheckTicket = async (e: React.FormEvent) => {
+  useEffect(() => {
+    // Fetch global categories for quick entry
+    fetch('/api/categories')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error) {
+          setCategories(data.filter((cat: any) => cat.isGlobal))
+        }
+      })
+      .catch(() => {
+        // Silently fail
+      })
+  }, [])
+
+  const handleQuickEntry = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!magicToken.trim()) {
-      toast.error('Please enter your ticket access code')
+
+    if (!formData.title || !formData.amount || !formData.dueDate || !formData.categoryId) {
+      toast.error('Please fill in all required fields')
       return
     }
 
-    setIsChecking(true)
-    // Navigate to the ticket view page with the token
-    router.push(`/tickets/view/${magicToken.trim()}`)
+    try {
+      const response = await fetch('/api/bills/anonymous', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          amount: parseFloat(formData.amount),
+          dueDate: new Date(formData.dueDate).toISOString(),
+          categoryId: formData.categoryId,
+          description: formData.description || undefined,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create bill')
+      }
+
+      toast.success('Bill created successfully!')
+      
+      // Reset form
+      setFormData({
+        title: '',
+        amount: '',
+        dueDate: '',
+        categoryId: '',
+        description: '',
+      })
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create bill')
+    }
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-primary-50 to-primary-100">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
@@ -37,71 +89,115 @@ export default function Home() {
               className="h-20 w-20"
             />
           </div>
-          <h1 className="text-5xl font-bold text-primary-900 mb-4">IT Support Requests</h1>
+          <h1 className="text-5xl font-bold text-primary-900 mb-4">Kontado</h1>
           <p className="text-xl text-primary-700">
-            IT Support Ticket Management System
+            Bill Tracking & Expense Management
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {/* Submit Ticket Card */}
-          <div className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow">
+          {/* Quick Bill Entry Card */}
+          <div className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow md:col-span-2">
             <div className="flex justify-center mb-6">
               <div className="bg-primary-100 rounded-full p-6">
-                <Send className="h-12 w-12 text-primary-600" />
+                <Plus className="h-12 w-12 text-primary-600" />
               </div>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-              Submit a Ticket
+              Quick Bill Entry
             </h2>
             <p className="text-gray-600 mb-6 text-center">
-              Have an IT issue? Submit a support ticket and our team will help you resolve it.
+              Enter a bill quickly. No login required.
             </p>
-            <Link 
-              href="/submit-ticket"
-              className="btn btn-primary w-full flex items-center justify-center gap-2"
-            >
-              <Ticket size={20} />
-              Create Ticket
-            </Link>
-            <p className="text-sm text-gray-500 mt-4 text-center">
-              No account required
-            </p>
-          </div>
+            
+            <form onSubmit={handleQuickEntry} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="e.g., Electric Bill - January"
+                />
+              </div>
 
-          {/* Check Ticket Status Card */}
-          <div className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow">
-            <div className="flex justify-center mb-6">
-              <div className="bg-primary-100 rounded-full p-6">
-                <Search className="h-12 w-12 text-primary-600" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Amount *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
               </div>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-              Check Ticket Status
-            </h2>
-            <p className="text-gray-600 mb-6 text-center">
-              Enter your ticket access code from the email we sent you to view your ticket status and updates.
-            </p>
-            <form onSubmit={handleCheckTicket} className="space-y-4">
-              <input
-                type="text"
-                value={magicToken}
-                onChange={(e) => setMagicToken(e.target.value)}
-                placeholder="Enter your access code"
-                className="input w-full text-center font-mono"
-                disabled={isChecking}
-              />
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category *
+                </label>
+                <select
+                  required
+                  value={formData.categoryId}
+                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description (optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Additional notes..."
+                />
+              </div>
+
               <button
                 type="submit"
-                className="btn btn-secondary w-full flex items-center justify-center gap-2"
-                disabled={isChecking}
+                className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
               >
-                <Search size={20} />
-                {isChecking ? 'Checking...' : 'View Ticket'}
+                <Plus className="inline w-5 h-5 mr-2" />
+                Create Bill
               </button>
             </form>
             <p className="text-sm text-gray-500 mt-4 text-center">
-              Check your email for the access code
+              No account required
             </p>
           </div>
 
@@ -116,7 +212,7 @@ export default function Home() {
               Sign In
             </h2>
             <p className="text-gray-600 mb-6 text-center">
-              Already have an account? Sign in to track your tickets and view your dashboard.
+              Already have an account? Sign in to manage your bills, view your dashboard, and track expenses.
             </p>
             <Link 
               href="/login"
@@ -140,27 +236,27 @@ export default function Home() {
               <div className="bg-primary-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
                 1
               </div>
-              <h4 className="font-semibold text-gray-900 mb-2">Submit Your Issue</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">Enter Your Bill</h4>
               <p className="text-gray-600 text-sm">
-                Describe your IT problem and provide relevant details
+                Quickly add bills with title, amount, due date, and category
               </p>
             </div>
             <div>
               <div className="bg-primary-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
                 2
               </div>
-              <h4 className="font-semibold text-gray-900 mb-2">We Review & Respond</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">Track & Manage</h4>
               <p className="text-gray-600 text-sm">
-                Our IT team will review and respond to your ticket
+                View all your bills, track due dates, and manage expenses
               </p>
             </div>
             <div>
               <div className="bg-primary-600 text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
                 3
               </div>
-              <h4 className="font-semibold text-gray-900 mb-2">Issue Resolved</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">Stay Organized</h4>
               <p className="text-gray-600 text-sm">
-                Track progress and get your issue resolved quickly
+                Categorize bills, set up recurring payments, and never miss a due date
               </p>
             </div>
           </div>
@@ -169,4 +265,3 @@ export default function Home() {
     </div>
   )
 }
-
