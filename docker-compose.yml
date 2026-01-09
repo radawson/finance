@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_DB: kontado
+      POSTGRES_USER: kontado
+      POSTGRES_PASSWORD: PASSword01!!
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kontado -d kontado"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
