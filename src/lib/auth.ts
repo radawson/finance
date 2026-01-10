@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
         console.log('All roles found:', allRoles)
         
         // Determine role based on Keycloak roles (case-insensitive)
-        let userRole = Role.USER // Default role
+        let userRole: Role = Role.USER // Default role
 
         if (allRoles.some(role =>
           role.toLowerCase() === 'admin' ||
