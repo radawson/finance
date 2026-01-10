@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get recurring bills with their recurrence patterns
-    const recurringBills = await prisma.bill.findMany({
+    const recurringBillsRaw = await prisma.bill.findMany({
       where,
       include: {
         category: true,
@@ -55,6 +55,12 @@ export async function GET(req: NextRequest) {
         recurrencePattern: true,
       },
     })
+
+    // Convert Prisma Decimal to number for type compatibility
+    const recurringBills = recurringBillsRaw.map((bill) => ({
+      ...bill,
+      amount: Number(bill.amount),
+    }))
 
     // Generate predictions from recurrence patterns
     const predictions = generateBudgetPredictions(
