@@ -83,7 +83,10 @@ Edit `.env` with your configuration:
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/billdb?schema=public"
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
+
+# For production clusters, use the cluster port (e.g., 5433) which auto-routes to leader
+# DATABASE_URL="postgresql://user:password@cluster-host:5433/dbname?schema=public"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
@@ -338,6 +341,20 @@ npm run db:seed
 1. Run seeding after initial migration
 2. Change the default admin password immediately
 3. Consider creating additional admin accounts
+
+**Troubleshooting Database Connections:**
+If seeding fails with read-only errors, you may be connecting to a read-only replica:
+
+```bash
+# Test if you're on a read-only replica (should return 'f' for primary)
+psql "$DATABASE_URL" -c "SELECT pg_is_in_recovery()"
+
+# Test basic connectivity
+psql "$DATABASE_URL" -c "SELECT version()"
+
+# For database clusters, use the cluster port (e.g., 5433) which auto-routes to leader
+# Example: DATABASE_URL="postgresql://user:pass@cluster-host:5433/dbname"
+```
 
 ### Linting
 
