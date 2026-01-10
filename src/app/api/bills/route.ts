@@ -37,9 +37,12 @@ export async function GET(req: NextRequest) {
     // Build where clause
     const where: any = {}
 
-    // Filter by user if not admin
+    // Filter by user if not admin - show bills assigned to user OR unassigned bills
     if (session.user.role !== Role.ADMIN) {
-      where.createdById = session.user.id
+      where.OR = [
+        { createdById: session.user.id },
+        { createdById: null }
+      ]
     }
 
     if (status) {
