@@ -65,6 +65,7 @@
 ✅ Support rich data when users want to add it
 ✅ Provide optional enhancements that don't block core workflows
 ✅ Progressive disclosure of advanced features
+✅ Analyze Bill / Vendor payments to create spend patterns that illuminate monthly, quarterly, Biannual, Yearly and n-period historical and predictive patterns.
 
 ### What We Don't Do
 ❌ Require account numbers for bill entry
