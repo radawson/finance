@@ -51,7 +51,7 @@ export default function BillDetailPage() {
         setBill(data)
         setFormData({
           title: data.title,
-          amount: data.amount.toString(),
+          amount: Number(data.amount).toFixed(2),
           dueDate: format(new Date(data.dueDate), 'yyyy-MM-dd'),
           categoryId: data.categoryId,
           vendorId: data.vendorId || '',

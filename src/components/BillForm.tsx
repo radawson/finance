@@ -41,7 +41,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
     if (bill) {
       setFormData({
         title: bill.title,
-        amount: bill.amount.toString(),
+        amount: Number(bill.amount).toFixed(2),
         dueDate: format(new Date(bill.dueDate), 'yyyy-MM-dd'),
         categoryId: bill.categoryId,
         vendorId: bill.vendorId || '',
