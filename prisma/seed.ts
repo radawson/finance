@@ -12,11 +12,16 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL environment variable is not set')
 }
 
+// Parse connection string to determine if SSL is needed
+const isRemote = !databaseUrl.includes('localhost') && !databaseUrl.includes('127.0.0.1')
+
 // Create connection pool
 const pool = new Pool({
   connectionString: databaseUrl,
-  // Add SSL configuration if needed
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  // SSL configuration - handle self-signed certificates for remote connections
+  ssl: process.env.DATABASE_SSL === 'true' || (process.env.DATABASE_SSL !== 'false' && isRemote)
+    ? { rejectUnauthorized: false } // Allow self-signed certificates
+    : false,
 })
 
 // Create Prisma adapter
