@@ -5,16 +5,27 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
 
+// Helper to transform empty strings to null for optional fields
+const optionalUrl = z.preprocess(
+  (val) => (val === '' || val === null || val === undefined ? null : val),
+  z.string().url().nullable().optional()
+)
+
+const optionalEmail = z.preprocess(
+  (val) => (val === '' || val === null || val === undefined ? null : val),
+  z.string().email().nullable().optional()
+)
+
 const updateVendorSchema = z.object({
   name: z.string().min(1).optional(),
-  email: z.string().email().optional().nullable(),
+  email: optionalEmail,
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   zip: z.string().optional().nullable(),
   country: z.string().optional().nullable(),
-  website: z.string().url().optional().nullable(),
+  website: optionalUrl,
   logo: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
 })
