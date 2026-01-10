@@ -259,7 +259,7 @@ export default function BillCalendarPage() {
                 {getBillsForDate(selectedDate).map((bill) => (
                   <Link
                     key={bill.id}
-                    href={`/bills`}
+                    href={`/bills/${bill.id}`}
                     className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center justify-between">

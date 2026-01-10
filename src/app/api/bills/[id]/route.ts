@@ -83,10 +83,13 @@ export async function GET(
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
     }
 
-    // Check authorization - allow if anonymous or user created it or admin
+    // Check authorization - allow if anonymous or user created it or bill is unassigned or admin
     if (session?.user) {
-      if (session.user.role !== Role.ADMIN && bill.createdById !== session.user.id) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      if (session.user.role !== Role.ADMIN) {
+        // Allow if user created it OR bill is unassigned (createdById = null)
+        if (bill.createdById !== session.user.id && bill.createdById !== null) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
       }
     } else if (bill.createdById) {
       // Anonymous user trying to access authenticated bill
@@ -124,12 +127,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (
-      session.user.role !== Role.ADMIN &&
-      existingBill.createdById !== session.user.id
-    ) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // Check authorization - allow if user created it or bill is unassigned or admin
+    if (session.user.role !== Role.ADMIN) {
+      // Allow if user created it OR bill is unassigned (createdById = null)
+      if (existingBill.createdById !== session.user.id && existingBill.createdById !== null) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
     }
 
     const body = await req.json()

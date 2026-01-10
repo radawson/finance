@@ -24,16 +24,16 @@ psql --version
 sudo -u postgres psql
 
 # Create database and user
-CREATE DATABASE ticketdb;
-CREATE USER ticketuser WITH PASSWORD 'devpassword';
-GRANT ALL PRIVILEGES ON DATABASE ticketdb TO ticketuser;
+CREATE DATABASE kontado;
+CREATE USER kontadouser WITH PASSWORD 'devpassword';
+GRANT ALL PRIVILEGES ON DATABASE kontado TO kontadouser;
 \q
 ```
 
 ### 3. Install Dependencies
 
 ```bash
-cd /home/torvaldsl/tickets
+cd /path/to/finance
 npm install
 ```
 
@@ -50,7 +50,7 @@ nano .env
 **Minimum configuration for development:**
 
 ```env
-DATABASE_URL="postgresql://ticketuser:devpassword@localhost:5432/ticketdb?schema=public"
+DATABASE_URL="postgresql://kontadouser:devpassword@localhost:5432/kontado?schema=public"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="dev-secret-change-in-production-use-openssl-rand-base64-32"
 
@@ -110,7 +110,7 @@ Manually create an admin in the database:
 npx prisma studio
 
 # Or use psql:
-psql -U ticketuser -d ticketdb
+psql -U kontadouser -d kontado
 
 # In psql, insert admin user:
 INSERT INTO "User" (id, email, name, password, role, "isKeycloakUser", "createdAt", "updatedAt")
@@ -170,26 +170,63 @@ node create-admin.js
 ### As a Regular User:
 
 1. **Login** at http://localhost:3000/login
-2. **Create a ticket:**
-   - Click "New Ticket" or go to http://localhost:3000/tickets/new
-   - Fill in title, description, category
+2. **Create a bill:**
+   - Click "New Bill" or go to http://localhost:3000/bills
+   - Fill in title, amount, due date, category (required)
+   - Optionally select vendor and account number
    - Submit
-3. **View your tickets** at http://localhost:3000/tickets
+3. **View your bills** at http://localhost:3000/bills
 4. **View dashboard** at http://localhost:3000/dashboard
-5. **Add comments** to your tickets
-6. **Upload files** to tickets
+5. **View bill details:**
+   - Click on any bill card from the dashboard
+   - This opens the bill detail/edit page
+   - You can edit all bill information including vendor and account linking
+6. **View unassigned bills:**
+   - Unassigned bills (created without a user) appear on your dashboard
+   - You can view and edit unassigned bills just like your own bills
+   - This allows you to claim and manage bills that were created anonymously
 
 ### As an Admin:
 
 1. **Login** at http://localhost:3000/login
 2. **View admin dashboard** at http://localhost:3000/admin/dashboard
-3. **View all tickets** at http://localhost:3000/admin/tickets
-4. **Manage a ticket:**
-   - Click on any ticket
-   - Change status, priority
-   - Assign to yourself or other admins
-   - Add comments (can mark as internal)
+3. **View all bills** at http://localhost:3000/bills
+4. **Manage a bill:**
+   - Click on any bill card from dashboard or bills list
+   - This opens the bill detail/edit page
+   - Change status, update details
+   - Link bill to vendor and account number
+   - Add comments and attachments
 5. **Switch to user view** by clicking "User View" in navbar
+
+### Viewing and Editing Bills
+
+**From Dashboard:**
+- Click on any bill card to view and edit its details
+- The bill detail page shows all bill information
+- You can update any field including vendor and account linking
+
+**From Bills List:**
+- Navigate to `/bills` to see all your bills and unassigned bills
+- Click on a bill to view/edit details
+- Use filters to find specific bills
+
+**From Calendar View:**
+- Navigate to `/bills/calendar` to see bills by due date
+- Click on any bill in the calendar to view/edit details
+
+**Linking Bills to Vendors and Accounts:**
+1. Open a bill for editing (click on bill card)
+2. Select a vendor from the dropdown (optional)
+3. If the vendor has account numbers configured, an "Account" dropdown will appear
+4. Select the appropriate account number (optional)
+5. Save changes
+
+**Unassigned Bills:**
+- Bills created without a user account (anonymous entry) are "unassigned"
+- All users can view and edit unassigned bills
+- This allows anyone to claim and manage bills that were created via the anonymous entry form
+- Admins can see all bills including those assigned to specific users
 
 ## Common Development Tasks
 
