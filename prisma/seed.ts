@@ -34,7 +34,47 @@ const prisma = new PrismaClient({
 })
 
 async function main() {
-  console.log('Seeding default global categories...')
+  console.log('🌱 Starting Kontado database seeding...')
+
+  // Check database connection
+  try {
+    await prisma.$connect()
+    console.log('✅ Database connection successful')
+  } catch (error) {
+    console.error('❌ Database connection failed')
+    console.error('Make sure your database is running and DATABASE_URL is correctly set')
+    console.error('For local development, run: docker compose up -d db')
+    process.exit(1)
+  }
+
+  console.log('👤 Seeding default admin user...')
+
+  // Check if admin user already exists
+  const existingAdmin = await prisma.user.findFirst({
+    where: {
+      role: 'ADMIN',
+    },
+  })
+
+  if (!existingAdmin) {
+    // Create default admin user
+    const defaultAdmin = await prisma.user.create({
+      data: {
+        email: 'admin@kontado.local',
+        name: 'Kontado Admin',
+        password: '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // "password"
+        role: 'ADMIN',
+        department: 'IT',
+        isActive: true,
+      },
+    })
+    console.log(`✅ Created default admin user: ${defaultAdmin.email}`)
+    console.log('🔑 Default admin password: password (change this in production!)')
+  } else {
+    console.log('ℹ️  Admin user already exists, skipping creation')
+  }
+
+  console.log('📂 Seeding default global categories...')
 
   const defaultCategories = [
     { name: 'Electricity', description: 'Electric utility bills', color: '#FFD700' },
@@ -54,48 +94,63 @@ async function main() {
     { name: 'Other', description: 'Other bills and expenses', color: '#BDC3C7' },
   ]
 
-  for (const category of defaultCategories) {
-    // Check if category already exists
-    const existing = await prisma.category.findFirst({
-      where: {
-        name: category.name,
-        isGlobal: true,
-        userId: null,
-      },
-    })
+  let categoriesCreated = 0
+  let categoriesUpdated = 0
 
-    if (existing) {
-      // Update existing category
-      await prisma.category.update({
-        where: { id: existing.id },
-        data: {
-          description: category.description,
-          color: category.color,
-        },
-      })
-    } else {
-      // Create new category
-      await prisma.category.create({
-        data: {
+  for (const category of defaultCategories) {
+    try {
+      // Check if category already exists
+      const existing = await prisma.category.findFirst({
+        where: {
           name: category.name,
-          description: category.description,
-          color: category.color,
           isGlobal: true,
           userId: null,
         },
       })
+
+      if (existing) {
+        // Update existing category
+        await prisma.category.update({
+          where: { id: existing.id },
+          data: {
+            description: category.description,
+            color: category.color,
+          },
+        })
+        categoriesUpdated++
+      } else {
+        // Create new category
+        await prisma.category.create({
+          data: {
+            name: category.name,
+            description: category.description,
+            color: category.color,
+            isGlobal: true,
+            userId: null,
+          },
+        })
+        categoriesCreated++
+      }
+    } catch (error) {
+      console.error(`❌ Error seeding category "${category.name}":`, error)
     }
   }
 
-  console.log(`Seeded ${defaultCategories.length} global categories`)
+  console.log(`📂 Categories: ${categoriesCreated} created, ${categoriesUpdated} updated`)
+  console.log('🎉 Database seeding completed successfully!')
 }
 
 main()
   .catch((e) => {
-    console.error(e)
+    console.error('❌ Seeding failed:', e)
     process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect()
-    await pool.end()
+    try {
+      await prisma.$disconnect()
+      await pool.end()
+      console.log('🔌 Database connection closed')
+    } catch (error) {
+      console.error('⚠️  Error closing database connection:', error)
+    }
   })

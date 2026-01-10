@@ -307,11 +307,37 @@ npx prisma migrate dev --name description
 # Reset database (WARNING: deletes all data)
 npx prisma migrate reset
 
+# Seed database with default data (admin user, categories)
+npm run db:seed
+
 # Open Prisma Studio (database GUI)
 npx prisma studio
 ```
 
 **Note**: With Prisma 7, you must run `npx prisma generate` before running migrations if you've made schema changes.
+
+### Database Seeding
+
+The seed script creates essential data for a fresh Kontado installation:
+
+```bash
+npm run db:seed
+```
+
+**What it creates:**
+- **Admin User**: `admin@kontado.local` with password `password` (change in production!)
+- **Global Categories**: 15 predefined bill categories (Electricity, Gas, Internet, etc.)
+
+**Safety Features:**
+- Checks for existing data before creating duplicates
+- Updates existing categories with new descriptions/colors
+- Safe to run multiple times
+- Requires database connection to be available
+
+**For Production:**
+1. Run seeding after initial migration
+2. Change the default admin password immediately
+3. Consider creating additional admin accounts
 
 ### Linting
 
