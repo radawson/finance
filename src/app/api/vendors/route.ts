@@ -26,41 +26,86 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const vendors = await prisma.vendor.findMany({
-      where: {
-        createdById: session.user.id,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+    // Try to include accounts, but handle gracefully if relation doesn't exist
+    let vendors
+    try {
+      vendors = await prisma.vendor.findMany({
+        where: {
+          createdById: session.user.id,
+        },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          accounts: {
+            where: {
+              isActive: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+          _count: {
+            select: {
+              bills: true,
+            },
           },
         },
-        accounts: {
+        orderBy: {
+          name: 'asc',
+        },
+      })
+    } catch (includeError: any) {
+      // If accounts relation doesn't exist (Prisma client not regenerated), try without it
+      if (includeError?.code === 'P2009' || includeError?.message?.includes('accounts')) {
+        console.warn('Accounts relation not found, fetching vendors without accounts. Run: npx prisma generate')
+        vendors = await prisma.vendor.findMany({
           where: {
-            isActive: true,
+            createdById: session.user.id,
+          },
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            _count: {
+              select: {
+                bills: true,
+              },
+            },
           },
           orderBy: {
-            createdAt: 'desc',
+            name: 'asc',
           },
-        },
-        _count: {
-          select: {
-            bills: true,
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    })
+        })
+        // Add empty accounts array to maintain API contract
+        vendors = vendors.map(v => ({ ...v, accounts: [] }))
+      } else {
+        throw includeError
+      }
+    }
 
     return NextResponse.json(vendors)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get vendors error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      meta: error?.meta,
+      stack: error?.stack,
+    })
+    
+    // Return more detailed error information
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      },
       { status: 500 }
     )
   }

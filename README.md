@@ -299,12 +299,39 @@ npm start
 
 ### Database Operations
 
+#### Quick Update Script
+
+For convenience, use the update script to handle migrations and schema changes in the correct order:
+
+```bash
+# Production: Apply existing migrations and regenerate client
+npm run db:update
+
+# Development: Create new migrations if schema changed
+npm run db:update:dev
+
+# Production with seeding (applies migrations, regenerates client, then seeds)
+npm run db:update:seed
+```
+
+Or run the script directly:
+```bash
+./scripts/update-db.sh deploy        # Production mode
+./scripts/update-db.sh dev           # Development mode
+./scripts/update-db.sh deploy --seed # Production with seeding
+```
+
+#### Manual Database Operations
+
 ```bash
 # Generate Prisma client (run after schema changes)
 npx prisma generate
 
 # Create migration
 npx prisma migrate dev --name description
+
+# Apply migrations (production)
+npx prisma migrate deploy
 
 # Reset database (WARNING: deletes all data)
 npx prisma migrate reset
@@ -316,7 +343,7 @@ npm run db:seed
 npx prisma studio
 ```
 
-**Note**: With Prisma 7, you must run `npx prisma generate` before running migrations if you've made schema changes.
+**Note**: With Prisma 7, you must run `npx prisma generate` after running migrations to regenerate the client with the updated schema.
 
 ### Database Seeding
 
