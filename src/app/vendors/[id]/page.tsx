@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
-import { Vendor, VendorAccount } from '@/types'
+import { Vendor, VendorAccount, AccountType } from '@/types'
 import { ArrowLeft, Plus, Edit, Trash2, Building2, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
@@ -17,21 +17,26 @@ export default function VendorDetailsPage() {
 
   const [vendor, setVendor] = useState<Vendor | null>(null)
   const [accounts, setAccounts] = useState<VendorAccount[]>([])
+  const [accountTypes, setAccountTypes] = useState<AccountType[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
+  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<VendorAccount | null>(null)
   const [accountFormData, setAccountFormData] = useState({
     accountNumber: '',
-    accountType: '',
+    accountTypeId: '',
     nickname: '',
-    last4: '',
     notes: '',
+  })
+  const [quickAddFormData, setQuickAddFormData] = useState({
+    name: '',
   })
 
   useEffect(() => {
     if (session && vendorId) {
       fetchVendor()
       fetchAccounts()
+      fetchAccountTypes()
     }
   }, [session, vendorId])
 
@@ -65,6 +70,46 @@ export default function VendorDetailsPage() {
     }
   }
 
+  const fetchAccountTypes = async () => {
+    try {
+      const response = await fetch('/api/account-types')
+      if (response.ok) {
+        const data = await response.json()
+        setAccountTypes(data)
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  }
+
+  const handleQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const response = await fetch('/api/account-types', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: quickAddFormData.name }),
+      })
+
+      if (response.ok) {
+        const newAccountType = await response.json()
+        setAccountTypes([...accountTypes, newAccountType])
+        setAccountFormData({ ...accountFormData, accountTypeId: newAccountType.id })
+        setQuickAddFormData({ name: '' })
+        setIsQuickAddModalOpen(false)
+        toast.success('Account type created')
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to create account type')
+      }
+    } catch (error) {
+      toast.error('Failed to create account type')
+    }
+  }
+
   const handleAccountSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -74,21 +119,14 @@ export default function VendorDetailsPage() {
         : `/api/vendors/${vendorId}/accounts`
       const method = editingAccount ? 'PATCH' : 'POST'
 
-      // Auto-generate last4 if not provided
-      let last4 = accountFormData.last4
-      if (!last4 && accountFormData.accountNumber && accountFormData.accountNumber.length >= 4) {
-        last4 = accountFormData.accountNumber.slice(-4)
-      }
-
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...accountFormData,
-          last4: last4 || null,
-          accountType: accountFormData.accountType || null,
+          accountNumber: accountFormData.accountNumber,
+          accountTypeId: accountFormData.accountTypeId || null,
           nickname: accountFormData.nickname || null,
           notes: accountFormData.notes || null,
         }),
@@ -100,9 +138,8 @@ export default function VendorDetailsPage() {
         setEditingAccount(null)
         setAccountFormData({
           accountNumber: '',
-          accountType: '',
+          accountTypeId: '',
           nickname: '',
-          last4: '',
           notes: '',
         })
         fetchAccounts()
@@ -141,9 +178,8 @@ export default function VendorDetailsPage() {
     setEditingAccount(account)
     setAccountFormData({
       accountNumber: account.accountNumber,
-      accountType: account.accountType || '',
+      accountTypeId: account.accountTypeId || account.type?.id || '',
       nickname: account.nickname || '',
-      last4: account.last4 || '',
       notes: account.notes || '',
     })
     setIsAccountModalOpen(true)
@@ -264,9 +300,8 @@ export default function VendorDetailsPage() {
                 setEditingAccount(null)
                 setAccountFormData({
                   accountNumber: '',
-                  accountType: '',
+                  accountTypeId: '',
                   nickname: '',
-                  last4: '',
                   notes: '',
                 })
                 setIsAccountModalOpen(true)
@@ -298,11 +333,13 @@ export default function VendorDetailsPage() {
                       <CreditCard className="w-5 h-5 text-gray-400" />
                       <div>
                         <h3 className="font-medium text-gray-900">
-                          {account.nickname || account.accountType || 'Account'}
+                          {account.nickname || account.type?.name || account.accountType || 'Account'}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {account.last4 ? `****${account.last4}` : '****' + account.accountNumber.slice(-4)}
-                          {account.accountType && ` • ${account.accountType}`}
+                          {account.accountNumber && account.accountNumber.length >= 4 
+                            ? `****${account.accountNumber.slice(-4)}` 
+                            : account.accountNumber}
+                          {account.type?.name && ` • ${account.type.name}`}
                         </p>
                         {account.notes && (
                           <p className="text-sm text-gray-500 mt-1">{account.notes}</p>
@@ -353,39 +390,37 @@ export default function VendorDetailsPage() {
                       setAccountFormData({
                         ...accountFormData,
                         accountNumber: value,
-                        // Auto-generate last4 if not manually set
-                        last4: accountFormData.last4 || (value.length >= 4 ? value.slice(-4) : ''),
                       })
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Enter account number"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Account Type
-                    </label>
-                    <input
-                      type="text"
-                      value={accountFormData.accountType}
-                      onChange={(e) => setAccountFormData({ ...accountFormData, accountType: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., Mortgage, Loan"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last 4 Digits
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={4}
-                      value={accountFormData.last4}
-                      onChange={(e) => setAccountFormData({ ...accountFormData, last4: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Auto-filled"
-                    />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Account Type
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={accountFormData.accountTypeId}
+                      onChange={(e) => setAccountFormData({ ...accountFormData, accountTypeId: e.target.value })}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">No account type</option>
+                      {accountTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickAddModalOpen(true)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                      title="Add new account type"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -426,11 +461,53 @@ export default function VendorDetailsPage() {
                       setEditingAccount(null)
                       setAccountFormData({
                         accountNumber: '',
-                        accountType: '',
+                        accountTypeId: '',
                         nickname: '',
-                        last4: '',
                         notes: '',
                       })
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Add Account Type Modal */}
+        {isQuickAddModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Add Account Type</h2>
+              <form onSubmit={handleQuickAdd} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={quickAddFormData.name}
+                    onChange={(e) => setQuickAddFormData({ name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="e.g., Mortgage, Loan"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    Create
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickAddModalOpen(false)
+                      setQuickAddFormData({ name: '' })
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >

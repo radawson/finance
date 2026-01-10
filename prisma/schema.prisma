@@ -176,21 +176,35 @@ model Attachment {
   @@map("attachments")
 }
 
+model AccountType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  accounts VendorAccount[]
+
+  @@map("account_types")
+}
+
 model VendorAccount {
   id            String   @id @default(uuid())
   vendorId      String
   accountNumber String
-  accountType   String?  // Optional: Mortgage, Loan, Credit Card, etc.
+  accountTypeId String?  // Optional: Reference to AccountType
+  accountType   String?  // Optional: Legacy field for migration compatibility (will be removed later)
   nickname      String?  // Optional: "Primary Mortgage", "HELOC", etc.
-  last4         String?  // Optional: last 4 digits for display
   notes         String?  // Optional notes
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   // Relations
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  bills  Bill[]
+  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  type        AccountType? @relation(fields: [accountTypeId], references: [id], onDelete: SetNull)
+  bills       Bill[]
 
   @@map("vendor_accounts")
 }

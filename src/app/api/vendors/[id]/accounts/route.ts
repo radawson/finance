@@ -7,9 +7,8 @@ import { Role } from '@/generated/prisma/client'
 
 const vendorAccountSchema = z.object({
   accountNumber: z.string().min(1, 'Account number is required'),
-  accountType: z.string().optional().nullable(),
+  accountTypeId: z.string().optional().nullable(),
   nickname: z.string().optional().nullable(),
-  last4: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
 })
@@ -48,6 +47,9 @@ export async function GET(
       where: {
         vendorId: id,
         isActive: true,
+      },
+      include: {
+        type: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -97,18 +99,17 @@ export async function POST(
     const body = await req.json()
     const data = vendorAccountSchema.parse(body)
 
-    // Auto-generate last4 if not provided and accountNumber is long enough
-    let last4 = data.last4
-    if (!last4 && data.accountNumber && data.accountNumber.length >= 4) {
-      last4 = data.accountNumber.slice(-4)
-    }
-
     const account = await prisma.vendorAccount.create({
       data: {
-        ...data,
-        last4,
+        accountNumber: data.accountNumber,
+        accountTypeId: data.accountTypeId || null,
+        nickname: data.nickname || null,
+        notes: data.notes || null,
         vendorId: id,
         isActive: data.isActive ?? true,
+      },
+      include: {
+        type: true,
       },
     })
 

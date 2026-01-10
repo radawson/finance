@@ -66,7 +66,11 @@ export async function GET(req: NextRequest) {
       include: {
         category: true,
         vendor: true,
-        vendorAccount: true,
+        vendorAccount: {
+          include: {
+            type: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,
@@ -184,7 +188,11 @@ export async function POST(req: NextRequest) {
       include: {
         category: true,
         vendor: true,
-        vendorAccount: true,
+        vendorAccount: {
+          include: {
+            type: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,

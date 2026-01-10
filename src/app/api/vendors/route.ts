@@ -55,6 +55,9 @@ export async function GET(req: NextRequest) {
             where: {
               isActive: true,
             },
+            include: {
+              type: true,
+            },
             orderBy: {
               createdAt: 'desc',
             },

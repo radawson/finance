@@ -784,7 +784,9 @@ export default function BillsPage() {
                         } else {
                           // Multiple accounts - show each account as separate option
                           return accounts.map((account) => {
-                            const label = `${vendor.name} - ${account.nickname || account.accountType || 'Account'}${account.last4 ? ` (${account.last4})` : ''}`
+                            const last4 = account.accountNumber && account.accountNumber.length >= 4 ? account.accountNumber.slice(-4) : null
+                            const accountTypeName = account.type?.name || account.accountType
+                            const label = `${vendor.name} - ${account.nickname || accountTypeName || 'Account'}${last4 ? ` (${last4})` : ''}`
                             return (
                               <option key={`${vendor.id}:${account.id}`} value={`${vendor.id}:${account.id}`}>
                                 {label}

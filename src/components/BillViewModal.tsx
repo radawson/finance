@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Bill } from '@/types'
 import BillStatusBadge from './BillStatusBadge'
 import { format } from 'date-fns'
@@ -13,6 +14,16 @@ interface BillViewModalProps {
 }
 
 export default function BillViewModal({ bill, isOpen, onClose }: BillViewModalProps) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   return (
@@ -99,8 +110,8 @@ export default function BillViewModal({ bill, isOpen, onClose }: BillViewModalPr
               <div>
                 <div className="text-sm text-gray-500">Account</div>
                 <div className="font-semibold">
-                  {bill.vendorAccount.nickname || bill.vendorAccount.accountType || 'Account'}
-                  {bill.vendorAccount.last4 && ` (****${bill.vendorAccount.last4})`}
+                  {bill.vendorAccount.nickname || bill.vendorAccount.type?.name || bill.vendorAccount.accountType || 'Account'}
+                  {bill.vendorAccount.accountNumber && bill.vendorAccount.accountNumber.length >= 4 && ` (****${bill.vendorAccount.accountNumber.slice(-4)})`}
                 </div>
               </div>
             </div>

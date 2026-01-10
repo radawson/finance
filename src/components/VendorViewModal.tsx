@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Vendor } from '@/types'
 import { X, Edit, Building2, Mail, Phone, MapPin, Globe, CreditCard } from 'lucide-react'
 import Link from 'next/link'
@@ -11,6 +12,16 @@ interface VendorViewModalProps {
 }
 
 export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewModalProps) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   return (
@@ -98,11 +109,11 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
                     <CreditCard className="w-5 h-5 mr-3 text-gray-400" />
                     <div className="flex-1">
                       <div className="font-semibold">
-                        {account.nickname || account.accountType || 'Account'}
+                        {account.nickname || account.type?.name || account.accountType || 'Account'}
                       </div>
                       <div className="text-sm text-gray-500">
                         {account.accountNumber}
-                        {account.last4 && ` (Last 4: ${account.last4})`}
+                        {account.accountNumber && account.accountNumber.length >= 4 && ` (Last 4: ${account.accountNumber.slice(-4)})`}
                       </div>
                     </div>
                   </div>

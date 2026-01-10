@@ -33,7 +33,11 @@ export async function GET(
       include: {
         category: true,
         vendor: true,
-        vendorAccount: true,
+        vendorAccount: {
+          include: {
+            type: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,
@@ -225,7 +229,11 @@ export async function PATCH(
       include: {
         category: true,
         vendor: true,
-        vendorAccount: true,
+        vendorAccount: {
+          include: {
+            type: true,
+          },
+        },
         createdBy: {
           select: {
             id: true,

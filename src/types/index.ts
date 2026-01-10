@@ -43,18 +43,28 @@ export interface Category {
   user?: User | null
 }
 
+export interface AccountType {
+  id: string
+  name: string
+  description?: string | null
+  createdAt: Date
+  updatedAt: Date
+  accounts?: VendorAccount[]
+}
+
 export interface VendorAccount {
   id: string
   vendorId: string
   accountNumber: string
-  accountType?: string | null
+  accountTypeId?: string | null
+  accountType?: string | null  // Legacy field for backward compatibility
   nickname?: string | null
-  last4?: string | null
   notes?: string | null
   isActive: boolean
   createdAt: Date
   updatedAt: Date
   vendor?: Vendor | null
+  type?: AccountType | null
 }
 
 export interface Vendor {

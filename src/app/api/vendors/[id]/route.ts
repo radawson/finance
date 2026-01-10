@@ -59,6 +59,9 @@ export async function GET(
           where: {
             isActive: true,
           },
+          include: {
+            type: true,
+          },
           orderBy: {
             createdAt: 'desc',
           },

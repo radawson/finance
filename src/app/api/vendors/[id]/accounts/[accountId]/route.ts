@@ -7,9 +7,8 @@ import { Role } from '@/generated/prisma/client'
 
 const updateVendorAccountSchema = z.object({
   accountNumber: z.string().min(1).optional(),
-  accountType: z.string().optional().nullable(),
+  accountTypeId: z.string().optional().nullable(),
   nickname: z.string().optional().nullable(),
-  last4: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
 })
@@ -63,15 +62,18 @@ export async function PATCH(
     const body = await req.json()
     const data = updateVendorAccountSchema.parse(body)
 
-    // Auto-update last4 if accountNumber changed and last4 not provided
-    let updateData = { ...data }
-    if (data.accountNumber && !data.last4 && data.accountNumber.length >= 4) {
-      updateData.last4 = data.accountNumber.slice(-4)
-    }
-
     const updatedAccount = await prisma.vendorAccount.update({
       where: { id: accountId },
-      data: updateData,
+      data: {
+        accountNumber: data.accountNumber,
+        accountTypeId: data.accountTypeId !== undefined ? (data.accountTypeId || null) : undefined,
+        nickname: data.nickname !== undefined ? (data.nickname || null) : undefined,
+        notes: data.notes !== undefined ? (data.notes || null) : undefined,
+        isActive: data.isActive,
+      },
+      include: {
+        type: true,
+      },
     })
 
     return NextResponse.json(updatedAccount)

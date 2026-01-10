@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar } from 'lucide-react'
+import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard } from 'lucide-react'
 
 export default function Navbar() {
   const { data: session } = useSession()
@@ -27,6 +27,7 @@ export default function Navbar() {
         { href: '/bills', label: 'My Bills', icon: Receipt },
         { href: '/bills/calendar', label: 'Calendar', icon: Calendar },
         { href: '/vendors', label: 'Vendors', icon: Building2 },
+        { href: '/account-types', label: 'Account Types', icon: CreditCard },
       ]
 
   return (
