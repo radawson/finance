@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { Role } from '@/generated/prisma/client'
 
 const updateVendorSchema = z.object({
   name: z.string().min(1).optional(),
@@ -17,6 +18,66 @@ const updateVendorSchema = z.object({
   logo: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
 })
+
+/**
+ * GET /api/vendors/[id]
+ * Get a single vendor by ID
+ */
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const vendor = await prisma.vendor.findUnique({
+      where: { id },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        accounts: {
+          where: {
+            isActive: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        _count: {
+          select: {
+            bills: true,
+          },
+        },
+      },
+    })
+
+    if (!vendor) {
+      return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
+    }
+
+    // Check authorization - can view own vendors or all vendors if admin
+    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    return NextResponse.json(vendor)
+  } catch (error) {
+    console.error('Get vendor error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -39,7 +100,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    if (existing.createdById !== session.user.id) {
+    // Check authorization
+    if (session.user.role !== Role.ADMIN && existing.createdById !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -104,7 +166,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    if (vendor.createdById !== session.user.id) {
+    // Check authorization
+    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

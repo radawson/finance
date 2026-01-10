@@ -37,6 +37,14 @@ export async function GET(req: NextRequest) {
             name: true,
           },
         },
+        accounts: {
+          where: {
+            isActive: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
         _count: {
           select: {
             bills: true,

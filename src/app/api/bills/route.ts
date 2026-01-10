@@ -5,14 +5,16 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
 import { Role } from '@/generated/prisma/client'
+import { UUID_REGEX } from '@/types'
 
 const billSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   amount: z.number().positive('Amount must be positive'),
   dueDate: z.string().or(z.coerce.date()),
-  categoryId: z.string().uuid('Invalid category ID'),
+  categoryId: z.string().regex(UUID_REGEX, 'Invalid category ID'),
   description: z.string().optional(),
-  vendorId: z.string().uuid().optional(),
+  vendorId: z.string().regex(UUID_REGEX).optional(),
+  vendorAccountId: z.string().regex(UUID_REGEX).optional().nullable(),
   status: z.enum(['PENDING', 'DUE_SOON', 'OVERDUE', 'PAID', 'SKIPPED']).optional(),
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
@@ -61,6 +63,7 @@ export async function GET(req: NextRequest) {
       include: {
         category: true,
         vendor: true,
+        vendorAccount: true,
         createdBy: {
           select: {
             id: true,
@@ -132,6 +135,31 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Verify vendorAccount exists and belongs to vendor if both provided
+    if (data.vendorAccountId) {
+      const vendorAccount = await prisma.vendorAccount.findUnique({
+        where: { id: data.vendorAccountId },
+        include: { vendor: true },
+      })
+
+      if (!vendorAccount) {
+        return NextResponse.json({ error: 'Vendor account not found' }, { status: 404 })
+      }
+
+      // If vendorId is also provided, ensure account belongs to that vendor
+      if (data.vendorId && vendorAccount.vendorId !== data.vendorId) {
+        return NextResponse.json(
+          { error: 'Vendor account does not belong to the specified vendor' },
+          { status: 400 }
+        )
+      }
+
+      // If vendorId not provided but account is, use account's vendor
+      if (!data.vendorId) {
+        data.vendorId = vendorAccount.vendorId
+      }
+    }
+
     // Calculate status if not provided
     const status = data.status || calculateBillStatus(data.dueDate, data.paidDate)
 
@@ -146,12 +174,14 @@ export async function POST(req: NextRequest) {
         status,
         categoryId: data.categoryId,
         vendorId: data.vendorId,
+        vendorAccountId: data.vendorAccountId,
         createdById: session.user.id,
         isRecurring: data.isRecurring || false,
       },
       include: {
         category: true,
         vendor: true,
+        vendorAccount: true,
         createdBy: {
           select: {
             id: true,

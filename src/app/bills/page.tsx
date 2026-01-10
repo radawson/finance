@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
-import { Bill, Category, Vendor, BillStatus } from '@/types'
+import { Bill, Category, Vendor, VendorAccount, BillStatus } from '@/types'
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -40,10 +40,12 @@ export default function BillsPage() {
     dueDate: '',
     categoryId: '',
     vendorId: '',
+    vendorAccountId: '',
     description: '',
     status: 'PENDING' as BillStatus,
     paidDate: '',
   })
+  const [vendorAccounts, setVendorAccounts] = useState<{ id: string; nickname?: string | null; last4?: string; accountType?: string | null }[]>([])
 
   useEffect(() => {
     if (session) {
@@ -92,6 +94,34 @@ export default function BillsPage() {
       // Silently fail
     }
   }
+
+  const fetchVendorAccounts = async (vendorId: string) => {
+    if (!vendorId) {
+      setVendorAccounts([])
+      return
+    }
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/accounts`)
+      if (response.ok) {
+        const data = await response.json()
+        setVendorAccounts(data)
+      } else {
+        setVendorAccounts([])
+      }
+    } catch (error) {
+      setVendorAccounts([])
+    }
+  }
+
+  // Fetch accounts when vendor changes
+  useEffect(() => {
+    if (formData.vendorId) {
+      fetchVendorAccounts(formData.vendorId)
+    } else {
+      setVendorAccounts([])
+      setFormData(prev => ({ ...prev, vendorAccountId: '' }))
+    }
+  }, [formData.vendorId])
 
   // Filter and sort bills
   const filteredAndSortedBills = useMemo(() => {
@@ -210,7 +240,7 @@ export default function BillsPage() {
     return <ArrowUpDown className="w-4 h-4 ml-1 text-gray-400" />
   }
 
-  const openEditModal = (bill: Bill) => {
+  const openEditModal = async (bill: Bill) => {
     setEditingBill(bill)
     setFormData({
       title: bill.title,
@@ -218,10 +248,15 @@ export default function BillsPage() {
       dueDate: format(new Date(bill.dueDate), 'yyyy-MM-dd'),
       categoryId: bill.categoryId,
       vendorId: bill.vendorId || '',
+      vendorAccountId: bill.vendorAccountId || '',
       description: bill.description || '',
       status: bill.status,
       paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
     })
+    // Fetch accounts for the vendor if vendor is set
+    if (bill.vendorId) {
+      await fetchVendorAccounts(bill.vendorId)
+    }
     setIsModalOpen(true)
   }
 
@@ -243,6 +278,7 @@ export default function BillsPage() {
           dueDate: new Date(formData.dueDate).toISOString(),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || null,
+          vendorAccountId: formData.vendorAccountId || null,
           description: formData.description || null,
           status: formData.status,
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
@@ -259,10 +295,12 @@ export default function BillsPage() {
           dueDate: '',
           categoryId: '',
           vendorId: '',
+          vendorAccountId: '',
           description: '',
           status: 'PENDING',
           paidDate: '',
         })
+        setVendorAccounts([])
         fetchBills()
       } else {
         const data = await response.json()
@@ -332,10 +370,12 @@ export default function BillsPage() {
                 dueDate: '',
                 categoryId: '',
                 vendorId: '',
+                vendorAccountId: '',
                 description: '',
                 status: 'PENDING',
                 paidDate: '',
               })
+              setVendorAccounts([])
               setIsModalOpen(true)
             }}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -497,10 +537,12 @@ export default function BillsPage() {
                   dueDate: '',
                   categoryId: '',
                   vendorId: '',
+                  vendorAccountId: '',
                   description: '',
                   status: 'PENDING',
                   paidDate: '',
                 })
+                setVendorAccounts([])
                 setIsModalOpen(true)
               }}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -727,7 +769,7 @@ export default function BillsPage() {
                     </label>
                     <select
                       value={formData.vendorId}
-                      onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, vendorId: e.target.value, vendorAccountId: '' })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
                       <option value="">No vendor</option>
@@ -739,6 +781,27 @@ export default function BillsPage() {
                     </select>
                   </div>
                 </div>
+
+                {/* Optional Account Selection - Only shows if vendor has accounts */}
+                {formData.vendorId && vendorAccounts.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Account (optional)
+                    </label>
+                    <select
+                      value={formData.vendorAccountId}
+                      onChange={(e) => setFormData({ ...formData, vendorAccountId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">No account specified</option>
+                      {vendorAccounts.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.nickname || account.accountType || 'Account'} {account.last4 ? `(${account.last4})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -803,10 +866,12 @@ export default function BillsPage() {
                         dueDate: '',
                         categoryId: '',
                         vendorId: '',
+                        vendorAccountId: '',
                         description: '',
                         status: 'PENDING',
                         paidDate: '',
                       })
+                      setVendorAccounts([])
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >

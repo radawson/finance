@@ -2,6 +2,9 @@ import { Role, BillStatus, RecurrenceFrequency } from '@/generated/prisma/client
 
 export type { Role, BillStatus, RecurrenceFrequency }
 
+// UUID validation regex (replaces deprecated z.string().uuid())
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export enum BillStatusEnum {
   PENDING = 'PENDING',
   DUE_SOON = 'DUE_SOON',
@@ -40,6 +43,20 @@ export interface Category {
   user?: User | null
 }
 
+export interface VendorAccount {
+  id: string
+  vendorId: string
+  accountNumber: string
+  accountType?: string | null
+  nickname?: string | null
+  last4?: string | null
+  notes?: string | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  vendor?: Vendor | null
+}
+
 export interface Vendor {
   id: string
   name: string
@@ -57,6 +74,7 @@ export interface Vendor {
   createdAt: Date
   updatedAt: Date
   createdBy?: User | null
+  accounts?: VendorAccount[]
 }
 
 export interface RecurrencePattern {
@@ -80,6 +98,7 @@ export interface Bill {
   status: BillStatus
   categoryId: string
   vendorId?: string | null
+  vendorAccountId?: string | null
   createdById?: string | null
   recurrencePatternId?: string | null
   isRecurring: boolean
@@ -88,6 +107,7 @@ export interface Bill {
   updatedAt: Date
   category?: Category
   vendor?: Vendor | null
+  vendorAccount?: VendorAccount | null
   createdBy?: User | null
   recurrencePattern?: RecurrencePattern | null
   comments?: Comment[]
@@ -125,6 +145,7 @@ export interface Attachment {
 export interface BillWithDetails extends Bill {
   category: Category
   vendor: Vendor | null
+  vendorAccount: VendorAccount | null
   createdBy: User | null
   recurrencePattern: RecurrencePattern | null
   comments: (Comment & { user: User | null })[]

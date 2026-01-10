@@ -5,14 +5,16 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
 import { Role } from '@/generated/prisma/client'
+import { UUID_REGEX } from '@/types'
 
 const updateBillSchema = z.object({
   title: z.string().min(1).optional(),
   amount: z.number().positive().optional(),
   dueDate: z.string().or(z.coerce.date()).optional(),
-  categoryId: z.string().uuid().optional(),
+  categoryId: z.string().regex(UUID_REGEX).optional(),
   description: z.string().optional().nullable(),
-  vendorId: z.string().uuid().optional().nullable(),
+  vendorId: z.string().regex(UUID_REGEX).optional().nullable(),
+  vendorAccountId: z.string().regex(UUID_REGEX).optional().nullable(),
   status: z.enum(['PENDING', 'DUE_SOON', 'OVERDUE', 'PAID', 'SKIPPED']).optional(),
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
@@ -31,6 +33,7 @@ export async function GET(
       include: {
         category: true,
         vendor: true,
+        vendorAccount: true,
         createdBy: {
           select: {
             id: true,
@@ -160,6 +163,37 @@ export async function PATCH(
       }
     }
 
+    // Verify vendorAccount exists and belongs to vendor if provided
+    if (data.vendorAccountId !== undefined) {
+      if (data.vendorAccountId) {
+        const vendorAccount = await prisma.vendorAccount.findUnique({
+          where: { id: data.vendorAccountId },
+          include: { vendor: true },
+        })
+
+        if (!vendorAccount) {
+          return NextResponse.json({ error: 'Vendor account not found' }, { status: 404 })
+        }
+
+        // If vendorId is also being updated, ensure account belongs to that vendor
+        const targetVendorId = data.vendorId !== undefined ? data.vendorId : existingBill.vendorId
+        if (targetVendorId && vendorAccount.vendorId !== targetVendorId) {
+          return NextResponse.json(
+            { error: 'Vendor account does not belong to the specified vendor' },
+            { status: 400 }
+          )
+        }
+
+        // If vendorId not provided but account is, ensure it matches existing bill's vendor
+        if (!targetVendorId && vendorAccount.vendorId !== existingBill.vendorId) {
+          return NextResponse.json(
+            { error: 'Vendor account does not belong to the bill\'s vendor' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // Calculate status if dueDate changed or status not explicitly set
     let status = data.status
     if (!status && (data.dueDate || data.paidDate !== undefined)) {
@@ -178,6 +212,7 @@ export async function PATCH(
         ...(data.categoryId && { categoryId: data.categoryId }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
+        ...(data.vendorAccountId !== undefined && { vendorAccountId: data.vendorAccountId }),
         ...(status && { status }),
         ...(data.paidDate !== undefined && {
           paidDate: data.paidDate ? new Date(data.paidDate) : null,
@@ -187,6 +222,7 @@ export async function PATCH(
       include: {
         category: true,
         vendor: true,
+        vendorAccount: true,
         createdBy: {
           select: {
             id: true,

@@ -91,8 +91,9 @@ model Vendor {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  createdBy User?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
   bills     Bill[]
+  accounts  VendorAccount[]
 
   @@map("vendors")
 }
@@ -106,7 +107,8 @@ model Bill {
   paidDate           DateTime?
   status             BillStatus @default(PENDING)
   categoryId         String
-  vendorId           String?
+  vendorId           String?   // Optional - can create bill without vendor
+  vendorAccountId   String?   // Optional - can create bill without account
   createdById        String?   // Nullable for anonymous entries
   recurrencePatternId String?  @unique
   isRecurring        Boolean   @default(false)
@@ -117,6 +119,7 @@ model Bill {
   // Relations
   category          Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   vendor            Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorAccount     VendorAccount?    @relation(fields: [vendorAccountId], references: [id], onDelete: SetNull)
   createdBy         User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
   recurrencePattern RecurrencePattern?
   comments          Comment[]
@@ -171,4 +174,23 @@ model Attachment {
   uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@map("attachments")
+}
+
+model VendorAccount {
+  id            String   @id @default(uuid())
+  vendorId      String
+  accountNumber String
+  accountType   String?  // Optional: Mortgage, Loan, Credit Card, etc.
+  nickname      String?  // Optional: "Primary Mortgage", "HELOC", etc.
+  last4         String?  // Optional: last 4 digits for display
+  notes         String?  // Optional notes
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  bills  Bill[]
+
+  @@map("vendor_accounts")
 }

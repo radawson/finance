@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
 import { Vendor } from '@/types'
 import { Plus, Edit, Trash2, Building2 } from 'lucide-react'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 
 export default function VendorsPage() {
@@ -213,20 +214,25 @@ export default function VendorsPage() {
             {vendors.map((vendor) => (
               <div key={vendor.id} className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
+                  <Link
+                    href={`/vendors/${vendor.id}`}
+                    className="flex items-center flex-1 hover:text-primary-600 transition-colors"
+                  >
                     <Building2 className="w-6 h-6 text-gray-400 mr-3" />
                     <h3 className="text-lg font-semibold text-gray-900">{vendor.name}</h3>
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEditModal(vendor)}
                       className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+                      title="Edit vendor"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(vendor.id)}
                       className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                      title="Delete vendor"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -236,6 +242,11 @@ export default function VendorsPage() {
                 <div className="space-y-2 text-sm text-gray-600">
                   {vendor.email && <div>Email: {vendor.email}</div>}
                   {vendor.phone && <div>Phone: {vendor.phone}</div>}
+                  {vendor.accounts && vendor.accounts.length > 0 && (
+                    <div className="text-primary-600 font-medium">
+                      {vendor.accounts.length} account{vendor.accounts.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
                   {vendor.address && (
                     <div>
                       Address: {vendor.address}
@@ -259,6 +270,14 @@ export default function VendorsPage() {
                   {vendor.description && (
                     <p className="text-gray-500 mt-2">{vendor.description}</p>
                   )}
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <Link
+                    href={`/vendors/${vendor.id}`}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    View Details & Accounts →
+                  </Link>
                 </div>
               </div>
             ))}
