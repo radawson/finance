@@ -26,20 +26,28 @@ export const authOptions: NextAuthOptions = {
         
         console.log('All roles found:', allRoles)
         
-        // Check if user has 'admin' role (case-insensitive)
-        const isAdmin = allRoles.some(role => 
-          role.toLowerCase() === 'admin' || 
+        // Determine role based on Keycloak roles (case-insensitive)
+        let userRole = Role.USER // Default role
+
+        if (allRoles.some(role =>
+          role.toLowerCase() === 'admin' ||
           role.toLowerCase() === 'it_admin' ||
           role.toLowerCase() === 'administrator'
-        )
-        
-        console.log('User is admin:', isAdmin)
-        
+        )) {
+          userRole = Role.ADMIN
+        } else if (allRoles.some(role => role.toLowerCase() === 'guest')) {
+          userRole = Role.GUEST
+        } else if (allRoles.some(role => role.toLowerCase() === 'user')) {
+          userRole = Role.USER // Explicit user role
+        }
+
+        console.log('Determined role:', userRole, 'from roles:', allRoles)
+
         return {
           id: profile.sub,
           name: profile.name ?? profile.preferred_username,
           email: profile.email,
-          role: isAdmin ? Role.ADMIN : Role.USER,
+          role: userRole,
           isKeycloakUser: true,
         }
       },

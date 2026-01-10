@@ -12,7 +12,7 @@ Kontado supports dual authentication:
 
 Keycloak integration provides:
 - Centralized user management
-- Role-based access control
+- **Client-based role assignment** (per-application roles)
 - Single sign-on across applications
 - Automatic user provisioning
 
@@ -55,9 +55,11 @@ Keycloak integration provides:
    KEYCLOAK_ISSUER="https://logon.partridgecrossing.org/realms/ptx"
    ```
 
-### 3. Create Required Roles
+### 3. Create Required Client Roles
 
-1. Navigate to **Realm Settings** → **Roles**
+Since your setup uses **client-specific roles**, create roles within the client:
+
+1. Navigate to **Clients** → **ptx-finance** → **Realm roles** tab
 2. Click **Create role** for each role:
 
 | Role Name | Description | Application Role |
@@ -71,13 +73,43 @@ Keycloak integration provides:
 - `administrator`
 - `admin`
 
-### 4. Assign Roles to Users
+**Note**: Client roles appear in the `resource_access[clientId].roles` section of JWT tokens, not `realm_access.roles`.
+
+### 5. Verify Role Mapping in Client Claims
+
+**Important**: Ensure client roles are included in JWT tokens:
+
+1. Go to **Clients** → **ptx-finance** → **Client scopes** tab
+2. Click on the **ptx-finance-dedicated** scope (automatically created)
+3. Go to **Protocol mappers** tab
+4. Verify **realm roles** mapper exists (should be there by default)
+5. If missing, click **Add mapper** → **By configuration** → **User Realm Role**
+6. Configure:
+   - **Name**: `realm roles`
+   - **Mapper Type**: `User Realm Role`
+   - **Multivalued**: `On`
+   - **Token Claim Name**: `realm_access.roles`
+   - **Add to ID token**: `Off` (unless needed)
+   - **Add to access token**: `On`
+
+**For Client Roles** (automatically included):
+- Client roles are automatically mapped to `resource_access[client_id].roles`
+- No additional configuration needed for basic client role mapping
+
+6. **Verify Role Claims in Tokens** (Recommended):
+   - Test login after role assignment
+   - Check browser dev tools → Network → JWT token response
+   - Verify roles appear in `resource_access["ptx-finance"].roles`
+
+### 4. Assign Client Roles to Users
 
 1. Go to **Users** → Select a user
 2. Navigate to **Role mapping** tab
-3. Click **Assign role**
-4. Select appropriate roles
+3. Click **Assign role** → **Filter by clients** → Select **ptx-finance**
+4. Select appropriate client roles (`USER`, `ADMIN`, `GUEST`)
 5. Click **Assign**
+
+**Note**: When assigning client roles, make sure to filter by the **ptx-finance** client to see the client-specific roles, not realm roles.
 
 ### 5. Configure Environment Variables
 
@@ -131,14 +163,24 @@ Creating new Keycloak user: user@domain.com Role: ADMIN
 
 ### Client Scopes (Optional)
 
-For more granular role management, you can use client-specific roles:
+Since you're already using client roles, you can further customize with client scopes:
 
 1. Go to **Clients** → **ptx-finance** → **Client scopes**
 2. Create client scope (e.g., `kontado-roles`)
 3. Add role mappings to the client scope
-4. Assign client roles to users instead of realm roles
+4. This provides additional granularity beyond basic client roles
 
-### Protocol Mappers (Optional)
+### Default Protocol Mappers
+
+**Keycloak 26.x includes these by default** in the `ptx-finance-dedicated` client scope:
+
+- **realm roles**: Maps realm roles to `realm_access.roles`
+- **client roles**: Maps client roles to `resource_access[client_id].roles`
+- **groups**: Maps user groups
+- **username**: Maps username
+- **email**: Maps email address
+
+### Custom Protocol Mappers (Optional)
 
 To customize what information is sent in tokens:
 
@@ -146,6 +188,11 @@ To customize what information is sent in tokens:
 2. Select a scope (or create new)
 3. Go to **Protocol mappers** tab
 4. Add mappers for additional user attributes
+
+**Common additions:**
+- User full name
+- Department/organization attributes
+- Custom user attributes
 
 ### Identity Brokering (Optional)
 
@@ -165,10 +212,22 @@ For integration with external identity providers:
 - Check for trailing slashes
 
 #### 2. Roles Not Detected
-- Check user has roles assigned in Keycloak
+- Check user has **client roles** assigned in Keycloak (not realm roles)
 - Verify role names match expected values
+- **Check protocol mappers**: Ensure roles are included in JWT claims
+  - Go to **Clients** → **ptx-finance** → **Client scopes** → **ptx-finance-dedicated** → **Protocol mappers**
+  - Verify `realm roles` mapper exists and is configured to add to access tokens
 - Check browser developer tools → Network → Keycloak token response
-- Look for `realm_access.roles` in the JWT payload
+- Look for `resource_access["ptx-finance"].roles` in the JWT payload (client roles)
+- If using realm roles instead, check `realm_access.roles`
+- **Decode JWT**: Use https://jwt.io to inspect token contents
+
+#### 2.5 Role Not Updating After Assignment
+- **Session Caching**: NextAuth caches user sessions - role changes require fresh login
+- **Force Logout**: Clear browser cookies completely for the application
+- **Check Database**: Verify role was updated in the database after login
+- **Debug Logs**: Check application logs for role detection during login
+- **JWT Expiry**: Wait for token to expire or force re-authentication
 
 #### 3. "Client not found" Error
 - Verify **Client ID** matches exactly
@@ -186,20 +245,33 @@ For integration with external identity providers:
 1. **Check Token Content**:
    ```bash
    # Decode JWT token from browser dev tools
-   # Look for 'realm_access', 'resource_access', or direct 'roles'
+   # Look for 'resource_access.ptx-finance.roles' (client roles) or 'realm_access.roles'
    ```
 
-2. **Test Keycloak Configuration**:
+2. **Test JWT Token Decoding**:
+   ```bash
+   # Copy access token from browser dev tools
+   # Decode at https://jwt.io
+   # Check payload for role claims
+   ```
+
+3. **Verify Protocol Mappers**:
+   - Go to **Clients** → **ptx-finance** → **Client scopes** → **ptx-finance-dedicated**
+   - Check **Protocol mappers** tab
+   - Ensure role mappers are present and enabled
+
+4. **Test Keycloak Configuration**:
    ```bash
    # Test OIDC discovery endpoint
    curl https://logon.partridgecrossing.org/realms/ptx/.well-known/openid-connect-configuration
    ```
 
-3. **Verify Client Settings**:
+5. **Verify Client Settings**:
    - Client ID matches exactly
    - Client secret is correct
    - Redirect URIs are properly configured
    - Client is enabled
+   - **Client authentication**: Set to "On" for confidential clients
 
 ### Application Logs
 
@@ -233,25 +305,50 @@ NODE_ENV=development
 
 ### How Roles Are Mapped
 
-The application checks for roles in this order:
+Since you're using **client roles**, the application checks for roles in this order:
 
-1. `profile.realm_access.roles` (recommended)
-2. `profile.resource_access[clientId].roles` (client-specific)
+1. `profile.resource_access["ptx-finance"].roles` (your client roles) - **PRIMARY**
+2. `profile.realm_access.roles` (realm roles)
 3. `profile.roles` (direct assignment)
+
+**Expected JWT token structure for client roles:**
+```json
+{
+  "resource_access": {
+    "ptx-finance": {
+      "roles": ["ADMIN", "USER"]
+    }
+  }
+}
+```
+
+### Log Verification
+
+Check application logs for successful client role detection:
+
+```
+Keycloak profile: {
+  "sub": "user-uuid",
+  "resource_access": {
+    "ptx-finance": {
+      "roles": ["ADMIN"]
+    }
+  }
+}
+All roles found: ["ADMIN"]
+User is admin: true
+Creating new Keycloak user: user@domain.com Role: ADMIN
+```
 
 ### Role Name Recognition
 
-**Admin Roles** (case-insensitive):
-- `admin`
-- `administrator`
-- `it_admin`
+**Role Assignment Priority** (case-insensitive):
+1. **ADMIN** if user has: `admin`, `administrator`, `it_admin`
+2. **GUEST** if user has: `guest`
+3. **USER** if user has: `user` or any other role
+4. **USER** (default) if no roles assigned
 
-**User Roles**:
-- `user`
-- `default-roles-ptx` (Keycloak default)
-
-**Guest Roles**:
-- `guest`
+**Note**: Roles are checked in priority order - admin roles take precedence over guest, which takes precedence over user.
 
 ### Automatic User Creation
 
@@ -313,6 +410,6 @@ If upgrading from earlier versions:
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.3
 **Last Updated**: January 2026
-**Compatible with**: Keycloak 26.x, Kontado v1.0+
+**Compatible with**: Keycloak 26.x (client roles), Kontado v1.0+
