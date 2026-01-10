@@ -251,16 +251,15 @@ bills/
 
 ## Configuration
 
-### Keycloak Setup
+### Keycloak SSO Setup
 
-1. Create a new client in Keycloak
-   - Client ID: `it-bills`
-   - Access Type: `confidential`
-   - Valid Redirect URIs: `http://localhost:3000/api/auth/callback/keycloak`
+For comprehensive Keycloak configuration instructions, see **[KEYCLOAK.md](./documents/KEYCLOAK.md)**.
 
-2. Copy client secret to `.env`
-
-3. Ensure Keycloak users have email addresses
+**Quick Reference:**
+- Client ID: `ptx-finance`
+- Roles: `USER`, `ADMIN`, `GUEST`
+- Admin role variants: `it_admin`, `administrator`
+- Issuer: `https://logon.partridgecrossing.org/realms/ptx`
 
 ### SMTP Configuration
 
