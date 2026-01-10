@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard } from 'lucide-react'
+import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard, BarChart3 } from 'lucide-react'
 
 export default function Navbar() {
   const { data: session } = useSession()
@@ -28,6 +28,7 @@ export default function Navbar() {
         { href: '/bills/calendar', label: 'Calendar', icon: Calendar },
         { href: '/vendors', label: 'Vendors', icon: Building2 },
         { href: '/account-types', label: 'Account Types', icon: CreditCard },
+        { href: '/analysis', label: 'Analysis', icon: BarChart3 },
       ]
 
   return (
@@ -51,7 +52,7 @@ export default function Navbar() {
             <div className="flex gap-4">
               {navLinks.map((link) => {
                 const Icon = link.icon
-                const isActive = pathname === link.href || (link.href === '/bills/calendar' && pathname?.startsWith('/bills/calendar'))
+                const isActive = pathname === link.href || (link.href === '/bills/calendar' && pathname?.startsWith('/bills/calendar')) || (link.href === '/analysis' && pathname?.startsWith('/analysis'))
                 return (
                   <Link
                     key={link.href}

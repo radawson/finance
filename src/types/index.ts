@@ -185,3 +185,40 @@ export interface DashboardStats {
   upcomingBillsList: Bill[]
   overdueBillsList: Bill[]
 }
+
+export type AnalysisPeriod = 'monthly' | 'quarterly' | 'yearly' | 'custom'
+
+export interface HistoricBillsPeriodData {
+  periodLabel: string
+  totalAmount: number
+  billCount: number
+  bills: Bill[]
+}
+
+export interface HistoricBillsData {
+  period: AnalysisPeriod
+  data: HistoricBillsPeriodData[]
+}
+
+export interface PredictedBill {
+  title: string
+  amount: number
+  dueDate: Date
+  source: 'recurrence' | 'historical-analysis'
+  billId?: string
+  categoryId?: string
+  vendorId?: string | null
+}
+
+export interface BudgetPredictionPeriodData {
+  periodLabel: string
+  predictedAmount: number
+  billCount: number
+  bills: PredictedBill[]
+}
+
+export interface BudgetPredictionData {
+  period: AnalysisPeriod
+  predictions: BudgetPredictionPeriodData[]
+  historicData?: HistoricBillsPeriodData[]
+}
