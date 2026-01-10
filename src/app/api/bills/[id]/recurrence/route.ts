@@ -48,11 +48,18 @@ export async function POST(
     }
 
     const body = await req.json()
-    const data = recurrenceSchema.parse({
+    const parsedData = recurrenceSchema.parse({
       ...body,
       startDate: body.startDate ? new Date(body.startDate) : bill.dueDate,
       endDate: body.endDate ? new Date(body.endDate) : null,
     })
+
+    // Ensure dates are Date objects
+    const data = {
+      ...parsedData,
+      startDate: parsedData.startDate instanceof Date ? parsedData.startDate : new Date(parsedData.startDate),
+      endDate: parsedData.endDate instanceof Date ? parsedData.endDate : (parsedData.endDate ? new Date(parsedData.endDate) : null),
+    }
 
     // Validate recurrence pattern
     const validation = validateRecurrencePattern(
@@ -164,8 +171,8 @@ export async function PATCH(
     // Use existing values if not provided
     const frequency = data.frequency || bill.recurrencePattern.frequency
     const dayOfMonth = data.dayOfMonth ?? bill.recurrencePattern.dayOfMonth
-    const startDate = data.startDate || bill.recurrencePattern.startDate
-    const endDate = data.endDate !== undefined ? data.endDate : bill.recurrencePattern.endDate
+    const startDate = data.startDate ? new Date(data.startDate) : bill.recurrencePattern.startDate
+    const endDate = data.endDate !== undefined ? (data.endDate ? new Date(data.endDate) : null) : bill.recurrencePattern.endDate
 
     // Validate recurrence pattern
     const validation = validateRecurrencePattern(frequency, dayOfMonth, startDate, endDate)

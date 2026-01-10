@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, LayoutDashboard, Ticket, Shield, Users } from 'lucide-react'
+import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users } from 'lucide-react'
 
 export default function Navbar() {
   const { data: session } = useSession()
@@ -18,13 +18,15 @@ export default function Navbar() {
   const navLinks = isAdmin && isAdminRoute
     ? [
         { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/admin/tickets', label: 'All Tickets', icon: Ticket },
+        { href: '/admin/bills', label: 'All Bills', icon: Receipt },
+        { href: '/admin/vendors', label: 'Vendors', icon: Building2 },
         { href: '/admin/users', label: 'Users', icon: Users },
       ]
     : [
         { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/tickets', label: 'My Tickets', icon: Ticket },
-        { href: '/tickets/new', label: 'New Ticket', icon: Ticket },
+        { href: '/bills', label: 'My Bills', icon: Receipt },
+        { href: '/bills/new', label: 'New Bill', icon: Receipt },
+        { href: '/vendors', label: 'Vendors', icon: Building2 },
       ]
 
   return (

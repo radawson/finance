@@ -44,8 +44,11 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         _count: {
           select: {
-            createdTickets: true,
-            assignedTickets: true,
+            createdBills: true,
+            createdVendors: true,
+            createdCategories: true,
+            comments: true,
+            attachments: true,
           },
         },
       },

@@ -99,11 +99,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const data = billSchema.parse({
+    const parsedData = billSchema.parse({
       ...body,
       amount: parseFloat(body.amount),
       dueDate: body.dueDate ? new Date(body.dueDate) : new Date(),
     })
+
+    // Ensure dates are Date objects
+    const data = {
+      ...parsedData,
+      dueDate: new Date(parsedData.dueDate as any),
+      paidDate: parsedData.paidDate ? new Date(parsedData.paidDate as any) : null,
+    }
 
     // Verify category exists
     const category = await prisma.category.findUnique({

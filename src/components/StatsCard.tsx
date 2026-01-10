@@ -1,11 +1,8 @@
 import { LucideIcon } from 'lucide-react'
 import PriorityPieChart from './PriorityPieChart'
 
-interface PriorityData {
-  LOW?: number
-  MEDIUM?: number
-  HIGH?: number
-  CRITICAL?: number
+interface CategoryData {
+  [key: string]: number
 }
 
 interface StatsCardProps {
@@ -14,7 +11,7 @@ interface StatsCardProps {
   icon?: LucideIcon
   color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'gray'
   subtitle?: string
-  priorityData?: PriorityData
+  categoryData?: CategoryData
   pieSize?: number
 }
 
@@ -27,26 +24,26 @@ const colorClasses = {
   gray: 'bg-gray-500',
 }
 
-export default function StatsCard({ 
-  title, 
-  value, 
-  icon: Icon, 
-  color = 'blue', 
+export default function StatsCard({
+  title,
+  value,
+  icon: Icon,
+  color = 'blue',
   subtitle,
-  priorityData,
+  categoryData,
   pieSize = 140
 }: StatsCardProps) {
-  // Check if priorityData has any tickets
-  const hasData = priorityData && 
-    Object.values(priorityData).some(count => count && count > 0)
+  // Check if categoryData has any items
+  const hasData = categoryData &&
+    Object.values(categoryData).some(count => count && count > 0)
 
-  // If priorityData is provided and has data, show pie chart layout
-  if (priorityData && hasData) {
+  // If categoryData is provided and has data, show pie chart layout
+  if (categoryData && hasData) {
     return (
       <div className="card flex flex-col items-center justify-center">
         <h3 className="text-sm font-medium text-gray-600 mb-4">{title}</h3>
-        <PriorityPieChart 
-          data={priorityData}
+        <PriorityPieChart
+          data={categoryData}
           size={pieSize}
         />
       </div>

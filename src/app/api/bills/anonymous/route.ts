@@ -15,11 +15,17 @@ const anonymousBillSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const data = anonymousBillSchema.parse({
+    const parsedData = anonymousBillSchema.parse({
       ...body,
       amount: parseFloat(body.amount),
       dueDate: body.dueDate ? new Date(body.dueDate) : new Date(),
     })
+
+    // Ensure dueDate is a Date object
+    const data = {
+      ...parsedData,
+      dueDate: parsedData.dueDate instanceof Date ? parsedData.dueDate : new Date(parsedData.dueDate),
+    }
 
     // Verify category exists
     const category = await prisma.category.findUnique({

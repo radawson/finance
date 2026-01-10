@@ -1,7 +1,7 @@
 {
-  "name": "Informejo - IT Support Tickets",
-  "short_name": "Informejo",
-  "description": "IT support ticket management system",
+  "name": "Kontado - Bill Tracking System",
+  "short_name": "Kontado",
+  "description": "Bill and expense tracking system for accounting",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

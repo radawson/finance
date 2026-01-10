@@ -20,15 +20,15 @@ export function getSocketIO(): SocketIOServer | null {
 }
 
 /**
- * Emit an event to a specific ticket room
- * @param ticketId - The ticket ID
+ * Emit an event to a specific bill room
+ * @param billId - The bill ID
  * @param event - The event name
  * @param data - The data to emit
  */
-export function emitToTicket(ticketId: string, event: string, data: any): void {
+export function emitToBill(billId: string, event: string, data: any): void {
   const io = getSocketIO()
   if (io) {
-    const room = `ticket:${ticketId}`
+    const room = `bill:${billId}`
     io.to(room).emit(event, data)
     console.log(`[Socket.IO] Emitted '${event}' to ${room}`)
   }
@@ -71,11 +71,12 @@ export function isSocketIOAvailable(): boolean {
 
 // Export event types for consistency
 export const SocketEvents = {
-  TICKET_CREATED: 'ticket:created',
-  TICKET_UPDATED: 'ticket:updated',
-  TICKET_DELETED: 'ticket:deleted',
-  TICKET_ASSIGNED: 'ticket:assigned',
-  TICKET_STATUS_CHANGED: 'ticket:status-changed',
+  BILL_CREATED: 'bill:created',
+  BILL_UPDATED: 'bill:updated',
+  BILL_DELETED: 'bill:deleted',
+  BILL_STATUS_CHANGED: 'bill:status-changed',
+  VENDOR_CREATED: 'vendor:created',
+  VENDOR_UPDATED: 'vendor:updated',
   COMMENT_ADDED: 'comment:added',
   ATTACHMENT_ADDED: 'attachment:added',
 } as const

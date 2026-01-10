@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
-import { Bill, Category, Vendor } from '@/types'
+import { Bill, Category, Vendor, BillStatus } from '@/types'
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -41,7 +41,7 @@ export default function BillsPage() {
     categoryId: '',
     vendorId: '',
     description: '',
-    status: 'PENDING' as const,
+    status: 'PENDING' as BillStatus,
     paidDate: '',
   })
 

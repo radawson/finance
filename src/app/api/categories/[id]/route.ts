@@ -49,14 +49,27 @@ export async function PATCH(
 
     // Check name uniqueness if updating name
     if (data.name && data.name !== existing.name) {
-      const nameExists = await prisma.category.findUnique({
-        where: {
-          name_userId: {
+      let nameExists
+
+      if (existing.isGlobal) {
+        // For global categories, check if another global category has the same name
+        nameExists = await prisma.category.findFirst({
+          where: {
             name: data.name,
-            userId: existing.userId,
+            isGlobal: true,
           },
-        },
-      })
+        })
+      } else {
+        // For user categories, check the unique constraint
+        nameExists = await prisma.category.findUnique({
+          where: {
+            name_userId: {
+              name: data.name,
+              userId: existing.userId!,
+            },
+          },
+        })
+      }
 
       if (nameExists) {
         return NextResponse.json(

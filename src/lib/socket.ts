@@ -18,10 +18,12 @@ export const config = {
 
 // Socket.io events
 export enum SocketEvent {
-  TICKET_CREATED = 'ticket:created',
-  TICKET_UPDATED = 'ticket:updated',
-  TICKET_ASSIGNED = 'ticket:assigned',
-  TICKET_STATUS_CHANGED = 'ticket:status-changed',
+  BILL_CREATED = 'bill:created',
+  BILL_UPDATED = 'bill:updated',
+  BILL_DELETED = 'bill:deleted',
+  BILL_STATUS_CHANGED = 'bill:status-changed',
+  VENDOR_CREATED = 'vendor:created',
+  VENDOR_UPDATED = 'vendor:updated',
   COMMENT_ADDED = 'comment:added',
   ATTACHMENT_ADDED = 'attachment:added',
 }

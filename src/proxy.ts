@@ -29,11 +29,8 @@ export default withAuth(
           '/',
           '/login',
           '/register',
-          '/submit-ticket',
           '/enter-bill',
           '/api/auth',
-          '/api/tickets/anonymous',
-          '/api/tickets/magic',
           '/api/bills/anonymous',
           '/api/init',
         ]
@@ -43,8 +40,8 @@ export default withAuth(
           return true
         }
         
-        // Allow magic link ticket viewing
-        if (path.match(/^\/tickets\/view\/[^\/]+$/)) {
+        // Allow magic link bill viewing
+        if (path.match(/^\/bills\/view\/[^\/]+$/)) {
           return true
         }
 
@@ -58,7 +55,6 @@ export default withAuth(
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/tickets/:path*',
     '/bills/:path*',
     '/categories/:path*',
     '/vendors/:path*',
