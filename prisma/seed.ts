@@ -6,9 +6,17 @@ import * as dotenv from 'dotenv'
 // Load environment variables
 dotenv.config()
 
+// Parse DATABASE_URL - trim whitespace and remove quotes that might be in .env file
+const databaseUrl = process.env.DATABASE_URL?.trim().replace(/^["']|["']$/g, '')
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL environment variable is not set')
+}
+
 // Create connection pool
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseUrl,
+  // Add SSL configuration if needed
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
 })
 
 // Create Prisma adapter

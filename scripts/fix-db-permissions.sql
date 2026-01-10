@@ -1,9 +1,20 @@
 -- Fix database permissions for kontado user
 -- Run this as a PostgreSQL superuser (usually 'postgres')
 -- 
--- Usage:
---   psql -h 10.10.13.50 -p 5432 -U postgres -d postgres -f fix-db-permissions.sql
---   (You'll be prompted for the postgres user password)
+-- IMPORTANT: You must connect DIRECTLY to the PRIMARY database server, not through:
+--   - A connection pooler (PgBouncer) in transaction mode
+--   - A read replica
+--   - A proxy that makes connections read-only
+--
+-- Usage options:
+--   1. Direct connection to primary:
+--      psql -h <PRIMARY_IP> -p <PRIMARY_PORT> -U postgres -d postgres -f fix-db-permissions.sql
+--
+--   2. If using PgBouncer, use session mode (port 6432) or connect directly to PostgreSQL
+--
+--   3. If you have SSH access to the database server:
+--      ssh user@10.10.13.50
+--      sudo -u postgres psql -d postgres -f /path/to/fix-db-permissions.sql
 
 -- First, grant CONNECT privilege on the database
 GRANT CONNECT ON DATABASE kontado TO kontado;
