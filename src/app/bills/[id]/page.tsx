@@ -315,40 +315,65 @@ export default function BillDetailPage() {
                   Vendor
                 </label>
                 <select
-                  value={formData.vendorId}
-                  onChange={(e) => setFormData({ ...formData, vendorId: e.target.value, vendorAccountId: '' })}
+                  value={formData.vendorId && formData.vendorAccountId 
+                    ? `${formData.vendorId}:${formData.vendorAccountId}` 
+                    : formData.vendorId || ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (!value) {
+                      setFormData({ ...formData, vendorId: '', vendorAccountId: '' })
+                      return
+                    }
+                    // Check if value contains account separator
+                    if (value.includes(':')) {
+                      const [vendorId, accountId] = value.split(':')
+                      setFormData({ ...formData, vendorId, vendorAccountId: accountId })
+                    } else {
+                      // Vendor selected - check if it has exactly one account
+                      const vendor = vendors.find(v => v.id === value)
+                      const accounts = vendor?.accounts || []
+                      if (accounts.length === 1) {
+                        // Auto-select the single account
+                        setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id })
+                      } else {
+                        setFormData({ ...formData, vendorId: value, vendorAccountId: '' })
+                      }
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="">No vendor</option>
-                  {vendors.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </option>
-                  ))}
+                  {vendors.map((vendor) => {
+                    const accounts = vendor.accounts || []
+                    if (accounts.length === 0) {
+                      // No accounts - show just vendor name
+                      return (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </option>
+                      )
+                    } else if (accounts.length === 1) {
+                      // Single account - show vendor name (will auto-select account)
+                      return (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </option>
+                      )
+                    } else {
+                      // Multiple accounts - show each account as separate option
+                      return accounts.map((account) => {
+                        const label = `${vendor.name} - ${account.nickname || account.accountType || 'Account'}${account.last4 ? ` (${account.last4})` : ''}`
+                        return (
+                          <option key={`${vendor.id}:${account.id}`} value={`${vendor.id}:${account.id}`}>
+                            {label}
+                          </option>
+                        )
+                      })
+                    }
+                  })}
                 </select>
               </div>
             </div>
-
-            {/* Optional Account Selection - Only shows if vendor has accounts */}
-            {formData.vendorId && vendorAccounts.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Account (optional)
-                </label>
-                <select
-                  value={formData.vendorAccountId}
-                  onChange={(e) => setFormData({ ...formData, vendorAccountId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">No account specified</option>
-                  {vendorAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.nickname || account.accountType || 'Account'} {account.last4 ? `(${account.last4})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

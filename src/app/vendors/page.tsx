@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
+import VendorViewModal from '@/components/VendorViewModal'
 import { Vendor } from '@/types'
 import { Plus, Edit, Trash2, Building2 } from 'lucide-react'
 import Link from 'next/link'
@@ -10,10 +12,12 @@ import toast from 'react-hot-toast'
 
 export default function VendorsPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [viewingVendor, setViewingVendor] = useState<Vendor | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -53,11 +57,8 @@ export default function VendorsPage() {
     e.preventDefault()
 
     try {
-      const url = editingVendor ? `/api/vendors/${editingVendor.id}` : '/api/vendors'
-      const method = editingVendor ? 'PATCH' : 'POST'
-
-      const response = await fetch(url, {
-        method,
+      const response = await fetch('/api/vendors', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -65,9 +66,8 @@ export default function VendorsPage() {
       })
 
       if (response.ok) {
-        toast.success(editingVendor ? 'Vendor updated' : 'Vendor created')
-        setIsModalOpen(false)
-        setEditingVendor(null)
+        toast.success('Vendor created')
+        setIsCreateModalOpen(false)
         setFormData({
           name: '',
           email: '',
@@ -83,10 +83,10 @@ export default function VendorsPage() {
         fetchVendors()
       } else {
         const data = await response.json()
-        toast.error(data.error || 'Failed to save vendor')
+        toast.error(data.error || 'Failed to create vendor')
       }
     } catch (error) {
-      toast.error('Failed to save vendor')
+      toast.error('Failed to create vendor')
     }
   }
 
@@ -112,21 +112,9 @@ export default function VendorsPage() {
     }
   }
 
-  const openEditModal = (vendor: Vendor) => {
-    setEditingVendor(vendor)
-    setFormData({
-      name: vendor.name,
-      email: vendor.email || '',
-      phone: vendor.phone || '',
-      address: vendor.address || '',
-      city: vendor.city || '',
-      state: vendor.state || '',
-      zip: vendor.zip || '',
-      country: vendor.country || '',
-      website: vendor.website || '',
-      description: vendor.description || '',
-    })
-    setIsModalOpen(true)
+  const openViewModal = (vendor: Vendor) => {
+    setViewingVendor(vendor)
+    setIsViewModalOpen(true)
   }
 
   if (!session) {
@@ -154,7 +142,6 @@ export default function VendorsPage() {
           </div>
           <button
             onClick={() => {
-              setEditingVendor(null)
               setFormData({
                 name: '',
                 email: '',
@@ -167,7 +154,7 @@ export default function VendorsPage() {
                 website: '',
                 description: '',
               })
-              setIsModalOpen(true)
+              setIsCreateModalOpen(true)
             }}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
@@ -188,7 +175,6 @@ export default function VendorsPage() {
             <p className="text-gray-600 mb-4">No vendors yet</p>
             <button
               onClick={() => {
-                setEditingVendor(null)
                 setFormData({
                   name: '',
                   email: '',
@@ -201,7 +187,7 @@ export default function VendorsPage() {
                   website: '',
                   description: '',
                 })
-                setIsModalOpen(true)
+                setIsCreateModalOpen(true)
               }}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
             >
@@ -212,18 +198,19 @@ export default function VendorsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {vendors.map((vendor) => (
-              <div key={vendor.id} className="bg-white rounded-lg shadow-md p-6">
+              <div 
+                key={vendor.id} 
+                className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => openViewModal(vendor)}
+              >
                 <div className="flex items-start justify-between mb-4">
-                  <Link
-                    href={`/vendors/${vendor.id}`}
-                    className="flex items-center flex-1 hover:text-primary-600 transition-colors"
-                  >
+                  <div className="flex items-center flex-1">
                     <Building2 className="w-6 h-6 text-gray-400 mr-3" />
                     <h3 className="text-lg font-semibold text-gray-900">{vendor.name}</h3>
-                  </Link>
-                  <div className="flex items-center gap-2">
+                  </div>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => openEditModal(vendor)}
+                      onClick={() => router.push(`/vendors/${vendor.id}`)}
                       className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
                       title="Edit vendor"
                     >
@@ -284,12 +271,24 @@ export default function VendorsPage() {
           </div>
         )}
 
-        {/* Modal */}
-        {isModalOpen && (
+        {/* Vendor View Modal */}
+        {viewingVendor && (
+          <VendorViewModal
+            vendor={viewingVendor}
+            isOpen={isViewModalOpen}
+            onClose={() => {
+              setIsViewModalOpen(false)
+              setViewingVendor(null)
+            }}
+          />
+        )}
+
+        {/* Create Modal */}
+        {isCreateModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full my-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {editingVendor ? 'Edit Vendor' : 'New Vendor'}
+                New Vendor
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -410,13 +409,12 @@ export default function VendorsPage() {
                     type="submit"
                     className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
-                    {editingVendor ? 'Update' : 'Create'}
+                    Create
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setIsModalOpen(false)
-                      setEditingVendor(null)
+                      setIsCreateModalOpen(false)
                       setFormData({
                         name: '',
                         email: '',

@@ -32,6 +32,10 @@
 
 ## Implementation Guidelines
 
+### Cards and editing
+- **Card View** When a card is present on a Dashboard or other screen, clicking that card brings up a read-only summary of that item (i.e. Bill, Vendor)
+- **Editing** Each editable item will have it's own page for editing, reachable from an edit icon on the modal, and from an edit icon in a table representing the item.
+
 ### Bill Entry
 - **Required**: Title, Amount, Due Date, Category
 - **Optional**: Vendor, Account Number, Description, Recurrence

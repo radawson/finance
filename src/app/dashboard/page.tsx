@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
 import StatsCard from '@/components/StatsCard'
 import BillCard from '@/components/BillCard'
+import BillViewModal from '@/components/BillViewModal'
 import { Bill, DashboardStats } from '@/types'
 import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Calendar } from 'lucide-react'
 import Link from 'next/link'
@@ -14,6 +15,8 @@ export default function DashboardPage() {
   const { data: session } = useSession()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -123,7 +126,14 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {stats.upcomingBillsList.map((bill) => (
-                <BillCard key={bill.id} bill={bill} />
+                <BillCard 
+                  key={bill.id} 
+                  bill={bill} 
+                  onClick={() => {
+                    setSelectedBill(bill)
+                    setIsModalOpen(true)
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -140,7 +150,14 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {stats.overdueBillsList.map((bill) => (
-                <BillCard key={bill.id} bill={bill} />
+                <BillCard 
+                  key={bill.id} 
+                  bill={bill} 
+                  onClick={() => {
+                    setSelectedBill(bill)
+                    setIsModalOpen(true)
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -182,10 +199,29 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {stats.recentBills.map((bill) => (
-                <BillCard key={bill.id} bill={bill} />
+                <BillCard 
+                  key={bill.id} 
+                  bill={bill} 
+                  onClick={() => {
+                    setSelectedBill(bill)
+                    setIsModalOpen(true)
+                  }}
+                />
               ))}
             </div>
           </div>
+        )}
+
+        {/* Bill View Modal */}
+        {selectedBill && (
+          <BillViewModal
+            bill={selectedBill}
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false)
+              setSelectedBill(null)
+            }}
+          />
         )}
 
         {/* Empty State */}

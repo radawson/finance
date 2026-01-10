@@ -2,16 +2,18 @@ import { Bill } from '@/types'
 import BillStatusBadge from './BillStatusBadge'
 import { format } from 'date-fns'
 import { DollarSign, Calendar, Tag } from 'lucide-react'
-import Link from 'next/link'
 
 interface BillCardProps {
   bill: Bill
+  onClick?: () => void
 }
 
-export default function BillCard({ bill }: BillCardProps) {
+export default function BillCard({ bill, onClick }: BillCardProps) {
   return (
-    <Link href={`/bills/${bill.id}`} className="block">
-      <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer">
+    <div 
+      onClick={onClick}
+      className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
+    >
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">{bill.title}</h3>
           <BillStatusBadge status={bill.status} />
@@ -59,6 +61,5 @@ export default function BillCard({ bill }: BillCardProps) {
           )}
         </div>
       </div>
-    </Link>
   )
 }

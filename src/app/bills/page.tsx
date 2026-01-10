@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
+import BillViewModal from '@/components/BillViewModal'
 import { Bill, Category, Vendor, VendorAccount, BillStatus } from '@/types'
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
@@ -15,6 +17,7 @@ type SortDirection = 'asc' | 'desc' | null
 
 export default function BillsPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [bills, setBills] = useState<Bill[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
@@ -32,8 +35,9 @@ export default function BillsPage() {
     isRecurring: '',
     search: '',
   })
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingBill, setEditingBill] = useState<Bill | null>(null)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [viewingBill, setViewingBill] = useState<Bill | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
@@ -45,7 +49,6 @@ export default function BillsPage() {
     status: 'PENDING' as BillStatus,
     paidDate: '',
   })
-  const [vendorAccounts, setVendorAccounts] = useState<{ id: string; nickname?: string | null; last4?: string; accountType?: string | null }[]>([])
 
   useEffect(() => {
     if (session) {
@@ -95,33 +98,6 @@ export default function BillsPage() {
     }
   }
 
-  const fetchVendorAccounts = async (vendorId: string) => {
-    if (!vendorId) {
-      setVendorAccounts([])
-      return
-    }
-    try {
-      const response = await fetch(`/api/vendors/${vendorId}/accounts`)
-      if (response.ok) {
-        const data = await response.json()
-        setVendorAccounts(data)
-      } else {
-        setVendorAccounts([])
-      }
-    } catch (error) {
-      setVendorAccounts([])
-    }
-  }
-
-  // Fetch accounts when vendor changes
-  useEffect(() => {
-    if (formData.vendorId) {
-      fetchVendorAccounts(formData.vendorId)
-    } else {
-      setVendorAccounts([])
-      setFormData(prev => ({ ...prev, vendorAccountId: '' }))
-    }
-  }, [formData.vendorId])
 
   // Filter and sort bills
   const filteredAndSortedBills = useMemo(() => {
@@ -240,35 +216,18 @@ export default function BillsPage() {
     return <ArrowUpDown className="w-4 h-4 ml-1 text-gray-400" />
   }
 
-  const openEditModal = async (bill: Bill) => {
-    setEditingBill(bill)
-    setFormData({
-      title: bill.title,
-      amount: Number(bill.amount).toFixed(2),
-      dueDate: format(new Date(bill.dueDate), 'yyyy-MM-dd'),
-      categoryId: bill.categoryId,
-      vendorId: bill.vendorId || '',
-      vendorAccountId: bill.vendorAccountId || '',
-      description: bill.description || '',
-      status: bill.status,
-      paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
-    })
-    // Fetch accounts for the vendor if vendor is set
-    if (bill.vendorId) {
-      await fetchVendorAccounts(bill.vendorId)
-    }
-    setIsModalOpen(true)
+  const openViewModal = (bill: Bill) => {
+    setViewingBill(bill)
+    setIsViewModalOpen(true)
   }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     try {
-      const url = editingBill ? `/api/bills/${editingBill.id}` : '/api/bills'
-      const method = editingBill ? 'PATCH' : 'POST'
-
-      const response = await fetch(url, {
-        method,
+      const response = await fetch('/api/bills', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -286,9 +245,8 @@ export default function BillsPage() {
       })
 
       if (response.ok) {
-        toast.success(editingBill ? 'Bill updated' : 'Bill created')
-        setIsModalOpen(false)
-        setEditingBill(null)
+        toast.success('Bill created')
+        setIsCreateModalOpen(false)
         setFormData({
           title: '',
           amount: '',
@@ -300,14 +258,13 @@ export default function BillsPage() {
           status: 'PENDING',
           paidDate: '',
         })
-        setVendorAccounts([])
         fetchBills()
       } else {
         const data = await response.json()
-        toast.error(data.error || 'Failed to save bill')
+        toast.error(data.error || 'Failed to create bill')
       }
     } catch (error) {
-      toast.error('Failed to save bill')
+      toast.error('Failed to create bill')
     }
   }
 
@@ -363,7 +320,6 @@ export default function BillsPage() {
           </div>
           <button
             onClick={() => {
-              setEditingBill(null)
               setFormData({
                 title: '',
                 amount: '',
@@ -375,8 +331,7 @@ export default function BillsPage() {
                 status: 'PENDING',
                 paidDate: '',
               })
-              setVendorAccounts([])
-              setIsModalOpen(true)
+              setIsCreateModalOpen(true)
             }}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
@@ -530,7 +485,6 @@ export default function BillsPage() {
             <p className="text-gray-600 mb-4">No bills found</p>
             <button
               onClick={() => {
-                setEditingBill(null)
                 setFormData({
                   title: '',
                   amount: '',
@@ -542,8 +496,7 @@ export default function BillsPage() {
                   status: 'PENDING',
                   paidDate: '',
                 })
-                setVendorAccounts([])
-                setIsModalOpen(true)
+                setIsCreateModalOpen(true)
               }}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
             >
@@ -621,7 +574,11 @@ export default function BillsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAndSortedBills.map((bill) => (
-                    <tr key={bill.id} className="hover:bg-gray-50">
+                    <tr 
+                      key={bill.id} 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openViewModal(bill)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{bill.title}</div>
                         {bill.description && (
@@ -669,7 +626,7 @@ export default function BillsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => openEditModal(bill)}
+                            onClick={() => router.push(`/bills/${bill.id}`)}
                             className="text-primary-600 hover:text-primary-900"
                             title="Edit"
                           >
@@ -692,12 +649,24 @@ export default function BillsPage() {
           </div>
         )}
 
-        {/* Edit/Create Modal */}
-        {isModalOpen && (
+        {/* Bill View Modal */}
+        {viewingBill && (
+          <BillViewModal
+            bill={viewingBill}
+            isOpen={isViewModalOpen}
+            onClose={() => {
+              setIsViewModalOpen(false)
+              setViewingBill(null)
+            }}
+          />
+        )}
+
+        {/* Create Modal */}
+        {isCreateModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full my-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {editingBill ? 'Edit Bill' : 'New Bill'}
+                New Bill
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -768,40 +737,65 @@ export default function BillsPage() {
                       Vendor
                     </label>
                     <select
-                      value={formData.vendorId}
-                      onChange={(e) => setFormData({ ...formData, vendorId: e.target.value, vendorAccountId: '' })}
+                      value={formData.vendorId && formData.vendorAccountId 
+                        ? `${formData.vendorId}:${formData.vendorAccountId}` 
+                        : formData.vendorId || ''}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (!value) {
+                          setFormData({ ...formData, vendorId: '', vendorAccountId: '' })
+                          return
+                        }
+                        // Check if value contains account separator
+                        if (value.includes(':')) {
+                          const [vendorId, accountId] = value.split(':')
+                          setFormData({ ...formData, vendorId, vendorAccountId: accountId })
+                        } else {
+                          // Vendor selected - check if it has exactly one account
+                          const vendor = vendors.find(v => v.id === value)
+                          const accounts = vendor?.accounts || []
+                          if (accounts.length === 1) {
+                            // Auto-select the single account
+                            setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id })
+                          } else {
+                            setFormData({ ...formData, vendorId: value, vendorAccountId: '' })
+                          }
+                        }
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
                       <option value="">No vendor</option>
-                      {vendors.map((vendor) => (
-                        <option key={vendor.id} value={vendor.id}>
-                          {vendor.name}
-                        </option>
-                      ))}
+                      {vendors.map((vendor) => {
+                        const accounts = vendor.accounts || []
+                        if (accounts.length === 0) {
+                          // No accounts - show just vendor name
+                          return (
+                            <option key={vendor.id} value={vendor.id}>
+                              {vendor.name}
+                            </option>
+                          )
+                        } else if (accounts.length === 1) {
+                          // Single account - show vendor name (will auto-select account)
+                          return (
+                            <option key={vendor.id} value={vendor.id}>
+                              {vendor.name}
+                            </option>
+                          )
+                        } else {
+                          // Multiple accounts - show each account as separate option
+                          return accounts.map((account) => {
+                            const label = `${vendor.name} - ${account.nickname || account.accountType || 'Account'}${account.last4 ? ` (${account.last4})` : ''}`
+                            return (
+                              <option key={`${vendor.id}:${account.id}`} value={`${vendor.id}:${account.id}`}>
+                                {label}
+                              </option>
+                            )
+                          })
+                        }
+                      })}
                     </select>
                   </div>
                 </div>
-
-                {/* Optional Account Selection - Only shows if vendor has accounts */}
-                {formData.vendorId && vendorAccounts.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Account (optional)
-                    </label>
-                    <select
-                      value={formData.vendorAccountId}
-                      onChange={(e) => setFormData({ ...formData, vendorAccountId: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    >
-                      <option value="">No account specified</option>
-                      {vendorAccounts.map((account) => (
-                        <option key={account.id} value={account.id}>
-                          {account.nickname || account.accountType || 'Account'} {account.last4 ? `(${account.last4})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -853,13 +847,12 @@ export default function BillsPage() {
                     type="submit"
                     className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
-                    {editingBill ? 'Update' : 'Create'}
+                    Create
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setIsModalOpen(false)
-                      setEditingBill(null)
+                      setIsCreateModalOpen(false)
                       setFormData({
                         title: '',
                         amount: '',
@@ -871,7 +864,6 @@ export default function BillsPage() {
                         status: 'PENDING',
                         paidDate: '',
                       })
-                      setVendorAccounts([])
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
