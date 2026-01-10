@@ -22,6 +22,7 @@ export interface BillFormData {
   description: string
   status: BillStatus
   paidDate: string
+  invoiceNumber: string
 }
 
 export default function BillForm({ bill, categories, vendors, onSubmit, onCancel }: BillFormProps) {
@@ -34,6 +35,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
     description: '',
     status: BillStatus.PENDING,
     paidDate: '',
+    invoiceNumber: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -48,6 +50,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
         description: bill.description || '',
         status: bill.status,
         paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
+        invoiceNumber: bill.invoiceNumber || '',
       })
     }
   }, [bill])
@@ -188,6 +191,19 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           placeholder="Additional notes..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Invoice Number
+        </label>
+        <input
+          type="text"
+          value={formData.invoiceNumber}
+          onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          placeholder="Optional invoice number from vendor"
         />
       </div>
 

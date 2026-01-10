@@ -113,6 +113,7 @@ model Bill {
   recurrencePatternId String?  @unique
   isRecurring        Boolean   @default(false)
   nextDueDate        DateTime?
+  invoiceNumber      String?   // Optional invoice number from vendor
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

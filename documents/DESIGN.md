@@ -38,7 +38,7 @@
 
 ### Bill Entry
 - **Required**: Title, Amount, Due Date, Category
-- **Optional**: Vendor, Account Number, Description, Recurrence
+- **Optional**: Vendor, Account Number, Description, Recurrence, Invoice Number
 - **Later**: Attachments, Notes, Custom Fields
 
 ### Vendor Management
@@ -51,6 +51,13 @@
 - **Progressive**: Add when needed, not upfront
 - **Non-blocking**: Bills work perfectly without account numbers
 - **Enhancement**: Account numbers improve organization but don't enable core features
+
+### Invoice Numbers
+- **Optional**: Not required for bill entry
+- **Progressive**: Add when available from vendor invoices
+- **Non-blocking**: Bills work perfectly without invoice numbers
+- **Enhancement**: Invoice numbers help with vendor record-keeping and reconciliation
+- **No uniqueness**: Multiple bills can share the same invoice number if needed
 
 ### Calendar View
 - **Simple**: Show bills by due date

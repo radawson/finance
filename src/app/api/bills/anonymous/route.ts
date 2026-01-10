@@ -12,6 +12,7 @@ const anonymousBillSchema = z.object({
   description: z.string().optional(),
   vendorId: z.string().regex(UUID_REGEX).optional(),
   vendorAccountId: z.string().regex(UUID_REGEX).optional().nullable(),
+  invoiceNumber: z.string().optional().nullable(),
 })
 
 export async function POST(req: NextRequest) {
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
         vendorAccountId: data.vendorAccountId,
         createdById: null, // Anonymous entry
         isRecurring: false,
+        invoiceNumber: data.invoiceNumber || null,
       },
       include: {
         category: true,

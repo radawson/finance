@@ -565,6 +565,9 @@ export default function BillsPage() {
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Invoice #
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Recurring
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -614,6 +617,11 @@ export default function BillsPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {bill.vendor?.name || <span className="text-gray-400">No vendor</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {bill.invoiceNumber || <span className="text-gray-400">—</span>}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

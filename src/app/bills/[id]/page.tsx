@@ -33,6 +33,7 @@ export default function BillDetailPage() {
     description: '',
     status: 'PENDING' as BillStatus,
     paidDate: '',
+    invoiceNumber: '',
   })
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function BillDetailPage() {
           description: data.description || '',
           status: data.status,
           paidDate: data.paidDate ? format(new Date(data.paidDate), 'yyyy-MM-dd') : '',
+          invoiceNumber: data.invoiceNumber || '',
         })
         // Fetch accounts for the vendor if vendor is set
         if (data.vendorId) {
@@ -154,6 +156,7 @@ export default function BillDetailPage() {
           description: formData.description || null,
           status: formData.status,
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
+          invoiceNumber: formData.invoiceNumber || null,
         }),
       })
 
@@ -418,6 +421,19 @@ export default function BillDetailPage() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 rows={4}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Invoice Number
+              </label>
+              <input
+                type="text"
+                value={formData.invoiceNumber}
+                onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Optional invoice number from vendor"
               />
             </div>
 

@@ -18,6 +18,7 @@ const billSchema = z.object({
   status: z.enum(['PENDING', 'DUE_SOON', 'OVERDUE', 'PAID', 'SKIPPED']).optional(),
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
+  invoiceNumber: z.string().optional().nullable(),
 })
 
 export async function GET(req: NextRequest) {
@@ -184,6 +185,7 @@ export async function POST(req: NextRequest) {
         vendorAccountId: data.vendorAccountId,
         createdById: session.user.id,
         isRecurring: data.isRecurring || false,
+        invoiceNumber: data.invoiceNumber || null,
       },
       include: {
         category: true,

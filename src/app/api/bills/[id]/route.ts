@@ -18,6 +18,7 @@ const updateBillSchema = z.object({
   status: z.enum(['PENDING', 'DUE_SOON', 'OVERDUE', 'PAID', 'SKIPPED']).optional(),
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
+  invoiceNumber: z.string().optional().nullable(),
 })
 
 export async function GET(
@@ -225,6 +226,7 @@ export async function PATCH(
           paidDate: data.paidDate ? new Date(data.paidDate) : null,
         }),
         ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
+        ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
       },
       include: {
         category: true,

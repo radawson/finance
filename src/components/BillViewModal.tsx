@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { Bill } from '@/types'
 import BillStatusBadge from './BillStatusBadge'
 import { format } from 'date-fns'
-import { X, Edit, DollarSign, Calendar, Tag, Building2, CreditCard, MessageSquare, Paperclip } from 'lucide-react'
+import { X, Edit, DollarSign, Calendar, Tag, Building2, CreditCard, MessageSquare, Paperclip, FileText } from 'lucide-react'
 import Link from 'next/link'
 
 interface BillViewModalProps {
@@ -113,6 +113,16 @@ export default function BillViewModal({ bill, isOpen, onClose }: BillViewModalPr
                   {bill.vendorAccount.nickname || bill.vendorAccount.type?.name || bill.vendorAccount.accountType || 'Account'}
                   {bill.vendorAccount.accountNumber && bill.vendorAccount.accountNumber.length >= 4 && ` (****${bill.vendorAccount.accountNumber.slice(-4)})`}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {bill.invoiceNumber && (
+            <div className="flex items-center text-gray-700">
+              <FileText className="w-5 h-5 mr-3 text-gray-400" />
+              <div>
+                <div className="text-sm text-gray-500">Invoice Number</div>
+                <div className="font-semibold">{bill.invoiceNumber}</div>
               </div>
             </div>
           )}

@@ -43,6 +43,12 @@ export default function BillCard({ bill, onClick }: BillCardProps) {
             </div>
           )}
 
+          {bill.invoiceNumber && (
+            <div className="text-sm text-gray-500">
+              Invoice: {bill.invoiceNumber}
+            </div>
+          )}
+
           {bill.description && (
             <p className="text-sm text-gray-500 mt-2 line-clamp-2">
               {bill.description}

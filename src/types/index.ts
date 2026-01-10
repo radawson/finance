@@ -113,6 +113,7 @@ export interface Bill {
   recurrencePatternId?: string | null
   isRecurring: boolean
   nextDueDate?: Date | null
+  invoiceNumber?: string | null
   createdAt: Date
   updatedAt: Date
   category?: Category
