@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bill, Category, Vendor, RecurrenceFrequencyEnum, BillStatus } from '@/types'
+import { Bill, Category, Vendor, RecurrenceFrequencyEnum, BillStatus, BillStatusEnum } from '@/types'
 import { format } from 'date-fns'
 
 interface BillFormProps {
@@ -40,7 +40,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
     categoryId: '',
     vendorId: '',
     description: '',
-    status: BillStatus.PENDING,
+    status: BillStatusEnum.PENDING,
     paidDate: '',
     invoiceNumber: '',
   })
@@ -220,11 +220,11 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
             onChange={(e) => setFormData({ ...formData, status: e.target.value as BillStatus })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
-            <option value={BillStatus.PENDING}>Pending</option>
-            <option value={BillStatus.DUE_SOON}>Due Soon</option>
-            <option value={BillStatus.OVERDUE}>Overdue</option>
-            <option value={BillStatus.PAID}>Paid</option>
-            <option value={BillStatus.SKIPPED}>Skipped</option>
+            <option value={BillStatusEnum.PENDING}>Pending</option>
+            <option value={BillStatusEnum.DUE_SOON}>Due Soon</option>
+            <option value={BillStatusEnum.OVERDUE}>Overdue</option>
+            <option value={BillStatusEnum.PAID}>Paid</option>
+            <option value={BillStatusEnum.SKIPPED}>Skipped</option>
           </select>
         </div>
 
