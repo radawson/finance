@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
 import BillViewModal from '@/components/BillViewModal'
 import { Bill, Category, Vendor, VendorAccount, BillStatus } from '@/types'
+import { RecurrenceFrequency } from '@/generated/prisma/client'
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -49,6 +50,14 @@ export default function BillsPage() {
     status: 'PENDING' as BillStatus,
     paidDate: '',
   })
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
+  const [recurrenceData, setRecurrenceData] = useState({
+    frequency: RecurrenceFrequency.MONTHLY,
+    dayOfMonth: 1,
+    startDate: '',
+    endDate: '',
+  })
 
   useEffect(() => {
     if (session) {
@@ -57,6 +66,18 @@ export default function BillsPage() {
       fetchVendors()
     }
   }, [session])
+
+  // Update recurrence defaults when due date changes (if recurrence is enabled)
+  useEffect(() => {
+    if (isRecurring && formData.dueDate) {
+      const dueDate = new Date(formData.dueDate)
+      setRecurrenceData(prev => ({
+        ...prev,
+        dayOfMonth: dueDate.getDate(),
+        startDate: format(dueDate, 'yyyy-MM-dd'),
+      }))
+    }
+  }, [formData.dueDate, isRecurring])
 
   const fetchBills = async () => {
     try {
@@ -241,28 +262,65 @@ export default function BillsPage() {
           description: formData.description || null,
           status: formData.status,
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
+          isRecurring: isRecurring,
         }),
       })
 
-      if (response.ok) {
-        toast.success('Bill created')
-        setIsCreateModalOpen(false)
-        setFormData({
-          title: '',
-          amount: '',
-          dueDate: '',
-          categoryId: '',
-          vendorId: '',
-          vendorAccountId: '',
-          description: '',
-          status: 'PENDING',
-          paidDate: '',
-        })
-        fetchBills()
-      } else {
+      if (!response.ok) {
         const data = await response.json()
         toast.error(data.error || 'Failed to create bill')
+        return
       }
+
+      const createdBill = await response.json()
+
+      // Create recurrence pattern if enabled
+      if (isRecurring && showRecurrenceSection) {
+        try {
+          const recurrenceResponse = await fetch(`/api/bills/${createdBill.id}/recurrence`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              frequency: recurrenceData.frequency,
+              dayOfMonth: recurrenceData.dayOfMonth,
+              startDate: recurrenceData.startDate,
+              endDate: recurrenceData.endDate || null,
+            }),
+          })
+
+          if (!recurrenceResponse.ok) {
+            const errorData = await recurrenceResponse.json()
+            toast.error(errorData.error || 'Bill created but failed to set recurrence pattern')
+          }
+        } catch (error) {
+          toast.error('Bill created but failed to set recurrence pattern')
+        }
+      }
+
+      toast.success('Bill created')
+      setIsCreateModalOpen(false)
+      setFormData({
+        title: '',
+        amount: '',
+        dueDate: '',
+        categoryId: '',
+        vendorId: '',
+        vendorAccountId: '',
+        description: '',
+        status: 'PENDING',
+        paidDate: '',
+      })
+      setIsRecurring(false)
+      setShowRecurrenceSection(false)
+      setRecurrenceData({
+        frequency: RecurrenceFrequency.MONTHLY,
+        dayOfMonth: 1,
+        startDate: '',
+        endDate: '',
+      })
+      fetchBills()
     } catch (error) {
       toast.error('Failed to create bill')
     }
@@ -852,6 +910,121 @@ export default function BillsPage() {
                   />
                 </div>
 
+                {/* Recurrence Section */}
+                <div className="border-t border-gray-200 pt-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isRecurring}
+                      onChange={(e) => {
+                        setIsRecurring(e.target.checked)
+                        setShowRecurrenceSection(e.target.checked)
+                        // If enabling, update defaults based on current due date
+                        if (e.target.checked && formData.dueDate) {
+                          const dueDate = new Date(formData.dueDate)
+                          setRecurrenceData({
+                            frequency: RecurrenceFrequency.MONTHLY,
+                            dayOfMonth: dueDate.getDate(),
+                            startDate: format(dueDate, 'yyyy-MM-dd'),
+                            endDate: '',
+                          })
+                        }
+                      }}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">This is a recurring bill</span>
+                  </label>
+
+                  {showRecurrenceSection && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Frequency *
+                        </label>
+                        <select
+                          required
+                          value={recurrenceData.frequency}
+                          onChange={(e) =>
+                            setRecurrenceData({
+                              ...recurrenceData,
+                              frequency: e.target.value as RecurrenceFrequency,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        >
+                          <option value={RecurrenceFrequency.MONTHLY}>Monthly</option>
+                          <option value={RecurrenceFrequency.QUARTERLY}>Quarterly</option>
+                          <option value={RecurrenceFrequency.BIANNUALLY}>Biannually</option>
+                          <option value={RecurrenceFrequency.YEARLY}>Yearly</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Day of Month (1-31) *
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          max="31"
+                          value={recurrenceData.dayOfMonth}
+                          onChange={(e) =>
+                            setRecurrenceData({
+                              ...recurrenceData,
+                              dayOfMonth: parseInt(e.target.value) || 1,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                        <p className="mt-1 text-sm text-gray-500">
+                          The day of the month when this bill is due
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Start Date *
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            value={recurrenceData.startDate}
+                            onChange={(e) =>
+                              setRecurrenceData({
+                                ...recurrenceData,
+                                startDate: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            End Date (optional)
+                          </label>
+                          <input
+                            type="date"
+                            value={recurrenceData.endDate}
+                            onChange={(e) =>
+                              setRecurrenceData({
+                                ...recurrenceData,
+                                endDate: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          />
+                          <p className="mt-1 text-sm text-gray-500">
+                            Leave empty for indefinite recurrence
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex gap-4">
                   <button
                     type="submit"
@@ -873,6 +1046,14 @@ export default function BillsPage() {
                         description: '',
                         status: 'PENDING',
                         paidDate: '',
+                      })
+                      setIsRecurring(false)
+                      setShowRecurrenceSection(false)
+                      setRecurrenceData({
+                        frequency: RecurrenceFrequency.MONTHLY,
+                        dayOfMonth: 1,
+                        startDate: '',
+                        endDate: '',
                       })
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

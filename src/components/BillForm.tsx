@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { Bill, Category, Vendor } from '@/types'
-import { BillStatus } from '@/generated/prisma/client'
+import { BillStatus, RecurrenceFrequency } from '@/generated/prisma/client'
 import { format } from 'date-fns'
 
 interface BillFormProps {
   bill?: Bill | null
   categories: Category[]
   vendors: Vendor[]
-  onSubmit: (data: BillFormData) => Promise<void>
+  onSubmit: (data: BillFormData, recurrenceData?: RecurrenceFormData) => Promise<void>
   onCancel: () => void
 }
 
@@ -25,6 +25,14 @@ export interface BillFormData {
   invoiceNumber: string
 }
 
+export interface RecurrenceFormData {
+  isRecurring: boolean
+  frequency: RecurrenceFrequency
+  dayOfMonth: number
+  startDate: string
+  endDate: string
+}
+
 export default function BillForm({ bill, categories, vendors, onSubmit, onCancel }: BillFormProps) {
   const [formData, setFormData] = useState<BillFormData>({
     title: '',
@@ -38,13 +46,23 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
     invoiceNumber: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
+  const [recurrenceFormData, setRecurrenceFormData] = useState<RecurrenceFormData>({
+    isRecurring: false,
+    frequency: RecurrenceFrequency.MONTHLY,
+    dayOfMonth: 1,
+    startDate: '',
+    endDate: '',
+  })
 
   useEffect(() => {
     if (bill) {
+      const dueDate = new Date(bill.dueDate)
       setFormData({
         title: bill.title,
         amount: Number(bill.amount).toFixed(2),
-        dueDate: format(new Date(bill.dueDate), 'yyyy-MM-dd'),
+        dueDate: format(dueDate, 'yyyy-MM-dd'),
         categoryId: bill.categoryId,
         vendorId: bill.vendorId || '',
         description: bill.description || '',
@@ -52,14 +70,57 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
         paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
         invoiceNumber: bill.invoiceNumber || '',
       })
+      
+      // Set recurrence state if bill has recurrence pattern
+      if (bill.recurrencePattern) {
+        setIsRecurring(true)
+        setShowRecurrenceSection(true)
+        setRecurrenceFormData({
+          isRecurring: true,
+          frequency: bill.recurrencePattern.frequency,
+          dayOfMonth: bill.recurrencePattern.dayOfMonth,
+          startDate: format(new Date(bill.recurrencePattern.startDate), 'yyyy-MM-dd'),
+          endDate: bill.recurrencePattern.endDate ? format(new Date(bill.recurrencePattern.endDate), 'yyyy-MM-dd') : '',
+        })
+      } else {
+        setIsRecurring(false)
+        setShowRecurrenceSection(false)
+        setRecurrenceFormData({
+          isRecurring: false,
+          frequency: RecurrenceFrequency.MONTHLY,
+          dayOfMonth: dueDate.getDate(),
+          startDate: format(dueDate, 'yyyy-MM-dd'),
+          endDate: '',
+        })
+      }
+    } else {
+      // Reset for new bill
+      setIsRecurring(false)
+      setShowRecurrenceSection(false)
     }
   }, [bill])
+
+  // Update recurrence defaults when due date changes
+  useEffect(() => {
+    if (isRecurring && formData.dueDate && !bill?.recurrencePatternId) {
+      const dueDate = new Date(formData.dueDate)
+      setRecurrenceFormData(prev => ({
+        ...prev,
+        dayOfMonth: dueDate.getDate(),
+        startDate: format(dueDate, 'yyyy-MM-dd'),
+      }))
+    }
+  }, [formData.dueDate, isRecurring, bill?.recurrencePatternId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      await onSubmit(formData)
+      const recurrenceData = isRecurring && showRecurrenceSection ? {
+        ...recurrenceFormData,
+        isRecurring: true,
+      } : undefined
+      await onSubmit(formData, recurrenceData)
     } finally {
       setIsSubmitting(false)
     }
@@ -205,6 +266,122 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           placeholder="Optional invoice number from vendor"
         />
+      </div>
+
+      {/* Recurrence Section */}
+      <div className="border-t border-gray-200 pt-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isRecurring}
+            onChange={(e) => {
+              setIsRecurring(e.target.checked)
+              setShowRecurrenceSection(e.target.checked)
+              // If enabling, update defaults based on current due date
+              if (e.target.checked && formData.dueDate) {
+                const dueDate = new Date(formData.dueDate)
+                setRecurrenceFormData({
+                  isRecurring: true,
+                  frequency: RecurrenceFrequency.MONTHLY,
+                  dayOfMonth: dueDate.getDate(),
+                  startDate: format(dueDate, 'yyyy-MM-dd'),
+                  endDate: '',
+                })
+              }
+            }}
+            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+          />
+          <span className="text-sm font-medium text-gray-700">This is a recurring bill</span>
+        </label>
+
+        {showRecurrenceSection && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Frequency *
+              </label>
+              <select
+                required
+                value={recurrenceFormData.frequency}
+                onChange={(e) =>
+                  setRecurrenceFormData({
+                    ...recurrenceFormData,
+                    frequency: e.target.value as RecurrenceFrequency,
+                  })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value={RecurrenceFrequency.MONTHLY}>Monthly</option>
+                <option value={RecurrenceFrequency.QUARTERLY}>Quarterly</option>
+                <option value={RecurrenceFrequency.BIANNUALLY}>Biannually</option>
+                <option value={RecurrenceFrequency.YEARLY}>Yearly</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Day of Month (1-31) *
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                max="31"
+                value={recurrenceFormData.dayOfMonth}
+                onChange={(e) =>
+                  setRecurrenceFormData({
+                    ...recurrenceFormData,
+                    dayOfMonth: parseInt(e.target.value) || 1,
+                  })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                The day of the month when this bill is due
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={recurrenceFormData.startDate}
+                  onChange={(e) =>
+                    setRecurrenceFormData({
+                      ...recurrenceFormData,
+                      startDate: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date (optional)
+                </label>
+                <input
+                  type="date"
+                  value={recurrenceFormData.endDate}
+                  onChange={(e) =>
+                    setRecurrenceFormData({
+                      ...recurrenceFormData,
+                      endDate: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Leave empty for indefinite recurrence
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-4">
