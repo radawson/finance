@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { RecurrenceFrequency } from '@/generated/prisma/client'
+import { RecurrenceFrequencyEnum } from '@/types'
 import { format } from 'date-fns'
 
 interface RecurrenceFormProps {
   billDueDate: Date
   recurrencePattern?: {
-    frequency: RecurrenceFrequency
+    frequency: RecurrenceFrequencyEnum
     dayOfMonth: number
     startDate: Date
     endDate?: Date | null
@@ -18,7 +18,7 @@ interface RecurrenceFormProps {
 }
 
 export interface RecurrenceFormData {
-  frequency: RecurrenceFrequency
+  frequency: RecurrenceFrequencyEnum
   dayOfMonth: number
   startDate: string
   endDate: string
@@ -32,7 +32,7 @@ export default function RecurrenceForm({
   onDelete,
 }: RecurrenceFormProps) {
   const [formData, setFormData] = useState<RecurrenceFormData>({
-    frequency: RecurrenceFrequency.MONTHLY,
+    frequency: RecurrenceFrequencyEnum.MONTHLY,
     dayOfMonth: new Date(billDueDate).getDate(),
     startDate: format(new Date(billDueDate), 'yyyy-MM-dd'),
     endDate: '',
@@ -52,7 +52,7 @@ export default function RecurrenceForm({
       // Initialize with bill's due date
       const dueDate = new Date(billDueDate)
       setFormData({
-        frequency: RecurrenceFrequency.MONTHLY,
+        frequency: RecurrenceFrequencyEnum.MONTHLY,
         dayOfMonth: dueDate.getDate(),
         startDate: format(dueDate, 'yyyy-MM-dd'),
         endDate: '',
@@ -75,14 +75,14 @@ export default function RecurrenceForm({
           required
           value={formData.frequency}
           onChange={(e) =>
-            setFormData({ ...formData, frequency: e.target.value as RecurrenceFrequency })
+            setFormData({ ...formData, frequency: e.target.value as RecurrenceFrequencyEnum })
           }
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         >
-          <option value={RecurrenceFrequency.MONTHLY}>Monthly</option>
-          <option value={RecurrenceFrequency.QUARTERLY}>Quarterly</option>
-          <option value={RecurrenceFrequency.BIANNUALLY}>Biannually</option>
-          <option value={RecurrenceFrequency.YEARLY}>Yearly</option>
+          <option value={RecurrenceFrequencyEnum.MONTHLY}>Monthly</option>
+          <option value={RecurrenceFrequencyEnum.QUARTERLY}>Quarterly</option>
+          <option value={RecurrenceFrequencyEnum.BIANNUALLY}>Biannually</option>
+          <option value={RecurrenceFrequencyEnum.YEARLY}>Yearly</option>
         </select>
       </div>
 

@@ -557,7 +557,7 @@ export default function BillDetailPage() {
                     if (e.target.checked && formData.dueDate) {
                       const dueDate = new Date(formData.dueDate)
                       setRecurrenceData({
-                        frequency: RecurrenceFrequency.MONTHLY,
+                        frequency: RecurrenceFrequencyEnum.MONTHLY,
                         dayOfMonth: dueDate.getDate(),
                         startDate: format(dueDate, 'yyyy-MM-dd'),
                         endDate: '',

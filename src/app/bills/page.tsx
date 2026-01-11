@@ -1049,7 +1049,7 @@ export default function BillsPage() {
                       setIsRecurring(false)
                       setShowRecurrenceSection(false)
                       setRecurrenceData({
-                        frequency: RecurrenceFrequency.MONTHLY,
+                        frequency: RecurrenceFrequencyEnum.MONTHLY,
                         dayOfMonth: 1,
                         startDate: '',
                         endDate: '',
