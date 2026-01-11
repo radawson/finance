@@ -406,6 +406,7 @@ export default function BillsPage() {
                 description: '',
                 status: 'PENDING',
                 paidDate: '',
+                invoiceNumber: '',
               })
               setIsCreateModalOpen(true)
             }}
@@ -571,6 +572,7 @@ export default function BillsPage() {
                   description: '',
                   status: 'PENDING',
                   paidDate: '',
+                  invoiceNumber: '',
                 })
                 setIsCreateModalOpen(true)
               }}
@@ -1077,6 +1079,7 @@ export default function BillsPage() {
                         description: '',
                         status: 'PENDING',
                         paidDate: '',
+                        invoiceNumber: '',
                       })
                       setIsRecurring(false)
                       setShowRecurrenceSection(false)
