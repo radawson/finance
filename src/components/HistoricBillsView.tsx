@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import React from 'react'
 import { HistoricBillsData, Bill } from '@/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
@@ -88,7 +89,7 @@ export default function HistoricBillsView({
               {data.data.map((period) => {
                 const isExpanded = expandedPeriods.has(period.periodLabel)
                 return (
-                  <tbody key={period.periodLabel}>
+                  <React.Fragment key={period.periodLabel}>
                     <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => togglePeriod(period.periodLabel)}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {isExpanded ? (
@@ -164,7 +165,7 @@ export default function HistoricBillsView({
                         </td>
                       </tr>
                     )}
-                  </tbody>
+                  </React.Fragment>
                 )
               })}
             </tbody>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import React from 'react'
 import { BudgetPredictionData, PredictedBill } from '@/types'
 import { ChevronDown, ChevronRight, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
@@ -128,7 +129,7 @@ export default function BudgetPredictionsView({
               {data.predictions.map((period) => {
                 const isExpanded = expandedPeriods.has(period.periodLabel)
                 return (
-                  <tbody key={period.periodLabel}>
+                  <React.Fragment key={period.periodLabel}>
                     <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => togglePeriod(period.periodLabel)}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {isExpanded ? (
@@ -171,28 +172,31 @@ export default function BudgetPredictionsView({
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                  {period.bills.map((bill, index) => (
-                                    <tr key={`${bill.billId}-${bill.dueDate.getTime()}-${index}`}>
-                                      <td className="px-4 py-2 text-sm text-gray-900">{bill.title}</td>
-                                      <td className="px-4 py-2 text-sm text-right text-gray-900">
-                                        ${bill.amount.toFixed(2)}
-                                      </td>
-                                      <td className="px-4 py-2 text-sm text-gray-500">
-                                        {format(bill.dueDate, 'yyyy-MM-dd')}
-                                      </td>
-                                      <td className="px-4 py-2 text-sm">
-                                        <span
-                                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            bill.source === 'recurrence'
-                                              ? 'bg-green-100 text-green-800'
-                                              : 'bg-blue-100 text-blue-800'
-                                          }`}
-                                        >
-                                          {bill.source === 'recurrence' ? 'Recurrence Pattern' : 'Historical Analysis'}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {period.bills.map((bill, index) => {
+                                    const dueDate = typeof bill.dueDate === 'string' ? new Date(bill.dueDate) : bill.dueDate
+                                    return (
+                                      <tr key={`${bill.billId}-${dueDate.getTime()}-${index}`}>
+                                        <td className="px-4 py-2 text-sm text-gray-900">{bill.title}</td>
+                                        <td className="px-4 py-2 text-sm text-right text-gray-900">
+                                          ${bill.amount.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm text-gray-500">
+                                          {format(dueDate, 'yyyy-MM-dd')}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          <span
+                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                              bill.source === 'recurrence'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-blue-100 text-blue-800'
+                                            }`}
+                                          >
+                                            {bill.source === 'recurrence' ? 'Recurrence Pattern' : 'Historical Analysis'}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
                                 </tbody>
                               </table>
                             </div>
@@ -200,7 +204,7 @@ export default function BudgetPredictionsView({
                         </td>
                       </tr>
                     )}
-                  </tbody>
+                  </React.Fragment>
                 )
               })}
             </tbody>
