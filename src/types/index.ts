@@ -223,3 +223,20 @@ export interface BudgetPredictionData {
   predictions: BudgetPredictionPeriodData[]
   historicData?: HistoricBillsPeriodData[]
 }
+
+export interface VendorTrendPeriodData {
+  periodLabel: string
+  totalAmount: number
+  billCount: number
+}
+
+export interface VendorTrendData {
+  vendorId: string
+  vendorName: string
+  periods: VendorTrendPeriodData[]
+}
+
+export interface VendorTrendsResponse {
+  period: AnalysisPeriod
+  vendors: VendorTrendData[]
+}
