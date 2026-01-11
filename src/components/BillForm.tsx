@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bill, Category, Vendor } from '@/types'
-import { BillStatus, RecurrenceFrequency } from '@/generated/prisma/client'
+import { Bill, Category, Vendor, RecurrenceFrequencyEnum } from '@/types'
+import { BillStatus } from '@/generated/prisma/client'
 import { format } from 'date-fns'
 
 interface BillFormProps {
@@ -27,7 +27,7 @@ export interface BillFormData {
 
 export interface RecurrenceFormData {
   isRecurring: boolean
-  frequency: RecurrenceFrequency
+  frequency: RecurrenceFrequencyEnum
   dayOfMonth: number
   startDate: string
   endDate: string
@@ -50,7 +50,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
   const [recurrenceFormData, setRecurrenceFormData] = useState<RecurrenceFormData>({
     isRecurring: false,
-    frequency: RecurrenceFrequency.MONTHLY,
+    frequency: RecurrenceFrequencyEnum.MONTHLY,
     dayOfMonth: 1,
     startDate: '',
     endDate: '',
@@ -77,7 +77,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
         setShowRecurrenceSection(true)
         setRecurrenceFormData({
           isRecurring: true,
-          frequency: bill.recurrencePattern.frequency,
+          frequency: bill.recurrencePattern.frequency as RecurrenceFrequencyEnum,
           dayOfMonth: bill.recurrencePattern.dayOfMonth,
           startDate: format(new Date(bill.recurrencePattern.startDate), 'yyyy-MM-dd'),
           endDate: bill.recurrencePattern.endDate ? format(new Date(bill.recurrencePattern.endDate), 'yyyy-MM-dd') : '',
@@ -87,7 +87,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
         setShowRecurrenceSection(false)
         setRecurrenceFormData({
           isRecurring: false,
-          frequency: RecurrenceFrequency.MONTHLY,
+          frequency: RecurrenceFrequencyEnum.MONTHLY,
           dayOfMonth: dueDate.getDate(),
           startDate: format(dueDate, 'yyyy-MM-dd'),
           endDate: '',
@@ -282,7 +282,7 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
                 const dueDate = new Date(formData.dueDate)
                 setRecurrenceFormData({
                   isRecurring: true,
-                  frequency: RecurrenceFrequency.MONTHLY,
+                  frequency: RecurrenceFrequencyEnum.MONTHLY,
                   dayOfMonth: dueDate.getDate(),
                   startDate: format(dueDate, 'yyyy-MM-dd'),
                   endDate: '',
@@ -306,15 +306,15 @@ export default function BillForm({ bill, categories, vendors, onSubmit, onCancel
                 onChange={(e) =>
                   setRecurrenceFormData({
                     ...recurrenceFormData,
-                    frequency: e.target.value as RecurrenceFrequency,
+                    frequency: e.target.value as RecurrenceFrequencyEnum,
                   })
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
-                <option value={RecurrenceFrequency.MONTHLY}>Monthly</option>
-                <option value={RecurrenceFrequency.QUARTERLY}>Quarterly</option>
-                <option value={RecurrenceFrequency.BIANNUALLY}>Biannually</option>
-                <option value={RecurrenceFrequency.YEARLY}>Yearly</option>
+                <option value={RecurrenceFrequencyEnum.MONTHLY}>Monthly</option>
+                <option value={RecurrenceFrequencyEnum.QUARTERLY}>Quarterly</option>
+                <option value={RecurrenceFrequencyEnum.BIANNUALLY}>Biannually</option>
+                <option value={RecurrenceFrequencyEnum.YEARLY}>Yearly</option>
               </select>
             </div>
 

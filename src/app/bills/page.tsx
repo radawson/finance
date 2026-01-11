@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
 import BillViewModal from '@/components/BillViewModal'
-import { Bill, Category, Vendor, VendorAccount, BillStatus } from '@/types'
-import { RecurrenceFrequency } from '@/generated/prisma/client'
+import { Bill, Category, Vendor, VendorAccount, BillStatus, RecurrenceFrequencyEnum } from '@/types'
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -53,7 +52,7 @@ export default function BillsPage() {
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
   const [recurrenceData, setRecurrenceData] = useState({
-    frequency: RecurrenceFrequency.MONTHLY,
+    frequency: RecurrenceFrequencyEnum.MONTHLY,
     dayOfMonth: 1,
     startDate: '',
     endDate: '',
@@ -315,7 +314,7 @@ export default function BillsPage() {
       setIsRecurring(false)
       setShowRecurrenceSection(false)
       setRecurrenceData({
-        frequency: RecurrenceFrequency.MONTHLY,
+        frequency: RecurrenceFrequencyEnum.MONTHLY,
         dayOfMonth: 1,
         startDate: '',
         endDate: '',
@@ -923,7 +922,7 @@ export default function BillsPage() {
                         if (e.target.checked && formData.dueDate) {
                           const dueDate = new Date(formData.dueDate)
                           setRecurrenceData({
-                            frequency: RecurrenceFrequency.MONTHLY,
+                            frequency: RecurrenceFrequencyEnum.MONTHLY,
                             dayOfMonth: dueDate.getDate(),
                             startDate: format(dueDate, 'yyyy-MM-dd'),
                             endDate: '',
@@ -947,15 +946,15 @@ export default function BillsPage() {
                           onChange={(e) =>
                             setRecurrenceData({
                               ...recurrenceData,
-                              frequency: e.target.value as RecurrenceFrequency,
+                              frequency: e.target.value as RecurrenceFrequencyEnum,
                             })
                           }
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         >
-                          <option value={RecurrenceFrequency.MONTHLY}>Monthly</option>
-                          <option value={RecurrenceFrequency.QUARTERLY}>Quarterly</option>
-                          <option value={RecurrenceFrequency.BIANNUALLY}>Biannually</option>
-                          <option value={RecurrenceFrequency.YEARLY}>Yearly</option>
+                          <option value={RecurrenceFrequencyEnum.MONTHLY}>Monthly</option>
+                          <option value={RecurrenceFrequencyEnum.QUARTERLY}>Quarterly</option>
+                          <option value={RecurrenceFrequencyEnum.BIANNUALLY}>Biannually</option>
+                          <option value={RecurrenceFrequencyEnum.YEARLY}>Yearly</option>
                         </select>
                       </div>
 

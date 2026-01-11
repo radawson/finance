@@ -5,8 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
-import { Bill, Category, Vendor, VendorAccount, BillStatus } from '@/types'
-import { RecurrenceFrequency } from '@/generated/prisma/client'
+import { Bill, Category, Vendor, VendorAccount, BillStatus, RecurrenceFrequencyEnum } from '@/types'
 import { ArrowLeft, Save, X, ChevronDown, ChevronUp } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -39,7 +38,7 @@ export default function BillDetailPage() {
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
   const [recurrenceData, setRecurrenceData] = useState({
-    frequency: RecurrenceFrequency.MONTHLY,
+    frequency: RecurrenceFrequencyEnum.MONTHLY,
     dayOfMonth: 1,
     startDate: '',
     endDate: '',
@@ -78,7 +77,7 @@ export default function BillDetailPage() {
           setIsRecurring(true)
           setShowRecurrenceSection(true)
           setRecurrenceData({
-            frequency: data.recurrencePattern.frequency,
+            frequency: data.recurrencePattern.frequency as RecurrenceFrequencyEnum,
             dayOfMonth: data.recurrencePattern.dayOfMonth,
             startDate: format(new Date(data.recurrencePattern.startDate), 'yyyy-MM-dd'),
             endDate: data.recurrencePattern.endDate ? format(new Date(data.recurrencePattern.endDate), 'yyyy-MM-dd') : '',
@@ -88,7 +87,7 @@ export default function BillDetailPage() {
           setIsRecurring(false)
           setShowRecurrenceSection(false)
           setRecurrenceData({
-            frequency: RecurrenceFrequency.MONTHLY,
+            frequency: RecurrenceFrequencyEnum.MONTHLY,
             dayOfMonth: dueDate.getDate(),
             startDate: format(dueDate, 'yyyy-MM-dd'),
             endDate: '',
@@ -579,18 +578,18 @@ export default function BillDetailPage() {
                     <select
                       required
                       value={recurrenceData.frequency}
-                      onChange={(e) =>
-                        setRecurrenceData({
-                          ...recurrenceData,
-                          frequency: e.target.value as RecurrenceFrequency,
-                        })
-                      }
+                        onChange={(e) =>
+                          setRecurrenceData({
+                            ...recurrenceData,
+                            frequency: e.target.value as RecurrenceFrequencyEnum,
+                          })
+                        }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
-                      <option value={RecurrenceFrequency.MONTHLY}>Monthly</option>
-                      <option value={RecurrenceFrequency.QUARTERLY}>Quarterly</option>
-                      <option value={RecurrenceFrequency.BIANNUALLY}>Biannually</option>
-                      <option value={RecurrenceFrequency.YEARLY}>Yearly</option>
+                          <option value={RecurrenceFrequencyEnum.MONTHLY}>Monthly</option>
+                          <option value={RecurrenceFrequencyEnum.QUARTERLY}>Quarterly</option>
+                          <option value={RecurrenceFrequencyEnum.BIANNUALLY}>Biannually</option>
+                          <option value={RecurrenceFrequencyEnum.YEARLY}>Yearly</option>
                     </select>
                   </div>
 
