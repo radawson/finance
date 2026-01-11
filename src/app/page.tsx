@@ -10,11 +10,13 @@ import toast from 'react-hot-toast'
 export default function Home() {
   const router = useRouter()
   const [categories, setCategories] = useState<any[]>([])
+  const [vendors, setVendors] = useState<any[]>([])
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
     dueDate: '',
     categoryId: '',
+    vendorId: '',
     description: '',
   })
 
@@ -29,6 +31,18 @@ export default function Home() {
       })
       .catch(() => {
         // Silently fail
+      })
+
+    // Fetch vendors (may be empty for anonymous users)
+    fetch('/api/vendors')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.error && Array.isArray(data)) {
+          setVendors(data)
+        }
+      })
+      .catch(() => {
+        // Silently fail - vendors are optional
       })
   }, [])
 
@@ -51,6 +65,7 @@ export default function Home() {
           amount: parseFloat(formData.amount),
           dueDate: new Date(formData.dueDate).toISOString(),
           categoryId: formData.categoryId,
+          vendorId: formData.vendorId || undefined,
           description: formData.description || undefined,
         }),
       })
@@ -69,6 +84,7 @@ export default function Home() {
         amount: '',
         dueDate: '',
         categoryId: '',
+        vendorId: '',
         description: '',
       })
     } catch (error: any) {
@@ -154,6 +170,24 @@ export default function Home() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendor (optional)
+                </label>
+                <select
+                  value={formData.vendorId}
+                  onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">No vendor</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
