@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get paid bills
-    const bills = await prisma.bill.findMany({
+    const billsRaw = await prisma.bill.findMany({
       where,
       include: {
         category: true,
@@ -65,6 +65,12 @@ export async function GET(req: NextRequest) {
         paidDate: 'desc',
       },
     })
+
+    // Convert Prisma Decimal to number for type compatibility
+    const bills = billsRaw.map((bill) => ({
+      ...bill,
+      amount: Number(bill.amount),
+    }))
 
     // Group bills by period (only for non-custom periods)
     let groupedData

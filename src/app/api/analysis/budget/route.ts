@@ -92,13 +92,19 @@ export async function GET(req: NextRequest) {
         ]
       }
 
-      const historicBills = await prisma.bill.findMany({
+      const historicBillsRaw = await prisma.bill.findMany({
         where: historicWhere,
         include: {
           category: true,
           vendor: true,
         },
       })
+
+      // Convert Prisma Decimal to number for type compatibility
+      const historicBills = historicBillsRaw.map((bill) => ({
+        ...bill,
+        amount: Number(bill.amount),
+      }))
 
       const periodType = period === 'custom' ? 'monthly' : period
       historicData = groupBillsByPeriod(historicBills, periodType)
