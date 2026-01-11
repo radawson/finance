@@ -34,8 +34,8 @@ export async function POST(
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && bill.createdById !== session.user.id) {
+    // Check authorization - allow admin, bill creator, or unassigned bills (createdById is null)
+    if (session.user.role !== Role.ADMIN && bill.createdById !== null && bill.createdById !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -149,8 +149,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && bill.createdById !== session.user.id) {
+    // Check authorization - allow admin, bill creator, or unassigned bills (createdById is null)
+    if (session.user.role !== Role.ADMIN && bill.createdById !== null && bill.createdById !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -247,8 +247,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && bill.createdById !== session.user.id) {
+    // Check authorization - allow admin, bill creator, or unassigned bills (createdById is null)
+    if (session.user.role !== Role.ADMIN && bill.createdById !== null && bill.createdById !== session.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
