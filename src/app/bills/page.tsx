@@ -247,32 +247,44 @@ export default function BillsPage() {
     e.preventDefault()
 
     try {
+      // Validate amount before sending
+      const amount = parseFloat(formData.amount)
+      if (isNaN(amount) || amount <= 0) {
+        toast.error('Please enter a valid amount')
+        return
+      }
+
+      const requestBody = {
+        title: formData.title,
+        amount: amount,
+        dueDate: new Date(formData.dueDate).toISOString(),
+        categoryId: formData.categoryId,
+        vendorId: formData.vendorId || undefined,
+        vendorAccountId: formData.vendorAccountId || undefined,
+        description: formData.description || undefined,
+        status: formData.status,
+        paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
+        invoiceNumber: formData.invoiceNumber || undefined,
+        isRecurring: isRecurring,
+      }
+      
+      console.log('Submitting bill:', requestBody)
+
       const response = await fetch('/api/bills', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: formData.title,
-          amount: parseFloat(formData.amount),
-          dueDate: new Date(formData.dueDate).toISOString(),
-          categoryId: formData.categoryId,
-          vendorId: formData.vendorId || null,
-          vendorAccountId: formData.vendorAccountId || null,
-          description: formData.description || null,
-          status: formData.status,
-          paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
-          invoiceNumber: formData.invoiceNumber || null,
-          isRecurring: isRecurring,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
         const data = await response.json()
-        const errorMessage = data.details 
-          ? `${data.error || 'Validation error'}: ${JSON.stringify(data.details)}`
-          : data.error || 'Failed to create bill'
         console.error('Bill creation error:', data)
+        console.error('Validation details:', data.details)
+        const errorMessage = data.details && data.details.length > 0
+          ? `${data.error || 'Validation error'}: ${data.details.map((d: any) => `${d.path?.join('.') || 'field'}: ${d.message}`).join(', ')}`
+          : data.error || 'Failed to create bill'
         toast.error(errorMessage)
         return
       }
