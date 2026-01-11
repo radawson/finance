@@ -48,6 +48,7 @@ export default function BillsPage() {
     description: '',
     status: 'PENDING' as BillStatus,
     paidDate: '',
+    invoiceNumber: '',
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -261,13 +262,18 @@ export default function BillsPage() {
           description: formData.description || null,
           status: formData.status,
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
+          invoiceNumber: formData.invoiceNumber || null,
           isRecurring: isRecurring,
         }),
       })
 
       if (!response.ok) {
         const data = await response.json()
-        toast.error(data.error || 'Failed to create bill')
+        const errorMessage = data.details 
+          ? `${data.error || 'Validation error'}: ${JSON.stringify(data.details)}`
+          : data.error || 'Failed to create bill'
+        console.error('Bill creation error:', data)
+        toast.error(errorMessage)
         return
       }
 
@@ -310,6 +316,7 @@ export default function BillsPage() {
         description: '',
         status: 'PENDING',
         paidDate: '',
+        invoiceNumber: '',
       })
       setIsRecurring(false)
       setShowRecurrenceSection(false)
@@ -906,6 +913,19 @@ export default function BillsPage() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="Additional notes..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Invoice Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.invoiceNumber}
+                    onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Optional invoice number from vendor"
                   />
                 </div>
 
