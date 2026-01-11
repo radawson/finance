@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bill, Category, Vendor, RecurrenceFrequencyEnum } from '@/types'
-import { BillStatus } from '@/generated/prisma/client'
+import { Bill, Category, Vendor, RecurrenceFrequencyEnum, BillStatus } from '@/types'
 import { format } from 'date-fns'
 
 interface BillFormProps {

@@ -1,4 +1,4 @@
-import { BillStatus } from '@/generated/prisma/client'
+import { BillStatus } from '@/types'
 
 interface BillStatusBadgeProps {
   status: BillStatus
