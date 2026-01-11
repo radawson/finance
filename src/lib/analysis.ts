@@ -2,6 +2,7 @@ import { Bill, RecurrencePattern, AnalysisPeriod, PredictedBill, BudgetPredictio
 import { RecurrenceFrequency } from '@/generated/prisma/client'
 import { getUpcomingDueDates } from './recurrence'
 import { format, getQuarter } from 'date-fns'
+import { enhancePredictionsWithActualData } from './business/recurring-bills'
 
 /**
  * Group bills by period (monthly, quarterly, yearly)
@@ -61,12 +62,14 @@ export function formatPeriodLabel(date: Date, period: 'monthly' | 'quarterly' | 
 
 /**
  * Generate budget predictions from recurrence patterns
+ * Optionally merges with actual bills to replace predictions and enhance future predictions
  */
 export function generateBudgetPredictions(
   recurringBills: Bill[],
   startDate: Date,
   endDate: Date,
-  period: AnalysisPeriod
+  period: AnalysisPeriod,
+  actualBills?: Bill[]
 ): BudgetPredictionPeriodData[] {
   const predictedBills: PredictedBill[] = []
 
@@ -109,13 +112,19 @@ export function generateBudgetPredictions(
     })
   })
 
+  // Merge with actual bills if provided
+  let finalPredictions = predictedBills
+  if (actualBills && actualBills.length > 0) {
+    finalPredictions = enhancePredictionsWithActualData(predictedBills, actualBills, recurringBills)
+  }
+
   // Group predicted bills by period
   if (period === 'custom') {
     // For custom, group by the actual period type (default to monthly)
-    return groupPredictedBillsByPeriod(predictedBills, 'monthly')
+    return groupPredictedBillsByPeriod(finalPredictions, 'monthly')
   }
 
-  return groupPredictedBillsByPeriod(predictedBills, period)
+  return groupPredictedBillsByPeriod(finalPredictions, period)
 }
 
 /**

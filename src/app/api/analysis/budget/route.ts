@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get recurring bills with their recurrence patterns
+    // These are the "templates" that generate predictions
     const recurringBillsRaw = await prisma.bill.findMany({
       where,
       include: {
@@ -62,12 +63,51 @@ export async function GET(req: NextRequest) {
       amount: Number(bill.amount),
     }))
 
-    // Generate predictions from recurrence patterns
+    // Fetch actual bills in the date range that might match recurring patterns
+    // These will replace predictions and enhance future predictions
+    const actualBillsWhere: any = {
+      dueDate: {
+        gte: startDate,
+        lte: endDate,
+      },
+    }
+
+    // Filter by user if not admin (same logic as recurring bills)
+    if (session.user.role !== Role.ADMIN) {
+      actualBillsWhere.OR = [
+        { createdById: session.user.id },
+        { createdById: null },
+      ]
+    }
+
+    const actualBillsRaw = await prisma.bill.findMany({
+      where: actualBillsWhere,
+      include: {
+        category: true,
+        vendor: true,
+        vendorAccount: {
+          include: {
+            type: true,
+          },
+        },
+      },
+    })
+
+    // Convert Prisma Decimal to number for type compatibility
+    const actualBills = actualBillsRaw.map((bill) => ({
+      ...bill,
+      amount: Number(bill.amount),
+    }))
+
+    // Generate predictions from recurrence patterns and merge with actual bills
+    // Actual bills will replace predictions for matching dates
+    // Remaining predictions will be enhanced using actual bill amounts
     const predictions = generateBudgetPredictions(
       recurringBills,
       startDate,
       endDate,
-      period
+      period,
+      actualBills
     )
 
     // TODO: Add logic to analyze historical bills without explicit recurrence patterns

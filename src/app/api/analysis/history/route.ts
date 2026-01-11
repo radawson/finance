@@ -6,6 +6,11 @@ import { Role, BillStatus } from '@/generated/prisma/client'
 import { groupBillsByPeriod } from '@/lib/analysis'
 import { AnalysisPeriod } from '@/types'
 
+/**
+ * Get historic bills that have been paid
+ * This endpoint returns actual paid bills, not predictions
+ * All bills (including recurring ones) are included in the historic view
+ */
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -19,7 +24,7 @@ export async function GET(req: NextRequest) {
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
 
-    // Build where clause
+    // Build where clause - only get paid bills (actual bills, not predictions)
     const where: any = {
       status: BillStatus.PAID,
     }
@@ -49,7 +54,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get paid bills
+    // Get all paid bills (including recurring bills)
+    // This shows actual historical data, not predictions
     const billsRaw = await prisma.bill.findMany({
       where,
       include: {
@@ -73,6 +79,7 @@ export async function GET(req: NextRequest) {
     }))
 
     // Group bills by period (only for non-custom periods)
+    // All bills are included regardless of whether they have recurrence patterns
     let groupedData
     if (period === 'custom') {
       // For custom, just return all bills grouped by a default period (monthly)
