@@ -110,26 +110,49 @@ export function exportToMarkdown(
       lines.push('')
       lines.push(`**Predicted Total:** $${period.predictedAmount.toFixed(2)} | **Count:** ${period.billCount}`)
       lines.push('')
-      lines.push('| Title | Amount | Due Date | Source |')
-      lines.push('|-------|--------|----------|--------|')
+      lines.push('| Title | Amount | Due Date | Method | Confidence | Source |')
+      lines.push('|-------|--------|----------|--------|------------|--------|')
       
       period.bills.forEach((bill) => {
         const dueDate = format(new Date(bill.dueDate), 'yyyy-MM-dd')
-        const source = bill.source === 'recurrence' ? 'Recurrence Pattern' : 'Historical Analysis'
-        lines.push(`| ${bill.title} | $${bill.amount.toFixed(2)} | ${dueDate} | ${source} |`)
+        let source = 'Recurrence Pattern'
+        if (bill.source === 'detected') {
+          source = 'Detected Pattern'
+        } else if (bill.source === 'historical-analysis') {
+          source = 'Historical Analysis'
+        }
+        
+        const method = bill.method || 'Base'
+        const confidence = bill.confidence !== undefined ? `${Math.round(bill.confidence * 100)}%` : 'N/A'
+        lines.push(`| ${bill.title} | $${bill.amount.toFixed(2)} | ${dueDate} | ${method} | ${confidence} | ${source} |`)
       })
       
       lines.push('')
     })
     
-    // TODO: Show note when historical analysis is not yet implemented
-    const hasHistoricalAnalysis = budgetData.predictions.some((p) =>
-      p.bills.some((b) => b.source === 'historical-analysis')
+    // Show information about prediction methods used
+    const hasDetectedPatterns = budgetData.predictions.some((p) =>
+      p.bills.some((b) => b.source === 'detected')
     )
-    if (!hasHistoricalAnalysis) {
+    const hasEnhancedPredictions = budgetData.predictions.some((p) =>
+      p.bills.some((b) => b.method && b.method !== 'synthetic')
+    )
+    
+    if (hasDetectedPatterns || hasEnhancedPredictions) {
       lines.push('')
-      lines.push('> **Note:** Predictions are currently based only on bills with explicit recurrence patterns. Historical pattern analysis is planned for future implementation.')
+      lines.push('## Prediction Methods')
       lines.push('')
+      lines.push('The system uses intelligent forecasting algorithms:')
+      lines.push('- **Trend**: Linear regression for bills with clear increasing/decreasing patterns')
+      lines.push('- **Weighted Avg**: Weighted moving average when trend is unclear')
+      lines.push('- **Seasonal**: Average of same month across multiple years')
+      lines.push('- **Synthetic**: Virtual bills generated for recurring bills with < 3 data points')
+      lines.push('- **Average**: Simple average for bills with limited data')
+      lines.push('')
+      if (hasDetectedPatterns) {
+        lines.push('> **Note:** Some predictions are based on automatically detected patterns from historical bills.')
+        lines.push('')
+      }
     }
   }
 

@@ -131,6 +131,7 @@ function weightedMovingAverage(bills: Array<{ amount: number }>): number {
 /**
  * Seasonal average detection
  * Groups bills by month and calculates average for that month across years
+ * Note: allHistoricalBills should already be filtered to matching bills (same vendor/category/account)
  */
 function seasonalAverage(
   bills: Array<{ date: Date; amount: number }>,
@@ -140,6 +141,7 @@ function seasonalAverage(
   const targetMonth = getMonth(targetDate) // 0-11
 
   // Find all bills in the same month across all years
+  // Note: allHistoricalBills should already be filtered to matching bills by the caller
   const sameMonthBills = allHistoricalBills.filter((bill) => {
     const billMonth = getMonth(new Date(bill.dueDate))
     return billMonth === targetMonth
@@ -214,6 +216,7 @@ export function calculateEnhancedAmount(
   }
 
   // If trend confidence is low, check for seasonal patterns
+  // Note: allHistoricalBills should already be filtered to matching bills by the caller
   if (allHistoricalBills && allHistoricalBills.length > 0) {
     const seasonal = seasonalAverage(billData, targetDate, allHistoricalBills)
     if (seasonal && seasonal.count >= 2) {
@@ -239,11 +242,13 @@ export function calculateEnhancedAmount(
  * Replaces predictions with actual bills and enhances remaining predictions
  * Actual bills replace predictions where dates match within tolerance
  * Remaining predictions are enhanced using actual bill amounts
+ * Historical bills are used for seasonal pattern analysis
  */
 export function enhancePredictionsWithActualData(
   predictions: PredictedBill[],
   actualBills: Bill[],
-  recurringTemplates: Bill[]
+  recurringTemplates: Bill[],
+  historicalBills?: Bill[]
 ): PredictedBill[] {
   const enhanced: PredictedBill[] = []
   const matchedActualBills = new Set<string>() // Track which actual bills we've matched
@@ -341,11 +346,20 @@ export function enhancePredictionsWithActualData(
         finalPredictions.push(prediction)
       } else {
         // This is a future prediction, enhance it with intelligent forecasting
+        // Get historical bills that match this template for seasonal analysis
+        const matchingHistoricalBills = historicalBills 
+          ? historicalBills.filter((b) => shouldMatchBill(b, template))
+          : []
+        
+        // Combine matching actual bills and historical bills for comprehensive analysis
+        // Note: These shouldn't overlap since historicalBills are before startDate and actualBills are after
+        const allBillsForAnalysis = [...matchingActualBills, ...matchingHistoricalBills]
+        
         const forecast = calculateEnhancedAmount(
-          matchingActualBills,
+          matchingActualBills, // Use only recent bills for trend/weighted analysis
           baseAmount,
           new Date(prediction.dueDate),
-          actualBills // Pass all actual bills for seasonal analysis
+          allBillsForAnalysis // Pass all matching bills (actual + historical) for seasonal analysis
         )
         finalPredictions.push({
           ...prediction,

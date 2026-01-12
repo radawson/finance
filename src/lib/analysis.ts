@@ -264,7 +264,8 @@ export function generateBudgetPredictions(
     finalPredictions = enhancePredictionsWithActualData(
       predictedBills,
       allActualBills,
-      recurringBills
+      recurringBills,
+      allHistoricalBills // Pass historical bills for seasonal analysis
     )
   }
 

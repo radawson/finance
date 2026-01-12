@@ -57,26 +57,17 @@ export default function BudgetPredictionsView({
             </div>
           </div>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-medium text-blue-800">Future Enhancement</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Historical pattern analysis is planned for future implementation. This will automatically detect
-                recurring patterns in bills even without explicit recurrence settings.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     )
   }
 
   const totalPredicted = data.predictions.reduce((sum, period) => sum + period.predictedAmount, 0)
   const totalBills = data.predictions.reduce((sum, period) => sum + period.billCount, 0)
-  const hasHistoricalAnalysis = data.predictions.some((p) =>
-    p.bills.some((b) => b.source === 'historical-analysis')
+  const hasDetectedPatterns = data.predictions.some((p) =>
+    p.bills.some((b) => b.source === 'detected')
+  )
+  const hasEnhancedPredictions = data.predictions.some((p) =>
+    p.bills.some((b) => b.method && b.method !== 'synthetic')
   )
 
   return (
@@ -91,15 +82,15 @@ export default function BudgetPredictionsView({
         {data && <MarkdownExporter type="budget" data={data} startDate={startDate} endDate={endDate} />}
       </div>
 
-      {!hasHistoricalAnalysis && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      {hasDetectedPatterns && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-green-600 mt-0.5" />
             <div>
-              <h3 className="text-sm font-medium text-blue-800">Note</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Predictions are currently based only on bills with explicit recurrence patterns. Historical pattern
-                analysis is planned for future implementation.
+              <h3 className="text-sm font-medium text-green-800">Automatic Pattern Detection Active</h3>
+              <p className="text-sm text-green-700 mt-1">
+                The system has automatically detected recurring patterns from your historical bills. These predictions
+                are included alongside bills with explicit recurrence settings.
               </p>
             </div>
           </div>
@@ -167,6 +158,9 @@ export default function BudgetPredictionsView({
                                       Due Date
                                     </th>
                                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">
+                                      Method
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">
                                       Source
                                     </th>
                                   </tr>
@@ -174,6 +168,38 @@ export default function BudgetPredictionsView({
                                 <tbody className="bg-white divide-y divide-gray-200">
                                   {period.bills.map((bill, index) => {
                                     const dueDate = typeof bill.dueDate === 'string' ? new Date(bill.dueDate) : bill.dueDate
+                                    
+                                    // Determine source label
+                                    let sourceLabel = 'Recurrence Pattern'
+                                    let sourceColor = 'bg-green-100 text-green-800'
+                                    if (bill.source === 'detected') {
+                                      sourceLabel = 'Detected Pattern'
+                                      sourceColor = 'bg-blue-100 text-blue-800'
+                                    } else if (bill.source === 'historical-analysis') {
+                                      sourceLabel = 'Historical Analysis'
+                                      sourceColor = 'bg-purple-100 text-purple-800'
+                                    }
+                                    
+                                    // Determine method label and color
+                                    let methodLabel = 'Base'
+                                    let methodColor = 'bg-gray-100 text-gray-800'
+                                    if (bill.method === 'trend') {
+                                      methodLabel = 'Trend'
+                                      methodColor = 'bg-blue-100 text-blue-800'
+                                    } else if (bill.method === 'weighted') {
+                                      methodLabel = 'Weighted Avg'
+                                      methodColor = 'bg-yellow-100 text-yellow-800'
+                                    } else if (bill.method === 'seasonal') {
+                                      methodLabel = 'Seasonal'
+                                      methodColor = 'bg-purple-100 text-purple-800'
+                                    } else if (bill.method === 'synthetic') {
+                                      methodLabel = 'Synthetic'
+                                      methodColor = 'bg-orange-100 text-orange-800'
+                                    } else if (bill.method === 'average') {
+                                      methodLabel = 'Average'
+                                      methodColor = 'bg-gray-100 text-gray-800'
+                                    }
+                                    
                                     return (
                                       <tr key={`${bill.billId}-${dueDate.getTime()}-${index}`}>
                                         <td className="px-4 py-2 text-sm text-gray-900">{bill.title}</td>
@@ -184,14 +210,20 @@ export default function BudgetPredictionsView({
                                           {format(dueDate, 'yyyy-MM-dd')}
                                         </td>
                                         <td className="px-4 py-2 text-sm">
-                                          <span
-                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                              bill.source === 'recurrence'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-blue-100 text-blue-800'
-                                            }`}
-                                          >
-                                            {bill.source === 'recurrence' ? 'Recurrence Pattern' : 'Historical Analysis'}
+                                          <div className="flex flex-col gap-1">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${methodColor}`}>
+                                              {methodLabel}
+                                            </span>
+                                            {bill.confidence !== undefined && (
+                                              <span className="text-xs text-gray-500">
+                                                {Math.round(bill.confidence * 100)}% confidence
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-2 text-sm">
+                                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sourceColor}`}>
+                                            {sourceLabel}
                                           </span>
                                         </td>
                                       </tr>
