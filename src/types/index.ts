@@ -73,6 +73,7 @@ export interface Vendor {
   email?: string | null
   phone?: string | null
   address?: string | null
+  addressLine2?: string | null
   city?: string | null
   state?: string | null
   zip?: string | null

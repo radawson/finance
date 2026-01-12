@@ -5,11 +5,11 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import VendorViewModal from '@/components/VendorViewModal'
+import VendorEditForm, { VendorFormData } from '@/components/VendorEditForm'
 import { Vendor } from '@/types'
 import { Plus, Edit, Trash2, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import PhoneInput from '@/components/PhoneInput'
 import { formatPhoneForDisplay } from '@/lib/phone-formatting'
 
 export default function VendorsPage() {
@@ -20,18 +20,7 @@ export default function VendorsPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [viewingVendor, setViewingVendor] = useState<Vendor | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zip: '',
-    country: 'USA',
-    website: '',
-    description: '',
-  })
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (session) {
@@ -55,8 +44,8 @@ export default function VendorsPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCreateVendor = async (formData: VendorFormData) => {
+    setIsSaving(true)
 
     try {
       const response = await fetch('/api/vendors', {
@@ -70,18 +59,6 @@ export default function VendorsPage() {
       if (response.ok) {
         toast.success('Vendor created')
         setIsCreateModalOpen(false)
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          address: '',
-          city: '',
-          state: '',
-          zip: '',
-          country: 'USA',
-          website: '',
-          description: '',
-        })
         fetchVendors()
       } else {
         const data = await response.json()
@@ -89,6 +66,8 @@ export default function VendorsPage() {
       }
     } catch (error) {
       toast.error('Failed to create vendor')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -144,18 +123,6 @@ export default function VendorsPage() {
           </div>
           <button
             onClick={() => {
-              setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                address: '',
-                city: '',
-                state: '',
-                zip: '',
-                country: 'USA',
-                website: '',
-                description: '',
-              })
               setIsCreateModalOpen(true)
             }}
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -177,18 +144,6 @@ export default function VendorsPage() {
             <p className="text-gray-600 mb-4">No vendors yet</p>
             <button
               onClick={() => {
-                setFormData({
-                  name: '',
-                  email: '',
-                  phone: '',
-                  address: '',
-                  city: '',
-                  state: '',
-                  zip: '',
-                  country: '',
-                  website: '',
-                  description: '',
-                })
                 setIsCreateModalOpen(true)
               }}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -236,9 +191,10 @@ export default function VendorsPage() {
                       {vendor.accounts.length} account{vendor.accounts.length !== 1 ? 's' : ''}
                     </div>
                   )}
-                  {vendor.address && (
+                  {(vendor.address || vendor.addressLine2) && (
                     <div>
                       Address: {vendor.address}
+                      {vendor.addressLine2 && `, ${vendor.addressLine2}`}
                       {vendor.city && `, ${vendor.city}`}
                       {vendor.state && `, ${vendor.state}`}
                       {vendor.zip && ` ${vendor.zip}`}
@@ -292,148 +248,12 @@ export default function VendorsPage() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 New Vendor
               </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone
-                    </label>
-                    <PhoneInput
-                      value={formData.phone}
-                      onChange={(value) => setFormData({ ...formData, phone: value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.website}
-                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ZIP
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.zip}
-                      onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.country}
-                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    rows={3}
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    Create
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCreateModalOpen(false)
-                      setFormData({
-                        name: '',
-                        email: '',
-                        phone: '',
-                        address: '',
-                        city: '',
-                        state: '',
-                        zip: '',
-                        country: 'USA',
-                        website: '',
-                        description: '',
-                      })
-                    }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+              <VendorEditForm
+                vendor={null}
+                onSave={handleCreateVendor}
+                onCancel={() => setIsCreateModalOpen(false)}
+                isSaving={isSaving}
+              />
             </div>
           </div>
         )}

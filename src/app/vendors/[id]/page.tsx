@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
+import VendorEditForm, { VendorFormData } from '@/components/VendorEditForm'
 import { Vendor, VendorAccount, AccountType } from '@/types'
-import { ArrowLeft, Plus, Edit, Trash2, Building2, CreditCard } from 'lucide-react'
+import { ArrowLeft, Plus, Edit, Trash2, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { useSocket } from '@/components/SocketProvider'
 import { SocketEvents } from '@/lib/socketio-server'
-import { formatPhoneForDisplay } from '@/lib/phone-formatting'
 
 export default function VendorDetailsPage() {
   const { data: session } = useSession()
@@ -22,6 +22,7 @@ export default function VendorDetailsPage() {
   const [accounts, setAccounts] = useState<VendorAccount[]>([])
   const [accountTypes, setAccountTypes] = useState<AccountType[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<VendorAccount | null>(null)
@@ -223,6 +224,32 @@ export default function VendorDetailsPage() {
     }
   }
 
+  const handleSaveVendor = async (formData: VendorFormData) => {
+    setIsSaving(true)
+
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (response.ok) {
+        toast.success('Vendor updated successfully')
+        await fetchVendor()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to update vendor')
+      }
+    } catch (error) {
+      toast.error('Failed to update vendor')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const openEditAccountModal = (account: VendorAccount) => {
     setEditingAccount(account)
     setAccountFormData({
@@ -278,61 +305,15 @@ export default function VendorDetailsPage() {
           Back to Vendors
         </Link>
 
-        {/* Vendor Info */}
+        {/* Vendor Edit Form */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <Building2 className="w-8 h-8 text-gray-400 mr-3" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{vendor.name}</h1>
-                {vendor.description && (
-                  <p className="text-gray-600 mt-1">{vendor.description}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {vendor.email && (
-              <div>
-                <span className="text-sm font-medium text-gray-500">Email</span>
-                <p className="text-gray-900">{vendor.email}</p>
-              </div>
-            )}
-            {vendor.phone && (
-              <div>
-                <span className="text-sm font-medium text-gray-500">Phone</span>
-                <p className="text-gray-900">{formatPhoneForDisplay(vendor.phone)}</p>
-              </div>
-            )}
-            {vendor.address && (
-              <div className="md:col-span-2">
-                <span className="text-sm font-medium text-gray-500">Address</span>
-                <p className="text-gray-900">
-                  {vendor.address}
-                  {vendor.city && `, ${vendor.city}`}
-                  {vendor.state && `, ${vendor.state}`}
-                  {vendor.zip && ` ${vendor.zip}`}
-                  {vendor.country && `, ${vendor.country}`}
-                </p>
-              </div>
-            )}
-            {vendor.website && (
-              <div>
-                <span className="text-sm font-medium text-gray-500">Website</span>
-                <p className="text-gray-900">
-                  <a
-                    href={vendor.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-600 hover:text-primary-700"
-                  >
-                    {vendor.website}
-                  </a>
-                </p>
-              </div>
-            )}
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Vendor</h2>
+          <VendorEditForm
+            vendor={vendor}
+            onSave={handleSaveVendor}
+            onCancel={() => router.push('/vendors')}
+            isSaving={isSaving}
+          />
         </div>
 
         {/* Accounts Section */}

@@ -79,13 +79,14 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
             </div>
           )}
 
-          {(vendor.address || vendor.city || vendor.state || vendor.zip) && (
+          {(vendor.address || vendor.addressLine2 || vendor.city || vendor.state || vendor.zip) && (
             <div className="flex items-start text-gray-700">
               <MapPin className="w-5 h-5 mr-3 text-gray-400 mt-1" />
               <div>
                 <div className="text-sm text-gray-500">Address</div>
                 <div className="font-semibold">
                   {vendor.address && <div>{vendor.address}</div>}
+                  {vendor.addressLine2 && <div>{vendor.addressLine2}</div>}
                   {(vendor.city || vendor.state || vendor.zip) && (
                     <div>
                       {vendor.city && vendor.city}

@@ -80,6 +80,7 @@ model Vendor {
   email       String?
   phone       String?
   address     String?
+  addressLine2 String?
   city        String?
   state       String?
   zip         String?
