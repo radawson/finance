@@ -354,14 +354,7 @@ export default function BillEditForm({
             <select
               value={(() => {
                 if (!formData.vendorId) return ''
-                // Check if vendor has exactly one account
-                const vendor = vendors.find(v => v.id === formData.vendorId)
-                const accounts = vendor?.accounts || []
-                if (accounts.length === 1 && formData.vendorAccountId === accounts[0].id) {
-                  // Single account vendor - use just vendor ID to match option value
-                  return formData.vendorId
-                }
-                // Multiple accounts or no account - use vendor:account format or just vendor ID
+                // Use vendor:account format when both are set, otherwise just vendor ID
                 return formData.vendorId && formData.vendorAccountId 
                   ? `${formData.vendorId}:${formData.vendorAccountId}` 
                   : formData.vendorId
@@ -372,20 +365,13 @@ export default function BillEditForm({
                   setFormData({ ...formData, vendorId: '', vendorAccountId: '' })
                   return
                 }
-                // Check if value contains account separator
+                // Parse vendor:account format or just vendor ID
                 if (value.includes(':')) {
                   const [vendorId, accountId] = value.split(':')
                   setFormData({ ...formData, vendorId, vendorAccountId: accountId })
                 } else {
-                  // Vendor selected - check if it has exactly one account
-                  const vendor = vendors.find(v => v.id === value)
-                  const accounts = vendor?.accounts || []
-                  if (accounts.length === 1) {
-                    // Auto-select the single account
-                    setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id })
-                  } else {
-                    setFormData({ ...formData, vendorId: value, vendorAccountId: '' })
-                  }
+                  // Vendor with no accounts - just set vendor ID
+                  setFormData({ ...formData, vendorId: value, vendorAccountId: '' })
                 }
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -401,9 +387,9 @@ export default function BillEditForm({
                     </option>
                   )
                 } else if (accounts.length === 1) {
-                  // Single account - show vendor name (will auto-select account)
+                  // Single account - show vendor name, but value includes account for consistency
                   return (
-                    <option key={vendor.id} value={vendor.id}>
+                    <option key={`${vendor.id}:${accounts[0].id}`} value={`${vendor.id}:${accounts[0].id}`}>
                       {vendor.name}
                     </option>
                   )
