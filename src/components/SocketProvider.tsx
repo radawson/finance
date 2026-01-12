@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
+import { useSession } from 'next-auth/react'
 
 interface SocketContextType {
   socket: Socket | null
@@ -18,6 +19,7 @@ export function useSocket() {
 }
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession()
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
 
@@ -59,6 +61,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       socketInstance.disconnect()
     }
   }, [])
+
+  // Join user room when authenticated
+  useEffect(() => {
+    if (socket && isConnected && session?.user?.id) {
+      socket.emit('join-user', session.user.id)
+      console.log(`[Socket.IO] Joined user room: user:${session.user.id}`)
+
+      return () => {
+        socket.emit('leave-user', session.user.id)
+      }
+    }
+  }, [socket, isConnected, session?.user?.id])
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

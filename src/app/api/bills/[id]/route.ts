@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
 import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
+import { emitToBill, emitToUser, SocketEvents } from '@/lib/socketio-server'
 
 const updateBillSchema = z.object({
   title: z.string().min(1).optional(),
@@ -210,6 +211,21 @@ export async function PATCH(
       status = calculateBillStatus(dueDate, paidDate, existingBill.status)
     }
 
+    // Track changes for notifications
+    const changedFields: string[] = []
+    if (data.title && data.title !== existingBill.title) changedFields.push('title')
+    if (data.amount !== undefined && Number(data.amount) !== Number(existingBill.amount)) changedFields.push('amount')
+    if (data.dueDate && new Date(data.dueDate).getTime() !== existingBill.dueDate.getTime()) changedFields.push('dueDate')
+    if (data.status && data.status !== existingBill.status) changedFields.push('status')
+    if (data.description !== undefined && data.description !== existingBill.description) changedFields.push('description')
+    if (data.vendorId !== undefined && data.vendorId !== existingBill.vendorId) changedFields.push('vendor')
+    if (data.invoiceNumber !== undefined && data.invoiceNumber !== existingBill.invoiceNumber) changedFields.push('invoiceNumber')
+
+    // Check if bill is being assigned (createdById changes from null to a user ID)
+    // When an unassigned bill (createdById = null) is edited by an authenticated user,
+    // it gets assigned to that user
+    const isBeingAssigned = existingBill.createdById === null && session.user.id !== null
+
     // Update bill
     const bill = await prisma.bill.update({
       where: { id },
@@ -227,6 +243,7 @@ export async function PATCH(
         }),
         ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
         ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
+        ...(isBeingAssigned && { createdById: session.user.id }),
       },
       include: {
         category: true,
@@ -246,6 +263,62 @@ export async function PATCH(
         recurrencePattern: true,
       },
     })
+
+    // Emit WebSocket event for silent UI update (to bill room)
+    emitToBill(id, SocketEvents.BILL_UPDATED, {
+      bill,
+      changedBy: {
+        id: session.user.id,
+        name: session.user.name,
+      },
+    })
+
+    // Create notifications if bill was changed by someone other than the owner
+    const billOwnerId = bill.createdById
+    const changedByDifferentUser = billOwnerId && billOwnerId !== session.user.id
+
+    if (changedByDifferentUser && changedFields.length > 0) {
+      // Create notification for bill owner
+      const changedFieldsText = changedFields.join(', ')
+      const notification = await prisma.notification.create({
+        data: {
+          userId: billOwnerId,
+          type: 'bill_updated',
+          title: 'Bill Updated',
+          message: `${session.user.name} updated ${changedFieldsText} on bill "${bill.title}"`,
+          billId: bill.id,
+        },
+      })
+
+      // Emit notification to user's room with bill title
+      emitToUser(billOwnerId, SocketEvents.NOTIFICATION_NEW, {
+        ...notification,
+        billTitle: bill.title,
+        createdBy: {
+          id: session.user.id,
+          name: session.user.name,
+        },
+      })
+    }
+
+    // Create notification if bill was assigned
+    if (isBeingAssigned && session.user.id) {
+      const notification = await prisma.notification.create({
+        data: {
+          userId: session.user.id,
+          type: 'bill_assigned',
+          title: 'Bill Assigned',
+          message: `Bill "${bill.title}" has been assigned to you`,
+          billId: bill.id,
+        },
+      })
+
+      // Emit notification to user's room with bill title
+      emitToUser(session.user.id, SocketEvents.NOTIFICATION_NEW, {
+        ...notification,
+        billTitle: bill.title,
+      })
+    }
 
     return NextResponse.json(bill)
   } catch (error) {
@@ -293,6 +366,9 @@ export async function DELETE(
     await prisma.bill.delete({
       where: { id },
     })
+
+    // Emit WebSocket event for silent UI update (to bill room)
+    emitToBill(id, SocketEvents.BILL_DELETED, { id })
 
     return NextResponse.json({ message: 'Bill deleted successfully' })
   } catch (error) {

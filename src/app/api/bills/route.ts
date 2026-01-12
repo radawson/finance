@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
 import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
+import { emitToAll, SocketEvents } from '@/lib/socketio-server'
 
 const billSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -202,6 +203,15 @@ export async function POST(req: NextRequest) {
             email: true,
           },
         },
+      },
+    })
+
+    // Emit WebSocket event for silent UI update (to all authenticated users)
+    emitToAll(SocketEvents.BILL_CREATED, {
+      bill,
+      createdBy: {
+        id: session.user.id,
+        name: session.user.name,
       },
     })
 

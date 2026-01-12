@@ -240,3 +240,16 @@ export interface VendorTrendsResponse {
   period: AnalysisPeriod
   vendors: VendorTrendData[]
 }
+
+export interface Notification {
+  id: string
+  type: 'bill_assigned' | 'bill_updated' | 'bill_comment' | 'bill_attachment'
+  title: string
+  message: string
+  billId?: string | null
+  billTitle?: string
+  createdBy?: { id: string; name: string }
+  read: boolean
+  createdAt: Date
+  user?: User
+}

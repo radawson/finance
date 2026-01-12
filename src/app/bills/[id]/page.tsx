@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -10,6 +10,9 @@ import { ArrowLeft, Save, X, ChevronDown, ChevronUp } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { useSocket } from '@/components/SocketProvider'
+import { SocketEvents } from '@/lib/socketio-server'
+import { addTemporaryClass } from '@/lib/visual-feedback'
 
 export default function BillDetailPage() {
   const { data: session } = useSession()
@@ -44,6 +47,9 @@ export default function BillDetailPage() {
     endDate: '',
   })
 
+  const { socket, isConnected } = useSocket()
+  const billFormRef = useRef<HTMLFormElement>(null)
+
   useEffect(() => {
     if (session && billId) {
       fetchBill()
@@ -51,6 +57,50 @@ export default function BillDetailPage() {
       fetchVendors()
     }
   }, [session, billId])
+
+  // WebSocket: Join bill room and listen for updates
+  useEffect(() => {
+    if (!socket || !isConnected || !billId) return
+
+    // Join bill room
+    socket.emit('join', `bill:${billId}`)
+
+    // Listen for bill updates (silent UI update)
+    const handleBillUpdated = (data: { bill: Bill; changedBy: { id: string; name: string } }) => {
+      // Only update if changed by someone else (not the current user)
+      if (data.changedBy.id !== session?.user?.id) {
+        setBill(data.bill)
+        
+        // Update form data
+        const dueDate = new Date(data.bill.dueDate)
+        setFormData((prev) => ({
+          ...prev,
+          title: data.bill.title,
+          amount: Number(data.bill.amount).toFixed(2),
+          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          categoryId: data.bill.categoryId,
+          vendorId: data.bill.vendorId || '',
+          vendorAccountId: data.bill.vendorAccountId || '',
+          description: data.bill.description || '',
+          status: data.bill.status,
+          paidDate: data.bill.paidDate ? format(new Date(data.bill.paidDate), 'yyyy-MM-dd') : '',
+          invoiceNumber: data.bill.invoiceNumber || '',
+        }))
+
+        // Visual feedback: flash the form
+        if (billFormRef.current) {
+          addTemporaryClass(billFormRef.current, 'flash-highlight', 1000)
+        }
+      }
+    }
+
+    socket.on(SocketEvents.BILL_UPDATED, handleBillUpdated)
+
+    return () => {
+      socket.emit('leave', `bill:${billId}`)
+      socket.off(SocketEvents.BILL_UPDATED, handleBillUpdated)
+    }
+  }, [socket, isConnected, billId, session?.user?.id])
 
   // Add bill's vendor to vendors list after both bill and vendors are loaded
   useEffect(() => {
@@ -388,7 +438,7 @@ export default function BillDetailPage() {
         {/* Edit Form */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Bill</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form ref={billFormRef} onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Title *

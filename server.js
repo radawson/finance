@@ -75,7 +75,7 @@ app.prepare().then(() => {
       console.log(`[Socket.IO] Socket ${socket.id} left ${room}`)
     })
 
-    // Generic join handler for any room (bills, vendors, etc.)
+    // Generic join handler for any room (bills, vendors, users, etc.)
     socket.on('join', (room) => {
       socket.join(room)
       console.log(`[Socket.IO] Socket ${socket.id} joined ${room}`)
@@ -83,6 +83,21 @@ app.prepare().then(() => {
 
     // Generic leave handler for any room
     socket.on('leave', (room) => {
+      socket.leave(room)
+      console.log(`[Socket.IO] Socket ${socket.id} left ${room}`)
+    })
+
+    // Join user room (for notifications)
+    // Client should emit 'join-user' with userId after authentication
+    socket.on('join-user', (userId) => {
+      const room = `user:${userId}`
+      socket.join(room)
+      console.log(`[Socket.IO] Socket ${socket.id} joined ${room}`)
+    })
+
+    // Leave user room
+    socket.on('leave-user', (userId) => {
+      const room = `user:${userId}`
       socket.leave(room)
       console.log(`[Socket.IO] Socket ${socket.id} left ${room}`)
     })

@@ -77,12 +77,48 @@ export function emitToAdmins(event: string, data: any): void {
 }
 
 /**
+ * Emit an event to a specific user's personal room
+ * Note: Users automatically join their user:{userId} room on connection
+ * @param userId - The user ID
+ * @param event - The event name
+ * @param data - The data to emit
+ */
+export function emitToUser(userId: string, event: string, data: any): void {
+  const io = getSocketIO()
+  if (io) {
+    const room = `user:${userId}`
+    io.to(room).emit(event, data)
+    console.log(`[Socket.IO] Emitted '${event}' to ${room}`)
+  }
+}
+
+/**
  * Check if Socket.IO server is available
  * @returns true if Socket.IO is initialized
  */
 export function isSocketIOAvailable(): boolean {
   return getSocketIO() !== null
 }
+
+/**
+ * WebSocket Event Strategy:
+ * 
+ * SILENT UI UPDATES (Room-based):
+ * - Use WebSocket for silent UI updates only (no toasts)
+ * - Target specific rooms (bill:{billId}, vendor:{vendorId})
+ * - Only users viewing that specific resource get updates
+ * - User who makes change gets toast from API response (not WebSocket)
+ * 
+ * NOTIFICATIONS (User-based):
+ * - For important events that need user attention
+ * - Emit to user:{userId} room
+ * - Creates notification in database
+ * - User can review in Notification Center
+ * 
+ * Pattern:
+ * - bill:updated → bill:{billId} room (silent UI update for viewers)
+ * - notification:new → user:{userId} room (notification for bill owner)
+ */
 
 // Export event types for consistency
 export const SocketEvents = {
@@ -97,6 +133,7 @@ export const SocketEvents = {
   VENDOR_ACCOUNT_DELETED: 'vendor:account:deleted',
   COMMENT_ADDED: 'comment:added',
   ATTACHMENT_ADDED: 'attachment:added',
+  NOTIFICATION_NEW: 'notification:new',
 } as const
 
 export type SocketEventType = typeof SocketEvents[keyof typeof SocketEvents]

@@ -44,5 +44,34 @@
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
   }
+
+  /* Visual feedback animations for WebSocket updates */
+  .flash-highlight {
+    animation: flashHighlight 1s ease-in-out;
+  }
+
+  .change-highlight {
+    animation: changeHighlight 1.5s ease-in-out;
+  }
+
+  @keyframes flashHighlight {
+    0%, 100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: rgba(59, 130, 246, 0.2);
+    }
+  }
+
+  @keyframes changeHighlight {
+    0%, 100% {
+      background-color: transparent;
+      border-color: transparent;
+    }
+    50% {
+      background-color: rgba(59, 130, 246, 0.1);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+  }
 }
 

@@ -29,5 +29,6 @@ export enum SocketEvent {
   VENDOR_ACCOUNT_DELETED = 'vendor:account:deleted',
   COMMENT_ADDED = 'comment:added',
   ATTACHMENT_ADDED = 'attachment:added',
+  NOTIFICATION_NEW = 'notification:new',
 }
 

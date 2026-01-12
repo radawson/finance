@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard, BarChart3 } from 'lucide-react'
+import NotificationCenter from './NotificationCenter'
 
 export default function Navbar() {
   const { data: session } = useSession()
@@ -82,6 +83,7 @@ export default function Navbar() {
               </Link>
             )}
             <div className="flex items-center gap-3 border-l border-gray-300 pl-4">
+              <NotificationCenter />
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{session.user.name}</p>
                 <p className="text-xs text-gray-500">{session.user.role}</p>
