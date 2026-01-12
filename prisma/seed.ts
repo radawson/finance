@@ -208,6 +208,7 @@ async function main() {
     { name: 'Housing', description: 'Housing and utilities', color: '#3498DB' },
     { name: 'Insurance', description: 'Insurance premiums', color: '#8E44AD' },
     { name: 'Internet', description: 'Internet service provider bills', color: '#2980B9' },
+    { name: 'Landscaping', description: 'Landscape and Property Maintenance', color: '#82C1E9' },
     { name: 'Laundry', description: 'Laundry and dry cleaning', color: '#85C1E9' },
     { name: 'Loan', description: 'Loan payments', color: '#C0392B' },
     { name: 'Maintenance', description: 'Maintenance and repairs', color: '#27AE60' },
