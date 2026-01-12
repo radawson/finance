@@ -75,6 +75,18 @@ app.prepare().then(() => {
       console.log(`[Socket.IO] Socket ${socket.id} left ${room}`)
     })
 
+    // Generic join handler for any room (bills, vendors, etc.)
+    socket.on('join', (room) => {
+      socket.join(room)
+      console.log(`[Socket.IO] Socket ${socket.id} joined ${room}`)
+    })
+
+    // Generic leave handler for any room
+    socket.on('leave', (room) => {
+      socket.leave(room)
+      console.log(`[Socket.IO] Socket ${socket.id} left ${room}`)
+    })
+
     // Handle disconnection
     socket.on('disconnect', (reason) => {
       console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`)

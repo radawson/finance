@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
+import { emitToVendor } from '@/lib/socketio-server'
+import { SocketEvents } from '@/lib/socketio-server'
 
 const updateVendorAccountSchema = z.object({
   accountNumber: z.string().min(1).optional(),
@@ -88,6 +90,9 @@ export async function PATCH(
       },
     })
 
+    // Emit WebSocket event for real-time updates
+    emitToVendor(id, SocketEvents.VENDOR_ACCOUNT_UPDATED, updatedAccount)
+
     return NextResponse.json(updatedAccount)
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -167,7 +172,13 @@ export async function DELETE(
     const updatedAccount = await prisma.vendorAccount.update({
       where: { id: accountId },
       data: { isActive: false },
+      include: {
+        type: true,
+      },
     })
+
+    // Emit WebSocket event for real-time updates
+    emitToVendor(id, SocketEvents.VENDOR_ACCOUNT_DELETED, { id: accountId, vendorId: id })
 
     return NextResponse.json({ message: 'Account deleted successfully' })
   } catch (error) {

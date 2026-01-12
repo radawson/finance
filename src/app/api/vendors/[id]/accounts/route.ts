@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
+import { emitToVendor } from '@/lib/socketio-server'
+import { SocketEvents } from '@/lib/socketio-server'
 
 const vendorAccountSchema = z.object({
   accountNumber: z.string().min(1, 'Account number is required'),
@@ -38,31 +40,12 @@ export async function GET(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Vendors are global - any authenticated user can view vendor accounts
-    // Filter accounts to only show those used in bills created by this user
-    // (since VendorAccount doesn't have createdById, we use bill ownership as proxy)
-    const userAccountIds = await prisma.bill.findMany({
-      where: {
-        createdById: session.user.id,
-        vendorAccountId: {
-          not: null,
-        },
-      },
-      select: {
-        vendorAccountId: true,
-      },
-      distinct: ['vendorAccountId'],
-    })
-    const accountIds = userAccountIds
-      .map((b) => b.vendorAccountId)
-      .filter((id): id is string => id !== null)
-
+    // Vendors are global - any authenticated user can view all vendor accounts
+    // Show all active accounts for the vendor (users can see all accounts, but can only edit/delete accounts they've used in bills)
     const accounts = await prisma.vendorAccount.findMany({
       where: {
         vendorId: id,
         isActive: true,
-        // Only show accounts used in bills by this user
-        ...(accountIds.length > 0 ? { id: { in: accountIds } } : { id: { in: [] } }),
       },
       include: {
         type: true,
@@ -127,6 +110,9 @@ export async function POST(
         type: true,
       },
     })
+
+    // Emit WebSocket event for real-time updates
+    emitToVendor(id, SocketEvents.VENDOR_ACCOUNT_CREATED, account)
 
     return NextResponse.json(account, { status: 201 })
   } catch (error) {

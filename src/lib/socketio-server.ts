@@ -35,6 +35,21 @@ export function emitToBill(billId: string, event: string, data: any): void {
 }
 
 /**
+ * Emit an event to a specific vendor room
+ * @param vendorId - The vendor ID
+ * @param event - The event name
+ * @param data - The data to emit
+ */
+export function emitToVendor(vendorId: string, event: string, data: any): void {
+  const io = getSocketIO()
+  if (io) {
+    const room = `vendor:${vendorId}`
+    io.to(room).emit(event, data)
+    console.log(`[Socket.IO] Emitted '${event}' to ${room}`)
+  }
+}
+
+/**
  * Emit an event to all connected clients
  * @param event - The event name
  * @param data - The data to emit
@@ -77,6 +92,9 @@ export const SocketEvents = {
   BILL_STATUS_CHANGED: 'bill:status-changed',
   VENDOR_CREATED: 'vendor:created',
   VENDOR_UPDATED: 'vendor:updated',
+  VENDOR_ACCOUNT_CREATED: 'vendor:account:created',
+  VENDOR_ACCOUNT_UPDATED: 'vendor:account:updated',
+  VENDOR_ACCOUNT_DELETED: 'vendor:account:deleted',
   COMMENT_ADDED: 'comment:added',
   ATTACHMENT_ADDED: 'attachment:added',
 } as const

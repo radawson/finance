@@ -32,7 +32,10 @@ const updateVendorSchema = z.object({
 
 /**
  * GET /api/vendors/[id]
- * Get a single vendor by ID
+ * Get a single vendor by ID with accounts
+ * Requires authentication
+ * Returns full vendor information including accounts
+ * For public access (no accounts), use /api/vendors/public/[id]
  */
 export async function GET(
   req: NextRequest,
@@ -79,33 +82,10 @@ export async function GET(
     }
 
     // Vendors are global - any authenticated user can view any vendor
-    // Filter accounts to only show those used in bills created by this user
-    // (since VendorAccount doesn't have createdById, we use bill ownership as proxy)
-    const userAccountIds = await prisma.bill.findMany({
-      where: {
-        createdById: session.user.id,
-        vendorAccountId: {
-          not: null,
-        },
-      },
-      select: {
-        vendorAccountId: true,
-      },
-      distinct: ['vendorAccountId'],
-    })
-    const accountIds = userAccountIds
-      .map((b) => b.vendorAccountId)
-      .filter((id): id is string => id !== null)
+    // Show all active accounts for the vendor (users can see all accounts, but can only edit/delete accounts they've used in bills)
+    // No filtering needed - return vendor with all accounts
 
-    // Filter accounts in the response
-    const vendorWithFilteredAccounts = {
-      ...vendor,
-      accounts: vendor.accounts.filter(
-        (account) => accountIds.length === 0 || accountIds.includes(account.id)
-      ),
-    }
-
-    return NextResponse.json(vendorWithFilteredAccounts)
+    return NextResponse.json(vendor)
   } catch (error) {
     console.error('Get vendor error:', error)
     return NextResponse.json(

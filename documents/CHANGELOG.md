@@ -30,11 +30,16 @@ All notable changes to Kontado will be documented in this file.
 - Added `/api/analysis/history` endpoint for historic bills analysis
 - Added `/api/analysis/budget` endpoint for budget predictions
 - Added `/api/analysis/vendor-trends` endpoint for vendor spending trends
-- Added `/api/vendors/public` endpoint for anonymous vendor name lookup
+- **Vendor API Endpoints**:
+  - `/api/vendors/public` - Public endpoint for vendor list (id, name only, no accounts)
+  - `/api/vendors/public/[id]` - Public endpoint for single vendor (id, name only, no accounts)
+  - `/api/vendors` - Authenticated endpoint for vendor list with accounts (filtered by user's bill ownership)
+  - `/api/vendors/[id]` - Authenticated endpoint for single vendor with all accounts
 - Database schema updated to include `invoiceNumber` field on `Bill` model
 - Type definitions updated to include `invoiceNumber` in `Bill` interface
 - Vendor API routes updated to remove ownership-based authorization checks
 - Vendor account filtering now based on bill ownership (proxy for account ownership)
+- Real-time WebSocket updates for vendor accounts (created/updated/deleted events)
 
 ## Notes
 - Historical pattern analysis for bills without explicit recurrence is planned for future implementation

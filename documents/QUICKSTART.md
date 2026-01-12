@@ -231,6 +231,16 @@ node create-admin.js
 - Vendor accounts remain private to each user (filtered by bill ownership)
 - Anonymous users can view vendor names but not account numbers
 
+**Vendor API Endpoints:**
+- **Public Endpoints** (no authentication required):
+  - `GET /api/vendors/public` - Returns list of vendors (id, name only)
+  - `GET /api/vendors/public/[id]` - Returns single vendor (id, name only)
+  - Both exclude accounts and sensitive information
+- **Authenticated Endpoints** (requires login):
+  - `GET /api/vendors` - Returns all vendors with accounts (filtered by user's bill ownership)
+  - `GET /api/vendors/[id]` - Returns single vendor with all active accounts
+  - Both include full vendor information and accounts
+
 **Unassigned Bills:**
 - Bills created without a user account (anonymous entry) are "unassigned"
 - All users can view and edit unassigned bills

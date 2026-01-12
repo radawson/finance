@@ -29,6 +29,13 @@ const vendorSchema = z.object({
   description: z.string().optional().nullable(),
 })
 
+/**
+ * GET /api/vendors
+ * Get all vendors with accounts (filtered by user's bill ownership)
+ * Requires authentication
+ * Returns all vendors with accounts that the user has used in their bills
+ * For public access (no accounts), use /api/vendors/public
+ */
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

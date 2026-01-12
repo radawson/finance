@@ -8,6 +8,8 @@ import { Vendor, VendorAccount, AccountType } from '@/types'
 import { ArrowLeft, Plus, Edit, Trash2, Building2, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { useSocket } from '@/components/SocketProvider'
+import { SocketEvents } from '@/lib/socketio-server'
 
 export default function VendorDetailsPage() {
   const { data: session } = useSession()
@@ -32,6 +34,8 @@ export default function VendorDetailsPage() {
     name: '',
   })
 
+  const { socket, isConnected } = useSocket()
+
   useEffect(() => {
     if (session && vendorId) {
       fetchVendor()
@@ -39,6 +43,50 @@ export default function VendorDetailsPage() {
       fetchAccountTypes()
     }
   }, [session, vendorId])
+
+  // Listen for WebSocket events for real-time updates
+  useEffect(() => {
+    if (!socket || !isConnected || !vendorId) return
+
+    // Join vendor room
+    socket.emit('join', `vendor:${vendorId}`)
+
+    // Listen for account events
+    const handleAccountCreated = (account: VendorAccount) => {
+      if (account.vendorId === vendorId) {
+        setAccounts((prev) => [account, ...prev])
+        // No toast - user who created it already got feedback from API call
+        // This is for real-time updates for other users viewing the same vendor
+      }
+    }
+
+    const handleAccountUpdated = (account: VendorAccount) => {
+      if (account.vendorId === vendorId) {
+        setAccounts((prev) =>
+          prev.map((acc) => (acc.id === account.id ? account : acc))
+        )
+        // No toast - user who updated it already got feedback from API call
+      }
+    }
+
+    const handleAccountDeleted = (data: { id: string; vendorId: string }) => {
+      if (data.vendorId === vendorId) {
+        setAccounts((prev) => prev.filter((acc) => acc.id !== data.id))
+        // No toast - user who deleted it already got feedback from API call
+      }
+    }
+
+    socket.on(SocketEvents.VENDOR_ACCOUNT_CREATED, handleAccountCreated)
+    socket.on(SocketEvents.VENDOR_ACCOUNT_UPDATED, handleAccountUpdated)
+    socket.on(SocketEvents.VENDOR_ACCOUNT_DELETED, handleAccountDeleted)
+
+    return () => {
+      socket.emit('leave', `vendor:${vendorId}`)
+      socket.off(SocketEvents.VENDOR_ACCOUNT_CREATED, handleAccountCreated)
+      socket.off(SocketEvents.VENDOR_ACCOUNT_UPDATED, handleAccountUpdated)
+      socket.off(SocketEvents.VENDOR_ACCOUNT_DELETED, handleAccountDeleted)
+    }
+  }, [socket, isConnected, vendorId])
 
   const fetchVendor = async () => {
     try {

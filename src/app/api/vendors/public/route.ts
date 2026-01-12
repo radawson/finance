@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 /**
+ * GET /api/vendors/public
  * Public endpoint to get vendor names (without account numbers or sensitive data)
  * Returns vendors that have been used in bills, including anonymous bills
  * No authentication required
- * Accounts are NOT included - only logged-in users can view accounts
+ * Accounts are NOT included - only logged-in users can view accounts via /api/vendors/[id]
+ * For a single vendor, use /api/vendors/public/[id]
  */
 export async function GET(req: NextRequest) {
   try {
