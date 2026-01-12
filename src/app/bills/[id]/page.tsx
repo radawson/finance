@@ -5,8 +5,9 @@ import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
+import CategoryModal from '@/components/CategoryModal'
 import { Bill, Category, Vendor, VendorAccount, BillStatus, RecurrenceFrequencyEnum } from '@/types'
-import { ArrowLeft, Save, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Save, X, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -46,6 +47,7 @@ export default function BillDetailPage() {
     startDate: '',
     endDate: '',
   })
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
 
   const { socket, isConnected } = useSocket()
   const billFormRef = useRef<HTMLFormElement>(null)
@@ -504,19 +506,31 @@ export default function BillDetailPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category *
                 </label>
-                <select
-                  required
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">Select a category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    required
+                    value={formData.categoryId}
+                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCategoryModalOpen(true)
+                    }}
+                    className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    title="Create new category"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -788,6 +802,19 @@ export default function BillDetailPage() {
             </div>
           </form>
         </div>
+
+        {/* Category Creation Modal */}
+        <CategoryModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => {
+            setIsCategoryModalOpen(false)
+          }}
+          onSuccess={async (newCategory) => {
+            // Refresh categories and select the new one
+            await fetchCategories()
+            setFormData(prev => ({ ...prev, categoryId: newCategory.id }))
+          }}
+        />
       </main>
     </div>
   )

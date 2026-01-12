@@ -3,16 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
-import { AccountType } from '@/types'
-import { Plus, Edit, Trash2, CreditCard } from 'lucide-react'
+import CategoryModal from '@/components/CategoryModal'
+import { AccountType, Category } from '@/types'
+import { Plus, Edit, Trash2, CreditCard, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AccountTypesPage() {
   const { data: session } = useSession()
   const [accountTypes, setAccountTypes] = useState<AccountType[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [editingAccountType, setEditingAccountType] = useState<AccountType | null>(null)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -21,6 +25,7 @@ export default function AccountTypesPage() {
   useEffect(() => {
     if (session) {
       fetchAccountTypes()
+      fetchCategories()
     }
   }, [session])
 
@@ -37,6 +42,20 @@ export default function AccountTypesPage() {
       toast.error('Failed to load account types')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data)
+      } else {
+        toast.error('Failed to load categories')
+      }
+    } catch (error) {
+      toast.error('Failed to load categories')
     }
   }
 
@@ -103,6 +122,34 @@ export default function AccountTypesPage() {
     setIsModalOpen(true)
   }
 
+
+  const handleCategoryDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this category?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/categories/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Category deleted')
+        fetchCategories()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to delete category')
+      }
+    } catch (error) {
+      toast.error('Failed to delete category')
+    }
+  }
+
+  const openCategoryEditModal = (category: Category) => {
+    setEditingCategory(category)
+    setIsCategoryModalOpen(true)
+  }
+
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -123,21 +170,27 @@ export default function AccountTypesPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Account Types</h1>
-            <p className="mt-2 text-gray-600">Manage account types for vendor accounts</p>
+            <h1 className="text-3xl font-bold text-gray-900">Account Types & Categories</h1>
+            <p className="mt-2 text-gray-600">Manage account types for vendor accounts and bill categories</p>
           </div>
-          <button
-            onClick={() => {
-              setEditingAccountType(null)
-              setFormData({ name: '', description: '' })
-              setIsModalOpen(true)
-            }}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            New Account Type
-          </button>
         </div>
+
+        {/* Account Types Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Account Types</h2>
+            <button
+              onClick={() => {
+                setEditingAccountType(null)
+                setFormData({ name: '', description: '' })
+                setIsModalOpen(true)
+              }}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              New Account Type
+            </button>
+          </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
@@ -213,8 +266,124 @@ export default function AccountTypesPage() {
             </table>
           </div>
         )}
+        </div>
 
-        {/* Modal */}
+        {/* Categories Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Categories</h2>
+            <button
+              onClick={() => {
+                setEditingCategory(null)
+                setIsCategoryModalOpen(true)
+              }}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              New Category
+            </button>
+          </div>
+
+          {categories.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+              <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No categories yet</p>
+              <button
+                onClick={() => {
+                  setEditingCategory(null)
+                  setIsCategoryModalOpen(true)
+                }}
+                className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Create Your First Category
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {categories.map((category) => (
+                    <tr key={category.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {category.color && (
+                            <div
+                              className="w-4 h-4 rounded-full"
+                              style={{ backgroundColor: category.color }}
+                            />
+                          )}
+                          <div className="text-sm font-medium text-gray-900">{category.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-500">
+                          {category.description || <span className="text-gray-400">—</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {category.isGlobal ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Global
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              Personal
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-2">
+                          {!category.isGlobal && (
+                            <>
+                              <button
+                                onClick={() => openCategoryEditModal(category)}
+                                className="text-primary-600 hover:text-primary-900"
+                                title="Edit"
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleCategoryDelete(category.id)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </>
+                          )}
+                          {category.isGlobal && (
+                            <span className="text-xs text-gray-400">Global categories cannot be edited</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Account Type Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full my-8">
@@ -270,6 +439,19 @@ export default function AccountTypesPage() {
             </div>
           </div>
         )}
+
+        {/* Category Modal */}
+        <CategoryModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => {
+            setIsCategoryModalOpen(false)
+            setEditingCategory(null)
+          }}
+          category={editingCategory}
+          onSuccess={() => {
+            fetchCategories()
+          }}
+        />
       </main>
     </div>
   )
