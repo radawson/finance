@@ -221,7 +221,7 @@ export default function BillCalendarPage() {
                       <div
                         key={bill.id}
                         className={`text-xs px-2 py-1 rounded border truncate ${getStatusColor(bill.status)}`}
-                        title={`${bill.title} - $${bill.amount.toFixed(2)}`}
+                        title={`${bill.title} - $${Number(bill.amount).toFixed(2)}`}
                       >
                         {bill.title}
                       </div>
@@ -272,7 +272,7 @@ export default function BillCalendarPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="font-semibold text-gray-900">${bill.amount.toFixed(2)}</p>
+                          <p className="font-semibold text-gray-900">${Number(bill.amount).toFixed(2)}</p>
                         </div>
                         <BillStatusBadge status={bill.status} />
                       </div>
