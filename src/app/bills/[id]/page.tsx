@@ -117,7 +117,8 @@ export default function BillDetailPage() {
 
       // Get the updated bill to check for recurrence pattern
       const updatedBillData = await response.json()
-      const hasExistingRecurrence = updatedBillData?.recurrencePatternId !== null && updatedBillData?.recurrencePatternId !== undefined
+      // Check if recurrencePattern object actually exists, not just the ID (handles orphaned references)
+      const hasExistingRecurrence = updatedBillData?.recurrencePattern !== null && updatedBillData?.recurrencePattern !== undefined
 
       if (recurrenceData) {
         // Create or update recurrence pattern

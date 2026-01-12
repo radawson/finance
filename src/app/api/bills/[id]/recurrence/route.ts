@@ -154,9 +154,21 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Handle orphaned reference: if recurrencePatternId exists but pattern doesn't
     if (!bill.recurrencePattern) {
+      // If there's an orphaned reference, clear it first
+      if (bill.recurrencePatternId) {
+        await prisma.bill.update({
+          where: { id },
+          data: {
+            recurrencePatternId: null,
+            isRecurring: false,
+            nextDueDate: null,
+          },
+        })
+      }
       return NextResponse.json(
-        { error: 'Recurrence pattern not found' },
+        { error: 'Recurrence pattern not found. Please create a new pattern instead.' },
         { status: 404 }
       )
     }
@@ -259,17 +271,29 @@ export async function DELETE(
       )
     }
 
-    // Delete recurrence pattern (cascade will handle it, but we'll update bill first)
+    // Delete recurrence pattern first (if it exists), then update bill
+    // Handle case where pattern might already be deleted (orphaned reference)
+    try {
+      await prisma.recurrencePattern.delete({
+        where: { id: bill.recurrencePatternId },
+      })
+    } catch (error: any) {
+      // If pattern doesn't exist (P2025), that's okay - just clear the orphaned reference
+      if (error?.code === 'P2025') {
+        // Pattern already deleted, just continue to clear bill fields
+      } else {
+        throw error // Re-throw other errors
+      }
+    }
+
+    // Update bill to clear all recurrence-related fields
     await prisma.bill.update({
       where: { id },
       data: {
         isRecurring: false,
         nextDueDate: null,
+        recurrencePatternId: null, // Clear the orphaned reference
       },
-    })
-
-    await prisma.recurrencePattern.delete({
-      where: { id: bill.recurrencePatternId },
     })
 
     return NextResponse.json({ message: 'Recurrence pattern deleted successfully' })
