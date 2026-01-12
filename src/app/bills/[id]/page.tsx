@@ -59,15 +59,22 @@ export default function BillDetailPage() {
       if (!vendorExists) {
         // Add the vendor from the bill to the vendors list
         // Include accounts from vendorAccount if available
-        const vendorWithAccounts = {
+        const vendorWithAccounts: Vendor = {
           ...bill.vendor,
           accounts: bill.vendorAccount
             ? [
                 {
                   id: bill.vendorAccount.id,
-                  nickname: bill.vendorAccount.nickname,
-                  accountType: bill.vendorAccount.type?.name || bill.vendorAccount.accountType,
+                  vendorId: bill.vendorAccount.vendorId,
                   accountNumber: bill.vendorAccount.accountNumber,
+                  accountTypeId: bill.vendorAccount.accountTypeId || null,
+                  accountType: bill.vendorAccount.type?.name || bill.vendorAccount.accountType || null,
+                  nickname: bill.vendorAccount.nickname || null,
+                  notes: bill.vendorAccount.notes || null,
+                  isActive: bill.vendorAccount.isActive,
+                  createdAt: new Date(bill.vendorAccount.createdAt),
+                  updatedAt: new Date(bill.vendorAccount.updatedAt),
+                  type: bill.vendorAccount.type || null,
                 },
               ]
             : [],

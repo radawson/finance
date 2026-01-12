@@ -26,7 +26,7 @@ export default function VendorsPage() {
     city: '',
     state: '',
     zip: '',
-    country: '',
+    country: 'USA',
     website: '',
     description: '',
   })
@@ -76,7 +76,7 @@ export default function VendorsPage() {
           city: '',
           state: '',
           zip: '',
-          country: '',
+          country: 'USA',
           website: '',
           description: '',
         })
@@ -150,7 +150,7 @@ export default function VendorsPage() {
                 city: '',
                 state: '',
                 zip: '',
-                country: '',
+                country: 'USA',
                 website: '',
                 description: '',
               })
@@ -423,7 +423,7 @@ export default function VendorsPage() {
                         city: '',
                         state: '',
                         zip: '',
-                        country: '',
+                        country: 'USA',
                         website: '',
                         description: '',
                       })
