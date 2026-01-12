@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { Bill, Category, Vendor, BillStatus, RecurrenceFrequencyEnum } from '@/types'
-import { Save, X, Plus } from 'lucide-react'
+import { Save, Delete, X, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import CategoryModal from '@/components/CategoryModal'
@@ -32,6 +32,7 @@ interface BillEditFormProps {
   bill: Bill | null // null for new bills
   onSave: (formData: BillFormData, recurrenceData?: RecurrenceFormData) => Promise<void>
   onCancel: () => void
+  onDelete?: () => Promise<void> // Optional delete handler (only for existing bills)
   isSaving?: boolean
   title?: string // Optional custom title (defaults to "Edit Bill" or "Create New Bill")
 }
@@ -40,6 +41,7 @@ export default function BillEditForm({
   bill,
   onSave,
   onCancel,
+  onDelete,
   isSaving = false,
   title,
 }: BillEditFormProps) {
@@ -264,6 +266,22 @@ export default function BillEditForm({
     await onSave(formData, recurrenceDataToSend)
   }
 
+  const handleDelete = async () => {
+    if (!onDelete) return
+
+    // Confirm deletion
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${formData.title || bill?.title || 'this bill'}"? This action cannot be undone.`
+    )
+
+    if (!confirmed) return
+
+    try {
+      await onDelete()
+    } catch (error) {
+      // Error handling is done in the parent component
+    }
+  }
 
   const formTitle = title || (bill ? 'Edit Bill' : 'Create New Bill')
   const submitButtonText = bill ? (isSaving ? 'Saving...' : 'Save Changes') : (isSaving ? 'Creating...' : 'Create Bill')
@@ -592,6 +610,17 @@ export default function BillEditForm({
             <Save className="w-5 h-5 mr-2" />
             {submitButtonText}
           </button>
+          {bill && onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isSaving}
+              className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Delete className="w-5 h-5 mr-2" />
+              Delete
+            </button>
+          )}
           <button
             type="button"
             onClick={onCancel}

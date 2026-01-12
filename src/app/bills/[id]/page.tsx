@@ -188,6 +188,31 @@ export default function BillDetailPage() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!bill) return
+
+    try {
+      const response = await fetch(`/api/bills/${billId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast.error('You do not have permission to delete this bill')
+        } else {
+          const data = await response.json()
+          toast.error(data.error || 'Failed to delete bill')
+        }
+        return
+      }
+
+      toast.success('Bill deleted successfully')
+      router.push('/dashboard')
+    } catch (error) {
+      toast.error('Failed to delete bill')
+    }
+  }
+
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -262,6 +287,7 @@ export default function BillDetailPage() {
           bill={bill}
           onSave={handleSave}
           onCancel={() => router.push('/dashboard')}
+          onDelete={handleDelete}
           isSaving={isSaving}
         />
       </main>
