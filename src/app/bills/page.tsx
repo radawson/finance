@@ -744,6 +744,13 @@ export default function BillsPage() {
               setIsViewModalOpen(false)
               setViewingBill(null)
             }}
+            onUpdate={(updatedBill) => {
+              setViewingBill(updatedBill)
+              // Update the bill in the bills list
+              setBills((prev) =>
+                prev.map((b) => (b.id === updatedBill.id ? updatedBill : b))
+              )
+            }}
           />
         )}
 

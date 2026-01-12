@@ -207,6 +207,11 @@ export default function DashboardPage() {
               setIsModalOpen(false)
               setSelectedBill(null)
             }}
+            onUpdate={(updatedBill) => {
+              setSelectedBill(updatedBill)
+              // Refresh stats to update counts
+              fetchData()
+            }}
           />
         )}
 
