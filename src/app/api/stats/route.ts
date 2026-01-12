@@ -48,11 +48,12 @@ export async function GET(req: NextRequest) {
     const overdueBillsList = getOverdueBills(allBills)
 
     // Category breakdown
-    const categoryMap = new Map<string, { name: string; count: number; totalAmount: number }>()
+    const categoryMap = new Map<string, { name: string; color: string | null; count: number; totalAmount: number }>()
 
     allBills.forEach((bill) => {
       const categoryId = bill.categoryId
       const categoryName = bill.category.name
+      const categoryColor = bill.category.color
       const existing = categoryMap.get(categoryId)
 
       if (existing) {
@@ -61,6 +62,7 @@ export async function GET(req: NextRequest) {
       } else {
         categoryMap.set(categoryId, {
           name: categoryName,
+          color: categoryColor,
           count: 1,
           totalAmount: Number(bill.amount),
         })
@@ -69,7 +71,10 @@ export async function GET(req: NextRequest) {
 
     const categoryBreakdown = Array.from(categoryMap.entries()).map(([categoryId, data]) => ({
       categoryId,
-      ...data,
+      categoryName: data.name,
+      color: data.color,
+      count: data.count,
+      totalAmount: data.totalAmount,
     }))
 
     // Recent bills (last 10, ordered by created date)

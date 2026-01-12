@@ -179,6 +179,7 @@ export interface DashboardStats {
   categoryBreakdown: {
     categoryId: string
     categoryName: string
+    color: string | null
     count: number
     totalAmount: number
   }[]

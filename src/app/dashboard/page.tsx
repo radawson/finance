@@ -10,6 +10,7 @@ import { Bill, DashboardStats } from '@/types'
 import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import CategoryPieChart from '@/components/CategoryPieChart'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -168,22 +169,7 @@ export default function DashboardPage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Category Breakdown</h2>
             <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="space-y-4">
-                {stats.categoryBreakdown.map((category) => (
-                  <div key={category.categoryId} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 rounded-full bg-primary-500 mr-3"></div>
-                      <span className="font-medium text-gray-900">{category.categoryName}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">
-                        ${category.totalAmount.toFixed(2)}
-                      </div>
-                      <div className="text-sm text-gray-500">{category.count} bill{category.count !== 1 ? 's' : ''}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <CategoryPieChart data={stats.categoryBreakdown} size={240} />
             </div>
           </div>
         )}
