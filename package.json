@@ -1,7 +1,7 @@
 {
   "name": "kontado",
   "description": "Kontado is a platform for creating and managing monthly bills and expenses",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "scripts": {
     "dev": "node server.js",
@@ -13,6 +13,7 @@
     "version-minor": "npm version minor",
     "version-patch": "npm version patch",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:test": "tsx scripts/generate-test-data.ts",
     "db:update": "./scripts/update-db.sh deploy",
     "db:update:dev": "./scripts/update-db.sh dev",
     "db:update:seed": "./scripts/update-db.sh deploy --seed"

@@ -250,6 +250,23 @@ export default function BillDetailPage() {
     }
   }, [formData.vendorId])
 
+  // Auto-populate vendorAccountId when vendor has exactly one account
+  useEffect(() => {
+    if (formData.vendorId && !formData.vendorAccountId) {
+      // Check vendorAccounts first (from API)
+      if (vendorAccounts.length === 1) {
+        setFormData(prev => ({ ...prev, vendorAccountId: vendorAccounts[0].id }))
+        return
+      }
+      // Fallback: check vendors list (might have accounts from bill data)
+      const vendor = vendors.find(v => v.id === formData.vendorId)
+      const accounts = vendor?.accounts || []
+      if (accounts.length === 1) {
+        setFormData(prev => ({ ...prev, vendorAccountId: accounts[0].id }))
+      }
+    }
+  }, [formData.vendorId, vendorAccounts, vendors, formData.vendorAccountId])
+
   // Update recurrence defaults when due date changes (if recurrence is enabled but not yet configured)
   useEffect(() => {
     if (isRecurring && formData.dueDate && !bill?.recurrencePatternId) {
@@ -507,9 +524,20 @@ export default function BillDetailPage() {
                   Vendor
                 </label>
                 <select
-                  value={formData.vendorId && formData.vendorAccountId 
-                    ? `${formData.vendorId}:${formData.vendorAccountId}` 
-                    : formData.vendorId || ''}
+                  value={(() => {
+                    if (!formData.vendorId) return ''
+                    // Check if vendor has exactly one account
+                    const vendor = vendors.find(v => v.id === formData.vendorId)
+                    const accounts = vendor?.accounts || []
+                    if (accounts.length === 1 && formData.vendorAccountId === accounts[0].id) {
+                      // Single account vendor - use just vendor ID to match option value
+                      return formData.vendorId
+                    }
+                    // Multiple accounts or no account - use vendor:account format or just vendor ID
+                    return formData.vendorId && formData.vendorAccountId 
+                      ? `${formData.vendorId}:${formData.vendorAccountId}` 
+                      : formData.vendorId
+                  })()}
                   onChange={(e) => {
                     const value = e.target.value
                     if (!value) {

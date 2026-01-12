@@ -1,5 +1,5 @@
 import { Bill, PredictedBill } from '@/types'
-import { differenceInDays, isWithinInterval } from 'date-fns'
+import { differenceInDays, isWithinInterval, getMonth } from 'date-fns'
 
 /**
  * Determines if a bill matches a recurring bill template
@@ -51,12 +51,129 @@ export function isDateMatch(actualDate: Date, predictedDate: Date, toleranceDays
 }
 
 /**
- * Calculates enhanced amount using actual bill data
- * Uses average of actual bills, or detects trend if enough data points exist
+ * Linear regression analysis for trend detection
+ * Returns slope, intercept, and R² confidence score
  */
-export function calculateEnhancedAmount(actualBills: Bill[], baseAmount: number): number {
+function linearRegression(
+  bills: Array<{ date: Date; amount: number }>
+): { slope: number; intercept: number; rSquared: number } {
+  const n = bills.length
+  if (n < 2) {
+    return { slope: 0, intercept: bills[0]?.amount || 0, rSquared: 0 }
+  }
+
+  // Convert dates to numeric (days since first bill)
+  const firstDate = bills[0].date.getTime()
+  const xValues = bills.map((b) => (b.date.getTime() - firstDate) / (1000 * 60 * 60 * 24))
+  const yValues = bills.map((b) => b.amount)
+
+  // Calculate means
+  const xMean = xValues.reduce((sum, x) => sum + x, 0) / n
+  const yMean = yValues.reduce((sum, y) => sum + y, 0) / n
+
+  // Calculate slope and intercept using least squares
+  let numerator = 0
+  let denominator = 0
+
+  for (let i = 0; i < n; i++) {
+    const xDiff = xValues[i] - xMean
+    const yDiff = yValues[i] - yMean
+    numerator += xDiff * yDiff
+    denominator += xDiff * xDiff
+  }
+
+  const slope = denominator !== 0 ? numerator / denominator : 0
+  const intercept = yMean - slope * xMean
+
+  // Calculate R² (coefficient of determination)
+  let ssRes = 0 // Sum of squares of residuals
+  let ssTot = 0 // Total sum of squares
+
+  for (let i = 0; i < n; i++) {
+    const predicted = slope * xValues[i] + intercept
+    const residual = yValues[i] - predicted
+    ssRes += residual * residual
+    ssTot += (yValues[i] - yMean) * (yValues[i] - yMean)
+  }
+
+  const rSquared = ssTot !== 0 ? 1 - ssRes / ssTot : 0
+
+  return { slope, intercept, rSquared: Math.max(0, Math.min(1, rSquared)) }
+}
+
+/**
+ * Weighted moving average with exponential decay
+ * More recent bills are weighted more heavily
+ */
+function weightedMovingAverage(bills: Array<{ amount: number }>): number {
+  if (bills.length === 0) return 0
+  if (bills.length === 1) return bills[0].amount
+
+  // Generate weights with exponential decay (most recent = highest weight)
+  // For 4 bills: [0.4, 0.3, 0.2, 0.1]
+  const weights: number[] = []
+  const totalWeight = bills.length * (bills.length + 1) / 2 // Sum of 1+2+3+...+n
+  for (let i = 0; i < bills.length; i++) {
+    weights.push((bills.length - i) / totalWeight)
+  }
+
+  // Calculate weighted average
+  let weightedSum = 0
+  let weightSum = 0
+  for (let i = 0; i < bills.length; i++) {
+    weightedSum += bills[i].amount * weights[i]
+    weightSum += weights[i]
+  }
+
+  return weightSum > 0 ? weightedSum / weightSum : bills[0].amount
+}
+
+/**
+ * Seasonal average detection
+ * Groups bills by month and calculates average for that month across years
+ */
+function seasonalAverage(
+  bills: Array<{ date: Date; amount: number }>,
+  targetDate: Date,
+  allHistoricalBills: Bill[]
+): { amount: number; count: number } | null {
+  const targetMonth = getMonth(targetDate) // 0-11
+
+  // Find all bills in the same month across all years
+  const sameMonthBills = allHistoricalBills.filter((bill) => {
+    const billMonth = getMonth(new Date(bill.dueDate))
+    return billMonth === targetMonth
+  })
+
+  if (sameMonthBills.length < 2) {
+    return null // Need at least 2 years of data
+  }
+
+  // Check if we have bills from at least 2 different years
+  const years = new Set(sameMonthBills.map((b) => new Date(b.dueDate).getFullYear()))
+  if (years.size < 2) {
+    return null
+  }
+
+  const total = sameMonthBills.reduce((sum, bill) => sum + Number(bill.amount), 0)
+  return {
+    amount: total / sameMonthBills.length,
+    count: sameMonthBills.length,
+  }
+}
+
+/**
+ * Calculates enhanced amount using intelligent forecasting
+ * Uses linear regression for trends, weighted average as fallback, seasonal patterns when available
+ */
+export function calculateEnhancedAmount(
+  actualBills: Bill[],
+  baseAmount: number,
+  targetDate: Date,
+  allHistoricalBills?: Bill[]
+): { amount: number; confidence: number; method: 'trend' | 'weighted' | 'seasonal' | 'average' } {
   if (actualBills.length === 0) {
-    return baseAmount
+    return { amount: baseAmount, confidence: 0.3, method: 'average' }
   }
 
   // Sort by due date to analyze trend
@@ -64,31 +181,58 @@ export function calculateEnhancedAmount(actualBills: Bill[], baseAmount: number)
     (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
   )
 
+  const billData = sortedBills.map((b) => ({
+    date: new Date(b.dueDate),
+    amount: Number(b.amount),
+  }))
+
   // If only one actual bill, use its amount
   if (sortedBills.length === 1) {
-    return Number(sortedBills[0].amount)
+    return { amount: billData[0].amount, confidence: 0.5, method: 'average' }
   }
 
-  // If we have 3+ bills, try to detect a trend
+  // If we have 3+ bills, try linear regression for trend detection
   if (sortedBills.length >= 3) {
-    const amounts = sortedBills.map((b) => Number(b.amount))
-    const firstHalf = amounts.slice(0, Math.floor(amounts.length / 2))
-    const secondHalf = amounts.slice(Math.floor(amounts.length / 2))
+    const regression = linearRegression(billData)
 
-    const firstAvg = firstHalf.reduce((sum, a) => sum + a, 0) / firstHalf.length
-    const secondAvg = secondHalf.reduce((sum, a) => sum + a, 0) / secondHalf.length
+    // If trend confidence is high (R² >= 0.7), use linear regression
+    if (regression.rSquared >= 0.7) {
+      // Predict amount for target date
+      const firstDate = billData[0].date.getTime()
+      const targetDays = (targetDate.getTime() - firstDate) / (1000 * 60 * 60 * 24)
+      const predictedAmount = regression.slope * targetDays + regression.intercept
 
-    // If there's a clear trend (difference > 5%), use the most recent average
-    const trendPercent = Math.abs((secondAvg - firstAvg) / firstAvg) * 100
-    if (trendPercent > 5) {
-      // Use the most recent bill's amount as it reflects the current trend
-      return Number(sortedBills[sortedBills.length - 1].amount)
+      // Ensure predicted amount is positive
+      const amount = Math.max(0, predictedAmount)
+
+      return {
+        amount,
+        confidence: regression.rSquared,
+        method: 'trend',
+      }
     }
   }
 
-  // Otherwise, use average of all actual bills
-  const total = sortedBills.reduce((sum, bill) => sum + Number(bill.amount), 0)
-  return total / sortedBills.length
+  // If trend confidence is low, check for seasonal patterns
+  if (allHistoricalBills && allHistoricalBills.length > 0) {
+    const seasonal = seasonalAverage(billData, targetDate, allHistoricalBills)
+    if (seasonal && seasonal.count >= 2) {
+      // Use seasonal average if we have multiple years of data
+      return {
+        amount: seasonal.amount,
+        confidence: 0.6, // Moderate confidence for seasonal patterns
+        method: 'seasonal',
+      }
+    }
+  }
+
+  // Fallback to weighted moving average
+  const weightedAvg = weightedMovingAverage(billData)
+  return {
+    amount: weightedAvg,
+    confidence: sortedBills.length >= 3 ? 0.6 : 0.5,
+    method: 'weighted',
+  }
 }
 
 /**
@@ -188,20 +332,26 @@ export function enhancePredictionsWithActualData(
 
     // Calculate enhanced amount from actual bills
     const baseAmount = Number(template.amount)
-    const enhancedAmount = calculateEnhancedAmount(matchingActualBills, baseAmount)
 
     // Update predictions with enhanced amount
     for (const prediction of predictions) {
       // If this prediction was replaced with an actual bill, keep it as-is
-      // Otherwise, enhance it with the calculated amount from actual bills
       if (matchedActualBills.has(prediction.billId || '')) {
         // This is an actual bill that replaced a prediction, keep original amount
         finalPredictions.push(prediction)
       } else {
-        // This is a future prediction, enhance it with actual bill data
+        // This is a future prediction, enhance it with intelligent forecasting
+        const forecast = calculateEnhancedAmount(
+          matchingActualBills,
+          baseAmount,
+          new Date(prediction.dueDate),
+          actualBills // Pass all actual bills for seasonal analysis
+        )
         finalPredictions.push({
           ...prediction,
-          amount: enhancedAmount,
+          amount: forecast.amount,
+          method: forecast.method,
+          confidence: forecast.confidence,
         })
       }
     }

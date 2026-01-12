@@ -99,20 +99,57 @@ export async function GET(req: NextRequest) {
       amount: Number(bill.amount),
     }))
 
-    // Generate predictions from recurrence patterns and merge with actual bills
+    // Fetch historical bills (2+ years back) for pattern detection
+    // This includes both paid and unpaid bills to detect recurring patterns
+    const historicalStartDate = new Date(startDate)
+    historicalStartDate.setFullYear(historicalStartDate.getFullYear() - 2)
+
+    const historicalBillsWhere: any = {
+      dueDate: {
+        gte: historicalStartDate,
+        lte: startDate, // Up to but not including the prediction start date
+      },
+    }
+
+    // Filter by user if not admin (same logic as recurring bills)
+    if (session.user.role !== Role.ADMIN) {
+      historicalBillsWhere.OR = [
+        { createdById: session.user.id },
+        { createdById: null },
+      ]
+    }
+
+    const historicalBillsRaw = await prisma.bill.findMany({
+      where: historicalBillsWhere,
+      include: {
+        category: true,
+        vendor: true,
+        vendorAccount: {
+          include: {
+            type: true,
+          },
+        },
+      },
+    })
+
+    // Convert Prisma Decimal to number for type compatibility
+    const historicalBills = historicalBillsRaw.map((bill) => ({
+      ...bill,
+      amount: Number(bill.amount),
+    }))
+
+    // Generate predictions from recurrence patterns, merge with actual bills, and detect patterns
     // Actual bills will replace predictions for matching dates
-    // Remaining predictions will be enhanced using actual bill amounts
+    // Remaining predictions will be enhanced using intelligent forecasting
+    // Historical bills will be analyzed to detect recurring patterns automatically
     const predictions = generateBudgetPredictions(
       recurringBills,
       startDate,
       endDate,
       period,
-      actualBills
+      actualBills,
+      historicalBills
     )
-
-    // TODO: Add logic to analyze historical bills without explicit recurrence patterns
-    // This should use analyzeHistoricalPatterns() to detect patterns and generate additional predictions
-    // For now, we only use explicit recurrence patterns
 
     let historicData
     if (includeHistoric) {

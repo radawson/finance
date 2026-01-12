@@ -68,6 +68,93 @@
 - **Visual**: Color coding for quick status recognition
 - **Non-intrusive**: Doesn't replace list view, complements it
 
+### Budget Prediction Algorithm
+
+The system uses intelligent forecasting to predict future bill amounts 2-4 months ahead with high accuracy.
+
+#### Prediction Methods
+
+The algorithm uses a **hybrid approach** that automatically selects the best prediction method based on available data:
+
+1. **Linear Regression (Trend Analysis)**
+   - Used when 3+ bills exist and trend confidence is high (R² ≥ 0.7)
+   - Calculates slope and intercept using least squares method
+   - Projects future amounts based on detected trend line
+   - Best for bills with clear increasing or decreasing patterns
+   - Example: Electric bills Sep $200, Oct $250, Nov $275 → predicts Dec ~$235
+
+2. **Weighted Moving Average**
+   - Fallback when trend confidence is low (< 0.7)
+   - Recent bills weighted more heavily (exponential decay: 40%, 30%, 20%, 10%)
+   - Provides stable predictions when trend is unclear
+   - Best for bills with variable amounts but no clear trend
+
+3. **Seasonal Average**
+   - Used when trend confidence is low (< 0.5) AND multiple years of data exist
+   - Groups bills by month across years (e.g., all December bills)
+   - Calculates average for that specific month
+   - Requires 2+ years of data for the target month
+   - Best for bills with seasonal patterns (e.g., insurance premiums)
+
+4. **Simple Average**
+   - Used when only 1-2 bills exist
+   - Provides baseline prediction until more data is available
+   - Lowest confidence (0.3-0.5)
+
+#### Pattern Detection
+
+The system automatically detects recurring patterns from historical data:
+
+- **Automatic Detection**: Bills with 3+ occurrences are analyzed for patterns
+- **Interval Analysis**: Calculates intervals between consecutive bills
+- **Frequency Detection**: Identifies monthly (~30 days), quarterly (~90 days), biannually (~180 days), or yearly (~365 days) patterns
+- **Confidence Scoring**: Based on interval consistency, sample size, and amount variance
+- **Priority**: Explicit recurrence patterns take precedence over detected patterns
+
+#### Synthetic Data Generation
+
+For bills with `isRecurring: true` but < 3 data points:
+
+- **Virtual Bills**: System synthesizes 2-3 virtual bills at the specified interval
+- **Rudimentary Calculation**: Uses the actual bill amount for all synthetic bills
+- **Temporary**: Once >= 3 real data points exist, synthetic data is replaced
+- **Lower Confidence**: Synthetic predictions marked with confidence 0.4
+
+#### Prediction Workflow
+
+1. **Fetch Historical Data**: Retrieves bills from 2+ years back for pattern analysis
+2. **Detect Patterns**: Automatically identifies recurring bill patterns
+3. **Generate Base Predictions**: Creates predictions from explicit and detected patterns
+4. **Enhance with Actual Bills**: Replaces predictions with actual bills where dates match
+5. **Apply Forecasting**: Uses intelligent algorithms to predict future amounts
+6. **Calculate Confidence**: Assigns confidence scores (0-1) to each prediction
+
+#### Example Scenarios
+
+#### Scenario 1: Trending Bills
+- Electric: Sep $200, Oct $250, Nov $275
+- Method: Linear Regression
+- Prediction: Dec ~$235 (trending upward)
+- Confidence: High (R² > 0.7)
+
+#### Scenario 2: Stable Bills
+- Water: $150/month for 6 months
+- Method: Weighted Moving Average
+- Prediction: Next month ~$150
+- Confidence: Medium-High (0.6-0.7)
+
+#### Scenario 3: Seasonal Bills
+- Insurance: $500/year in March for 3 years
+- Method: Seasonal Average
+- Prediction: Next March ~$500
+- Confidence: Medium (0.6) when trend unclear
+
+#### Scenario 4: New Recurring Bill
+- New Service: 1 bill at $75 with monthly recurrence
+- Method: Synthetic (virtual bills generated)
+- Prediction: Next month ~$75
+- Confidence: Low (0.4) until 3+ real bills exist
+
 ## Design Decisions
 
 ### What We Do

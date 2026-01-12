@@ -206,10 +206,12 @@ export interface PredictedBill {
   title: string
   amount: number
   dueDate: Date
-  source: 'recurrence' | 'historical-analysis'
+  source: 'recurrence' | 'historical-analysis' | 'detected'
   billId?: string
   categoryId?: string
   vendorId?: string | null
+  method?: 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
+  confidence?: number
 }
 
 export interface BudgetPredictionPeriodData {

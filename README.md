@@ -368,6 +368,36 @@ npm run db:seed
 2. Change the default admin password immediately
 3. Consider creating additional admin accounts
 
+#### Test Data Generation (Development Only)
+
+**⚠️ WARNING: This command is for development/testing only. Do NOT run in production!**
+
+The test data script generates diverse bill scenarios for testing budget forecasting algorithms:
+
+```bash
+npm run db:seed:test
+```
+
+**What it creates:**
+- Electric bills with trending amounts (Sep $200, Oct $250, Nov $275)
+- Water bills with stable pattern ($150/month for 6 months)
+- Insurance bills with seasonal pattern ($500/year for 3 years)
+- Gas bills with slight upward trend ($80, $85, $90, $95)
+- Phone bills with perfect monthly pattern ($45/month for 12 months)
+- Rent bills with long-term stable pattern ($1200/month for 24 months)
+- Bills with recurring flag but < 3 data points (tests synthetic data generation)
+
+**Use Cases:**
+- Testing budget prediction algorithms
+- Development and debugging of forecasting features
+- Demonstrating prediction accuracy with known data patterns
+
+**Safety:**
+- Creates test user: `test@kontado.local`
+- Uses test category and vendor IDs prefixed with `test-`
+- Safe to run multiple times (uses upsert operations)
+- **Never run in production databases with real data**
+
 **Troubleshooting Database Connections:**
 If seeding fails with read-only errors, you may be connecting to a read-only replica:
 

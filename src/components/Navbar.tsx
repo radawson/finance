@@ -28,7 +28,7 @@ export default function Navbar() {
         { href: '/bills', label: 'My Bills', icon: Receipt },
         { href: '/bills/calendar', label: 'Calendar', icon: Calendar },
         { href: '/vendors', label: 'Vendors', icon: Building2 },
-        { href: '/account-types', label: 'Account Types', icon: CreditCard },
+        { href: '/account-types', label: 'Categories', icon: CreditCard },
         { href: '/analysis', label: 'Analysis', icon: BarChart3 },
       ]
 
