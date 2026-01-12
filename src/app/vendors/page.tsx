@@ -9,6 +9,8 @@ import { Vendor } from '@/types'
 import { Plus, Edit, Trash2, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import PhoneInput from '@/components/PhoneInput'
+import { formatPhoneForDisplay } from '@/lib/phone-formatting'
 
 export default function VendorsPage() {
   const { data: session } = useSession()
@@ -228,7 +230,7 @@ export default function VendorsPage() {
 
                 <div className="space-y-2 text-sm text-gray-600">
                   {vendor.email && <div>Email: {vendor.email}</div>}
-                  {vendor.phone && <div>Phone: {vendor.phone}</div>}
+                  {vendor.phone && <div>Phone: {formatPhoneForDisplay(vendor.phone)}</div>}
                   {vendor.accounts && vendor.accounts.length > 0 && (
                     <div className="text-primary-600 font-medium">
                       {vendor.accounts.length} account{vendor.accounts.length !== 1 ? 's' : ''}
@@ -319,11 +321,9 @@ export default function VendorsPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Phone
                     </label>
-                    <input
-                      type="tel"
+                    <PhoneInput
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      onChange={(value) => setFormData({ ...formData, phone: value })}
                     />
                   </div>
                   <div>

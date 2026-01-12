@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { useSocket } from '@/components/SocketProvider'
 import { SocketEvents } from '@/lib/socketio-server'
+import { formatPhoneForDisplay } from '@/lib/phone-formatting'
 
 export default function VendorDetailsPage() {
   const { data: session } = useSession()
@@ -301,7 +302,7 @@ export default function VendorDetailsPage() {
             {vendor.phone && (
               <div>
                 <span className="text-sm font-medium text-gray-500">Phone</span>
-                <p className="text-gray-900">{vendor.phone}</p>
+                <p className="text-gray-900">{formatPhoneForDisplay(vendor.phone)}</p>
               </div>
             )}
             {vendor.address && (

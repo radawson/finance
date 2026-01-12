@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { Vendor } from '@/types'
 import { X, Edit, Building2, Mail, Phone, MapPin, Globe, CreditCard } from 'lucide-react'
 import Link from 'next/link'
+import { formatPhoneForDisplay } from '@/lib/phone-formatting'
 
 interface VendorViewModalProps {
   vendor: Vendor
@@ -59,7 +60,7 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
               <Phone className="w-5 h-5 mr-3 text-gray-400" />
               <div>
                 <div className="text-sm text-gray-500">Phone</div>
-                <div className="font-semibold">{vendor.phone}</div>
+                <div className="font-semibold">{formatPhoneForDisplay(vendor.phone)}</div>
               </div>
             </div>
           )}

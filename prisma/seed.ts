@@ -193,6 +193,21 @@ async function main() {
   console.log('📂 Seeding default global categories...')
 
   const defaultCategories = [
+    { name: 'Alarm', description: 'Alarm system and monitoring', color: '#FFD700' },
+    { name: 'Cleaning', description: 'Cleaning and maintenance', color: '#FFD700' },
+    { name: 'Laundry', description: 'Laundry and dry cleaning', color: '#FFD700' },
+    { name: 'Maintenance', description: 'Maintenance and repairs', color: '#FFD700' },
+    { name: 'Auto Repairs', description: 'Automotive Repairs and upgrades', color: '#FFD700' },
+    { name: 'Renovation', description: 'Renovation and remodeling', color: '#FFD700' },
+    { name: 'Security', description: 'Security and surveillance', color: '#FFD700' },
+    { name: 'Food', description: 'Food and groceries', color: '#FFD700' },
+    { name: 'Transportation', description: 'Transportation costs', color: '#FF6B6B' },
+    { name: 'Housing', description: 'Housing and utilities', color: '#4ECDC4' },
+    { name: 'Entertainment', description: 'Entertainment and leisure', color: '#45B7D1' },
+    { name: 'Health', description: 'Healthcare and insurance', color: '#96CEB4' },
+    { name: 'Education', description: 'Education and learning', color: '#FFEAA7' },
+    { name: 'Personal Care', description: 'Personal care and grooming', color: '#DDA0DD' },
+    { name: 'Miscellaneous', description: 'Miscellaneous expenses', color: '#98D8C8' },
     { name: 'Electricity', description: 'Electric utility bills', color: '#FFD700' },
     { name: 'Gas', description: 'Natural gas utility bills', color: '#FF6B6B' },
     { name: 'Oil', description: 'Heating oil bills', color: '#4ECDC4' },
