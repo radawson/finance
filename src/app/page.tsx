@@ -33,16 +33,23 @@ export default function Home() {
         // Silently fail
       })
 
-    // Fetch vendors (may be empty for anonymous users)
-    fetch('/api/vendors')
-      .then((res) => res.json())
+    // Fetch vendors from public endpoint (works for both authenticated and anonymous users)
+    fetch('/api/vendors/public')
+      .then((res) => {
+        if (res.ok) {
+          return res.json()
+        }
+        // For errors, return empty array
+        return []
+      })
       .then((data) => {
-        if (!data.error && Array.isArray(data)) {
+        if (Array.isArray(data)) {
           setVendors(data)
         }
       })
       .catch(() => {
         // Silently fail - vendors are optional
+        setVendors([])
       })
   }, [])
 

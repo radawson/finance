@@ -29,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if vendor exists and user has permission
+    // Check if vendor exists
     const vendor = await prisma.vendor.findUnique({
       where: { id },
     })
@@ -38,15 +38,31 @@ export async function GET(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization - can view own vendors or all vendors if admin
-    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    // Vendors are global - any authenticated user can view vendor accounts
+    // Filter accounts to only show those used in bills created by this user
+    // (since VendorAccount doesn't have createdById, we use bill ownership as proxy)
+    const userAccountIds = await prisma.bill.findMany({
+      where: {
+        createdById: session.user.id,
+        vendorAccountId: {
+          not: null,
+        },
+      },
+      select: {
+        vendorAccountId: true,
+      },
+      distinct: ['vendorAccountId'],
+    })
+    const accountIds = userAccountIds
+      .map((b) => b.vendorAccountId)
+      .filter((id): id is string => id !== null)
 
     const accounts = await prisma.vendorAccount.findMany({
       where: {
         vendorId: id,
         isActive: true,
+        // Only show accounts used in bills by this user
+        ...(accountIds.length > 0 ? { id: { in: accountIds } } : { id: { in: [] } }),
       },
       include: {
         type: true,
@@ -91,10 +107,9 @@ export async function POST(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    // Vendors are global - any authenticated user can create accounts for any vendor
+    // The account will be implicitly owned by the user through bills that use it
+    // (Note: In the future, we may want to add createdById to VendorAccount for explicit ownership)
 
     const body = await req.json()
     const data = vendorAccountSchema.parse(body)

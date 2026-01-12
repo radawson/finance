@@ -52,6 +52,31 @@ export default function BillDetailPage() {
     }
   }, [session, billId])
 
+  // Add bill's vendor to vendors list after both bill and vendors are loaded
+  useEffect(() => {
+    if (bill && bill.vendor && bill.vendorId && vendors.length > 0) {
+      const vendorExists = vendors.some((v) => v.id === bill.vendorId)
+      if (!vendorExists) {
+        // Add the vendor from the bill to the vendors list
+        // Include accounts from vendorAccount if available
+        const vendorWithAccounts = {
+          ...bill.vendor,
+          accounts: bill.vendorAccount
+            ? [
+                {
+                  id: bill.vendorAccount.id,
+                  nickname: bill.vendorAccount.nickname,
+                  accountType: bill.vendorAccount.type?.name || bill.vendorAccount.accountType,
+                  accountNumber: bill.vendorAccount.accountNumber,
+                },
+              ]
+            : [],
+        }
+        setVendors((prev) => [...prev, vendorWithAccounts])
+      }
+    }
+  }, [bill, vendors])
+
   const fetchBill = async () => {
     try {
       const response = await fetch(`/api/bills/${billId}`)

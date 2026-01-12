@@ -13,15 +13,28 @@ All notable changes to Kontado will be documented in this file.
   - Available in bill creation and edit forms
   - Displayed in bill view modal, bill cards, and bills table
   - Optional field - no uniqueness constraint
+- **Vendor Trends Tab**: New analysis view showing spending trends for selected vendors across specified periods
+  - Custom SVG charts (line and bar views)
+  - Searchable multi-select vendor selector
+  - Supports 1 to n vendors with distinct color coding
 
 ### Changed
 - Analysis tab added to main navigation
+- **Vendor Structure**: Vendors are now global/shared resources
+  - Any authenticated user can create or edit vendors
+  - `createdById` field kept for audit purposes only (not used for authorization)
+  - Vendor accounts remain user-specific (filtered by bill ownership)
+  - Public endpoint (`/api/vendors/public`) returns vendor names only (no account numbers)
 
 ### Technical
 - Added `/api/analysis/history` endpoint for historic bills analysis
 - Added `/api/analysis/budget` endpoint for budget predictions
+- Added `/api/analysis/vendor-trends` endpoint for vendor spending trends
+- Added `/api/vendors/public` endpoint for anonymous vendor name lookup
 - Database schema updated to include `invoiceNumber` field on `Bill` model
 - Type definitions updated to include `invoiceNumber` in `Bill` interface
+- Vendor API routes updated to remove ownership-based authorization checks
+- Vendor account filtering now based on bill ownership (proxy for account ownership)
 
 ## Notes
 - Historical pattern analysis for bills without explicit recurrence is planned for future implementation

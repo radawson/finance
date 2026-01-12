@@ -218,9 +218,18 @@ node create-admin.js
 **Linking Bills to Vendors and Accounts:**
 1. Open a bill for editing (click on bill card)
 2. Select a vendor from the dropdown (optional)
-3. If the vendor has account numbers configured, an "Account" dropdown will appear
+   - Vendors are global/shared - you can select any vendor created by any user
+   - Anonymous users can see vendor names via the public endpoint (no account numbers)
+3. If the vendor has account numbers configured that you've used in your bills, an "Account" dropdown will appear
+   - Accounts are user-specific - you only see accounts you've used in your own bills
 4. Select the appropriate account number (optional)
 5. Save changes
+
+**Note on Vendors:**
+- Vendors are global resources shared across all users
+- Any authenticated user can create or edit vendors
+- Vendor accounts remain private to each user (filtered by bill ownership)
+- Anonymous users can view vendor names but not account numbers
 
 **Unassigned Bills:**
 - Bills created without a user account (anonymous entry) are "unassigned"

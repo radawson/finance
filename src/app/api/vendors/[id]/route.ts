@@ -78,12 +78,34 @@ export async function GET(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization - can view own vendors or all vendors if admin
-    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // Vendors are global - any authenticated user can view any vendor
+    // Filter accounts to only show those used in bills created by this user
+    // (since VendorAccount doesn't have createdById, we use bill ownership as proxy)
+    const userAccountIds = await prisma.bill.findMany({
+      where: {
+        createdById: session.user.id,
+        vendorAccountId: {
+          not: null,
+        },
+      },
+      select: {
+        vendorAccountId: true,
+      },
+      distinct: ['vendorAccountId'],
+    })
+    const accountIds = userAccountIds
+      .map((b) => b.vendorAccountId)
+      .filter((id): id is string => id !== null)
+
+    // Filter accounts in the response
+    const vendorWithFilteredAccounts = {
+      ...vendor,
+      accounts: vendor.accounts.filter(
+        (account) => accountIds.length === 0 || accountIds.includes(account.id)
+      ),
     }
 
-    return NextResponse.json(vendor)
+    return NextResponse.json(vendorWithFilteredAccounts)
   } catch (error) {
     console.error('Get vendor error:', error)
     return NextResponse.json(
@@ -114,10 +136,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && existing.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    // Vendors are global - any authenticated user can edit any vendor
+    // No authorization check needed (createdById is kept for audit purposes only)
 
     const body = await req.json()
     const data = updateVendorSchema.parse(body)
@@ -180,9 +200,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // Vendors are global - restrict deletion to admins only for safety
+    if (session.user.role !== Role.ADMIN) {
+      return NextResponse.json({ error: 'Forbidden - only admins can delete vendors' }, { status: 403 })
     }
 
     // Check if vendor is in use

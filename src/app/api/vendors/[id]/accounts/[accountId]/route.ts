@@ -38,11 +38,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
+    // Vendors are global - no vendor ownership check needed
     // Check if account exists and belongs to vendor
     const account = await prisma.vendorAccount.findUnique({
       where: { id: accountId },
@@ -56,6 +52,22 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Account does not belong to this vendor' },
         { status: 400 }
+      )
+    }
+
+    // Check if account is used in bills created by this user (proxy for ownership)
+    // Since VendorAccount doesn't have createdById, we use bill ownership
+    const billWithAccount = await prisma.bill.findFirst({
+      where: {
+        vendorAccountId: accountId,
+        createdById: session.user.id,
+      },
+    })
+
+    if (!billWithAccount && session.user.role !== Role.ADMIN) {
+      return NextResponse.json(
+        { error: 'Forbidden - you can only edit accounts used in your bills' },
+        { status: 403 }
       )
     }
 
@@ -118,11 +130,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Vendor not found' }, { status: 404 })
     }
 
-    // Check authorization
-    if (session.user.role !== Role.ADMIN && vendor.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
+    // Vendors are global - no vendor ownership check needed
     // Check if account exists and belongs to vendor
     const account = await prisma.vendorAccount.findUnique({
       where: { id: accountId },
@@ -136,6 +144,22 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Account does not belong to this vendor' },
         { status: 400 }
+      )
+    }
+
+    // Check if account is used in bills created by this user (proxy for ownership)
+    // Since VendorAccount doesn't have createdById, we use bill ownership
+    const billWithAccount = await prisma.bill.findFirst({
+      where: {
+        vendorAccountId: accountId,
+        createdById: session.user.id,
+      },
+    })
+
+    if (!billWithAccount && session.user.role !== Role.ADMIN) {
+      return NextResponse.json(
+        { error: 'Forbidden - you can only delete accounts used in your bills' },
+        { status: 403 }
       )
     }
 

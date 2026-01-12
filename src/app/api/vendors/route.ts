@@ -37,13 +37,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Try to include accounts, but handle gracefully if relation doesn't exist
+    // Vendors are global - return all vendors
+    // Filter accounts to only show those used in bills created by this user
+    // (since VendorAccount doesn't have createdById, we use bill ownership as proxy)
     let vendors
     try {
-      vendors = await prisma.vendor.findMany({
+      // Get account IDs used in bills created by this user
+      const userAccountIds = await prisma.bill.findMany({
         where: {
           createdById: session.user.id,
+          vendorAccountId: {
+            not: null,
+          },
         },
+        select: {
+          vendorAccountId: true,
+        },
+        distinct: ['vendorAccountId'],
+      })
+      const accountIds = userAccountIds
+        .map((b) => b.vendorAccountId)
+        .filter((id): id is string => id !== null)
+
+      vendors = await prisma.vendor.findMany({
+        // No filter on vendor - all vendors are global
         include: {
           createdBy: {
             select: {
@@ -54,6 +71,8 @@ export async function GET(req: NextRequest) {
           accounts: {
             where: {
               isActive: true,
+              // Only show accounts used in bills by this user
+              ...(accountIds.length > 0 ? { id: { in: accountIds } } : { id: { in: [] } }),
             },
             include: {
               type: true,
@@ -77,9 +96,7 @@ export async function GET(req: NextRequest) {
       if (includeError?.code === 'P2009' || includeError?.message?.includes('accounts')) {
         console.warn('Accounts relation not found, fetching vendors without accounts. Run: npx prisma generate')
         vendors = await prisma.vendor.findMany({
-          where: {
-            createdById: session.user.id,
-          },
+          // No filter on vendor - all vendors are global
           include: {
             createdBy: {
               select: {

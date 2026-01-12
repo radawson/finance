@@ -42,9 +42,13 @@
 - **Later**: Attachments, Notes, Custom Fields
 
 ### Vendor Management
+- **Global Structure**: Vendors are shared across all users (global/shared resources)
 - **Basic**: Name only
 - **Enhanced**: Contact info, address, website
 - **Advanced**: Multiple accounts, payment methods, notes
+- **Ownership**: Any authenticated user can create or edit vendors
+- **Audit Trail**: `createdById` field maintained for audit purposes only (not used for authorization)
+- **Accounts**: Vendor accounts remain user-specific (filtered by bill ownership)
 
 ### Account Numbers
 - **Optional**: Not required for bill entry
