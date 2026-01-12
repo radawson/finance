@@ -31,9 +31,9 @@ const vendorSchema = z.object({
 
 /**
  * GET /api/vendors
- * Get all vendors with accounts (filtered by user's bill ownership)
+ * Get all vendors with all active accounts
  * Requires authentication
- * Returns all vendors with accounts that the user has used in their bills
+ * Returns all vendors with all active accounts (users need to see all accounts to select them when creating bills)
  * For public access (no accounts), use /api/vendors/public
  */
 export async function GET(req: NextRequest) {
@@ -44,28 +44,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Vendors are global - return all vendors
-    // Filter accounts to only show those used in bills created by this user
-    // (since VendorAccount doesn't have createdById, we use bill ownership as proxy)
+    // Vendors are global - return all vendors with all active accounts
+    // Users need to see all accounts to select them when creating bills
     let vendors
     try {
-      // Get account IDs used in bills created by this user
-      const userAccountIds = await prisma.bill.findMany({
-        where: {
-          createdById: session.user.id,
-          vendorAccountId: {
-            not: null,
-          },
-        },
-        select: {
-          vendorAccountId: true,
-        },
-        distinct: ['vendorAccountId'],
-      })
-      const accountIds = userAccountIds
-        .map((b) => b.vendorAccountId)
-        .filter((id): id is string => id !== null)
-
       vendors = await prisma.vendor.findMany({
         // No filter on vendor - all vendors are global
         include: {
@@ -78,8 +60,6 @@ export async function GET(req: NextRequest) {
           accounts: {
             where: {
               isActive: true,
-              // Only show accounts used in bills by this user
-              ...(accountIds.length > 0 ? { id: { in: accountIds } } : { id: { in: [] } }),
             },
             include: {
               type: true,
