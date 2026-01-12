@@ -150,8 +150,51 @@ export function generateBudgetPredictions(
   const allActualBills = actualBills || []
   const allHistoricalBills = historicalBills || []
 
-  // Generate predictions for each recurring bill
-  recurringBills.forEach((bill) => {
+  // Deduplicate recurring bills: group by vendor/account/category and use only one template per group
+  const deduplicatedRecurringBills: Bill[] = []
+  const processedGroups = new Set<string>()
+
+  for (const bill of recurringBills) {
+    if (!bill.recurrencePattern) continue
+
+    // Create a key based on vendor, category, and account (same logic as analyzeHistoricalPatterns)
+    const key = `${bill.vendorId || 'null'}-${bill.categoryId}-${bill.vendorAccountId || 'null'}`
+
+    // Check if we've already processed a bill from this group
+    if (processedGroups.has(key)) {
+      // Find the existing bill in this group that we're using as template
+      const existingBill = deduplicatedRecurringBills.find((b) => {
+        if (!b.recurrencePattern) return false
+        return shouldMatchBill(bill, b)
+      })
+
+      // If we found an existing bill, prefer the one with:
+      // 1. More recent due date (more up-to-date)
+      // 2. More complete recurrence pattern (has endDate if the new one doesn't, or vice versa)
+      if (existingBill) {
+        const existingDate = new Date(existingBill.dueDate)
+        const newDate = new Date(bill.dueDate)
+        const existingHasEndDate = !!existingBill.recurrencePattern?.endDate
+        const newHasEndDate = !!bill.recurrencePattern?.endDate
+
+        // Replace if new bill is more recent OR if new bill has endDate and existing doesn't
+        if (newDate > existingDate || (newHasEndDate && !existingHasEndDate)) {
+          const index = deduplicatedRecurringBills.indexOf(existingBill)
+          if (index !== -1) {
+            deduplicatedRecurringBills[index] = bill
+          }
+        }
+      }
+      continue
+    }
+
+    // First bill in this group - add it
+    deduplicatedRecurringBills.push(bill)
+    processedGroups.add(key)
+  }
+
+  // Generate predictions for each deduplicated recurring bill
+  deduplicatedRecurringBills.forEach((bill) => {
     if (!bill.recurrencePattern) return
 
     const pattern = bill.recurrencePattern
@@ -387,8 +430,8 @@ export function analyzeHistoricalPatterns(bills: Bill[]): Array<{
     // Detect recurrence pattern
     const detection = detectRecurrenceFromHistory(matchingBills)
 
-    // Only include patterns with confidence > 0.6
-    if (detection.confidence > 0.6 && detection.frequency) {
+    // Only include patterns with confidence > 0.5 (lowered from 0.6 to better detect variable-date cycles)
+    if (detection.confidence > 0.5 && detection.frequency) {
       detectedPatterns.push({
         billGroup: matchingBills,
         detectedFrequency: detection.frequency,
@@ -445,8 +488,8 @@ export function detectRecurrenceFromHistory(bills: Bill[]): {
   let detectedFrequency: RecurrenceFrequency | null = null
   const tolerance = 0.2 // 20% tolerance for interval matching
 
-  if (avgInterval >= 25 && avgInterval <= 35) {
-    // Monthly: 25-35 days
+  if (avgInterval >= 20 && avgInterval <= 40) {
+    // Monthly: 20-40 days (expanded to accommodate 30-day cycles with variance)
     detectedFrequency = RecurrenceFrequency.MONTHLY
   } else if (avgInterval >= 85 && avgInterval <= 95) {
     // Quarterly: 85-95 days
@@ -469,7 +512,13 @@ export function detectRecurrenceFromHistory(bills: Bill[]): {
   // 3. Amount variance (lower variance = higher confidence)
 
   // Interval consistency score (0-1, higher is better)
-  const consistencyScore = Math.max(0, 1 - coefficientOfVariation)
+  // For monthly patterns, be more forgiving of date variance when average interval is clearly monthly
+  let consistencyScore = Math.max(0, 1 - coefficientOfVariation)
+  if (detectedFrequency === RecurrenceFrequency.MONTHLY && avgInterval >= 28 && avgInterval <= 32) {
+    // For clearly monthly patterns (28-32 day average), reduce penalty for variance
+    // This helps with 30-day billing cycles that have some date movement
+    consistencyScore = Math.max(0.5, consistencyScore) // Minimum 0.5 for clearly monthly patterns
+  }
 
   // Sample size score (0-1, more samples = higher confidence, caps at 0.8 for 10+ bills)
   const sampleSizeScore = Math.min(0.8, bills.length / 12)
