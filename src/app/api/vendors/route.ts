@@ -28,6 +28,7 @@ const vendorSchema = z.object({
   website: optionalUrl,
   logo: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
 })
 
 /**
@@ -45,11 +46,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get tag filter from query params
+    const { searchParams } = new URL(req.url)
+    const tags = searchParams.get('tags') // Comma-separated list of tags
+
+    // Build where clause
+    const where: any = {}
+
+    // Filter by tags - vendors must contain ALL specified tags
+    if (tags) {
+      const tagArray = tags.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+      if (tagArray.length > 0) {
+        where.tags = {
+          hasEvery: tagArray,
+        }
+      }
+    }
+
     // Vendors are global - return all vendors with all active accounts
     // Users need to see all accounts to select them when creating bills
     let vendors
     try {
       vendors = await prisma.vendor.findMany({
+        where,
         // No filter on vendor - all vendors are global
         include: {
           createdBy: {
@@ -141,9 +160,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const data = vendorSchema.parse(body)
 
+    // Validate and sanitize tags
+    const tagsArray = data.tags
+      ? data.tags
+          .map((tag: string) => tag.trim())
+          .filter((tag: string) => tag.length > 0 && tag.length <= 128)
+      : []
+
     const vendor = await prisma.vendor.create({
       data: {
         ...data,
+        tags: tagsArray,
         createdById: session.user.id,
       },
       include: {

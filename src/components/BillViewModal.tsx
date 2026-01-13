@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { X, Edit, DollarSign, Calendar, Tag, Building2, CreditCard, MessageSquare, Paperclip, FileText, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import TagDisplay from './TagDisplay'
 
 interface BillViewModalProps {
   bill: Bill
@@ -173,6 +174,16 @@ export default function BillViewModal({ bill, isOpen, onClose, onUpdate }: BillV
               <div>
                 <div className="text-sm text-gray-500">Invoice Number</div>
                 <div className="font-semibold">{currentBill.invoiceNumber}</div>
+              </div>
+            </div>
+          )}
+
+          {currentBill.tags && currentBill.tags.length > 0 && (
+            <div className="flex items-start text-gray-700">
+              <Tag className="w-5 h-5 mr-3 text-gray-400 mt-1" />
+              <div className="flex-1">
+                <div className="text-sm text-gray-500 mb-2">Tags</div>
+                <TagDisplay tags={currentBill.tags} />
               </div>
             </div>
           )}

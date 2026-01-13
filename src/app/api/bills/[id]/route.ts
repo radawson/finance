@@ -20,6 +20,7 @@ const updateBillSchema = z.object({
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
+  tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
 })
 
 export async function GET(
@@ -203,6 +204,14 @@ export async function PATCH(
       }
     }
 
+    // Validate and sanitize tags if provided
+    let tagsArray: string[] | undefined = undefined
+    if (data.tags !== undefined) {
+      tagsArray = data.tags
+        .map((tag: string) => tag.trim())
+        .filter((tag: string) => tag.length > 0 && tag.length <= 128)
+    }
+
     // Calculate status if dueDate changed or status not explicitly set
     let status = data.status
     if (!status && (data.dueDate || data.paidDate !== undefined)) {
@@ -243,6 +252,7 @@ export async function PATCH(
         }),
         ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
         ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
+        ...(tagsArray !== undefined && { tags: tagsArray }),
         ...(isBeingAssigned && { createdById: session.user.id }),
       },
       include: {

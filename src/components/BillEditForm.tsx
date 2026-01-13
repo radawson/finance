@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import CategoryModal from '@/components/CategoryModal'
 import { addTemporaryClass } from '@/lib/visual-feedback'
+import TagInput from '@/components/TagInput'
 
 export interface BillFormData {
   title: string
@@ -19,6 +20,7 @@ export interface BillFormData {
   status: BillStatus
   paidDate: string
   invoiceNumber: string
+  tags: string[]
 }
 
 export interface RecurrenceFormData {
@@ -59,6 +61,7 @@ export default function BillEditForm({
     status: 'PENDING' as BillStatus,
     paidDate: '',
     invoiceNumber: '',
+    tags: [],
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -87,6 +90,7 @@ export default function BillEditForm({
         status: bill.status,
         paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
         invoiceNumber: bill.invoiceNumber || '',
+        tags: bill.tags || [],
       })
 
       // Set recurrence state if bill has recurrence pattern
@@ -484,6 +488,20 @@ export default function BillEditForm({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             placeholder="Optional invoice number from vendor"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tags
+          </label>
+          <TagInput
+            tags={formData.tags}
+            onChange={(tags) => setFormData({ ...formData, tags })}
+            placeholder="Type and press Enter to add tags (max 128 characters each)"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Add tags to organize and filter bills. Tags can contain spaces and special characters.
+          </p>
         </div>
 
         {/* Recurrence Section */}

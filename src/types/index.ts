@@ -81,6 +81,7 @@ export interface Vendor {
   website?: string | null
   logo?: string | null
   description?: string | null
+  tags?: string[] // Array of tag strings (max 128 chars each)
   createdById?: string | null
   createdAt: Date
   updatedAt: Date
@@ -115,6 +116,7 @@ export interface Bill {
   isRecurring: boolean
   nextDueDate?: Date | null
   invoiceNumber?: string | null
+  tags?: string[] // Array of tag strings (max 128 chars each)
   createdAt: Date
   updatedAt: Date
   category?: Category

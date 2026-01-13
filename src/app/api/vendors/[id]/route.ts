@@ -29,6 +29,7 @@ const updateVendorSchema = z.object({
   website: optionalUrl,
   logo: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
 })
 
 /**
@@ -123,9 +124,20 @@ export async function PATCH(
     const body = await req.json()
     const data = updateVendorSchema.parse(body)
 
+    // Validate and sanitize tags if provided
+    let tagsArray: string[] | undefined = undefined
+    if (data.tags !== undefined) {
+      tagsArray = data.tags
+        .map((tag: string) => tag.trim())
+        .filter((tag: string) => tag.length > 0 && tag.length <= 128)
+    }
+
     const vendor = await prisma.vendor.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        ...(tagsArray !== undefined && { tags: tagsArray }),
+      },
       include: {
         createdBy: {
           select: {

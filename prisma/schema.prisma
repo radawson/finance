@@ -88,6 +88,7 @@ model Vendor {
   website     String?
   logo        String?
   description String?
+  tags        String[] @default([]) // Array of tag strings (max 128 chars each)
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -116,6 +117,7 @@ model Bill {
   isRecurring        Boolean   @default(false)
   nextDueDate        DateTime?
   invoiceNumber      String?   // Optional invoice number from vendor
+  tags               String[]  @default([]) // Array of tag strings (max 128 chars each)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

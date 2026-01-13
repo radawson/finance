@@ -20,6 +20,7 @@ const billSchema = z.object({
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
+  tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
     const categoryId = searchParams.get('categoryId')
     const vendorId = searchParams.get('vendorId')
     const isRecurring = searchParams.get('isRecurring')
+    const tags = searchParams.get('tags') // Comma-separated list of tags
 
     // Build where clause
     const where: any = {}
@@ -61,6 +63,17 @@ export async function GET(req: NextRequest) {
 
     if (isRecurring !== null) {
       where.isRecurring = isRecurring === 'true'
+    }
+
+    // Filter by tags - bills must contain ALL specified tags
+    if (tags) {
+      const tagArray = tags.split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+      if (tagArray.length > 0) {
+        // PostgreSQL array contains operator - all tags must be in the array
+        where.tags = {
+          hasEvery: tagArray,
+        }
+      }
     }
 
     const bills = await prisma.bill.findMany({
@@ -172,6 +185,13 @@ export async function POST(req: NextRequest) {
     // Calculate status if not provided
     const status = data.status || calculateBillStatus(data.dueDate, data.paidDate)
 
+    // Validate and sanitize tags
+    const tagsArray = data.tags
+      ? data.tags
+          .map((tag: string) => tag.trim())
+          .filter((tag: string) => tag.length > 0 && tag.length <= 128)
+      : []
+
     // Create bill
     const bill = await prisma.bill.create({
       data: {
@@ -187,6 +207,7 @@ export async function POST(req: NextRequest) {
         createdById: session.user.id,
         isRecurring: data.isRecurring || false,
         invoiceNumber: data.invoiceNumber || null,
+        tags: tagsArray,
       },
       include: {
         category: true,

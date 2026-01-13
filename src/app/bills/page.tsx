@@ -11,6 +11,7 @@ import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Ca
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import TagInput from '@/components/TagInput'
 
 type SortColumn = 'title' | 'amount' | 'dueDate' | 'status' | 'category' | 'vendor' | null
 type SortDirection = 'asc' | 'desc' | null
@@ -49,6 +50,7 @@ export default function BillsPage() {
     status: 'PENDING' as BillStatus,
     paidDate: '',
     invoiceNumber: '',
+    tags: [] as string[],
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -265,6 +267,7 @@ export default function BillsPage() {
         status: formData.status,
         paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
         invoiceNumber: formData.invoiceNumber || undefined,
+        tags: formData.tags.length > 0 ? formData.tags : undefined,
         isRecurring: isRecurring,
       }
       
@@ -329,6 +332,7 @@ export default function BillsPage() {
         status: 'PENDING',
         paidDate: '',
         invoiceNumber: '',
+        tags: [],
       })
       setIsRecurring(false)
       setShowRecurrenceSection(false)
@@ -407,6 +411,7 @@ export default function BillsPage() {
                 status: 'PENDING',
                 paidDate: '',
                 invoiceNumber: '',
+                tags: [],
               })
               setIsCreateModalOpen(true)
             }}
@@ -573,6 +578,7 @@ export default function BillsPage() {
                   status: 'PENDING',
                   paidDate: '',
                   invoiceNumber: '',
+                  tags: [],
                 })
                 setIsCreateModalOpen(true)
               }}
@@ -950,6 +956,20 @@ export default function BillsPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags
+                  </label>
+                  <TagInput
+                    tags={formData.tags}
+                    onChange={(tags) => setFormData({ ...formData, tags })}
+                    placeholder="Type and press Enter to add tags (max 128 characters each)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Add tags to organize and filter bills. Tags can contain spaces and special characters.
+                  </p>
+                </div>
+
                 {/* Recurrence Section */}
                 <div className="border-t border-gray-200 pt-4">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1087,6 +1107,7 @@ export default function BillsPage() {
                         status: 'PENDING',
                         paidDate: '',
                         invoiceNumber: '',
+                        tags: [],
                       })
                       setIsRecurring(false)
                       setShowRecurrenceSection(false)
