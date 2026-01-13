@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { Role } from '@/generated/prisma/client'
 import { getBillsDueSoon, getOverdueBills, getUpcomingBills } from '@/lib/bills'
 import { addDays } from 'date-fns'
+import { getPeriodStartDate, CategoryPeriod } from '@/lib/date-utils'
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,6 +14,10 @@ export async function GET(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Get category period from query params
+    const { searchParams } = new URL(req.url)
+    const categoryPeriod = (searchParams.get('categoryPeriod') || 'month') as CategoryPeriod
 
     // Build where clause
     const where: any = {}
@@ -47,10 +52,20 @@ export async function GET(req: NextRequest) {
     const upcomingBills30 = getUpcomingBills(allBills, 30)
     const overdueBillsList = getOverdueBills(allBills)
 
-    // Category breakdown
+    // Category breakdown - filter by period if specified
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // End of today
+    const periodStartDate = getPeriodStartDate(categoryPeriod, today)
+    
+    // Filter bills for category breakdown based on dueDate within the selected period
+    const billsForCategoryBreakdown = allBills.filter((bill) => {
+      const dueDate = new Date(bill.dueDate)
+      return dueDate >= periodStartDate && dueDate <= today
+    })
+
     const categoryMap = new Map<string, { name: string; color: string | null; count: number; totalAmount: number }>()
 
-    allBills.forEach((bill) => {
+    billsForCategoryBreakdown.forEach((bill) => {
       const categoryId = bill.categoryId
       const categoryName = bill.category.name
       const categoryColor = bill.category.color

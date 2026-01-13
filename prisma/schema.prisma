@@ -88,7 +88,7 @@ model Vendor {
   website     String?
   logo        String?
   description String?
-  tags        String[] @default([]) // Array of tag strings (max 128 chars each)
+  tags        String[]  @default([]) // Array of tag strings (max 128 chars each)
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

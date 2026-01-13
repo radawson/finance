@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
 import StatsCard from '@/components/StatsCard'
@@ -11,6 +11,7 @@ import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Calendar } 
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import CategoryPieChart from '@/components/CategoryPieChart'
+import { CategoryPeriod } from '@/lib/date-utils'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -18,10 +19,14 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [categoryPeriod, setCategoryPeriod] = useState<CategoryPeriod>('month')
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const statsRes = await fetch('/api/stats')
+      const params = new URLSearchParams({
+        categoryPeriod: categoryPeriod,
+      })
+      const statsRes = await fetch(`/api/stats?${params}`)
 
       if (statsRes.ok) {
         const statsData = await statsRes.json()
@@ -34,13 +39,13 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [categoryPeriod])
 
   useEffect(() => {
     if (session) {
       fetchData()
     }
-  }, [session])
+  }, [session, fetchData])
 
   if (!session) {
     return (
@@ -167,7 +172,25 @@ export default function DashboardPage() {
         {/* Category Breakdown */}
         {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Category Breakdown</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Category Breakdown</h2>
+              <div className="flex items-center gap-2">
+                <label htmlFor="category-period" className="text-sm font-medium text-gray-700">
+                  Period:
+                </label>
+                <select
+                  id="category-period"
+                  value={categoryPeriod}
+                  onChange={(e) => setCategoryPeriod(e.target.value as CategoryPeriod)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                >
+                  <option value="week">Week</option>
+                  <option value="month">Month</option>
+                  <option value="quarter">Quarter</option>
+                  <option value="year">Year</option>
+                </select>
+              </div>
+            </div>
             <div className="bg-white rounded-lg shadow-md p-6">
               <CategoryPieChart data={stats.categoryBreakdown} size={240} />
             </div>
