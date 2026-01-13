@@ -170,7 +170,7 @@ export default function DashboardPage() {
         )}
 
         {/* Category Breakdown */}
-        {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
+        {(stats?.categoryBreakdown && stats.categoryBreakdown.length > 0) || (stats?.projectedCategoryBreakdown && stats.projectedCategoryBreakdown.length > 0) ? (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900">Category Breakdown</h2>
@@ -191,11 +191,32 @@ export default function DashboardPage() {
                 </select>
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <CategoryPieChart data={stats.categoryBreakdown} size={240} />
-            </div>
+            
+            {/* Historic Category Breakdown */}
+            {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Historic</h3>
+                <CategoryPieChart data={stats.categoryBreakdown} size={240} />
+              </div>
+            )}
+
+            {/* Projected Category Breakdown */}
+            {stats?.projectedCategoryBreakdown && stats.projectedCategoryBreakdown.length > 0 ? (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Projected</h3>
+                <CategoryPieChart data={stats.projectedCategoryBreakdown} size={240} />
+              </div>
+            ) : (
+              stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-center h-64 text-gray-500">
+                    <p>No projected data available for the selected period</p>
+                  </div>
+                </div>
+              )
+            )}
           </div>
-        )}
+        ) : null}
 
         {/* Recent Bills */}
         {stats?.recentBills && stats.recentBills.length > 0 && (

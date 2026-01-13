@@ -186,6 +186,13 @@ export interface DashboardStats {
     count: number
     totalAmount: number
   }[]
+  projectedCategoryBreakdown: {
+    categoryId: string
+    categoryName: string
+    color: string | null
+    count: number
+    totalAmount: number
+  }[]
   recentBills: Bill[]
   upcomingBillsList: Bill[]
   overdueBillsList: Bill[]
