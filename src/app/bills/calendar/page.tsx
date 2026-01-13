@@ -72,15 +72,37 @@ export default function BillCalendarPage() {
   }
 
   const previousMonth = () => {
-    setCurrentDate(subMonths(currentDate, 1))
+    const newDate = subMonths(currentDate, 1)
+    setCurrentDate(newDate)
+    updateSelectedDateForMonth(newDate)
   }
 
   const nextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1))
+    const newDate = addMonths(currentDate, 1)
+    setCurrentDate(newDate)
+    updateSelectedDateForMonth(newDate)
   }
 
   const goToToday = () => {
-    setCurrentDate(new Date())
+    const today = new Date()
+    setCurrentDate(today)
+    setSelectedDate(today)
+  }
+
+  const updateSelectedDateForMonth = (monthDate: Date) => {
+    const today = new Date()
+    const newMonth = monthDate.getMonth()
+    const newYear = monthDate.getFullYear()
+    const currentMonth = today.getMonth()
+    const currentYear = today.getFullYear()
+
+    // If the new month is the current month, set to today
+    if (newMonth === currentMonth && newYear === currentYear) {
+      setSelectedDate(today)
+    } else {
+      // Otherwise, set to the 1st of the new month
+      setSelectedDate(new Date(newYear, newMonth, 1))
+    }
   }
 
   if (!session) {
