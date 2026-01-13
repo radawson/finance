@@ -63,19 +63,20 @@ export function getYearEnd(date: Date): Date {
  * Returns the start of the period containing the given date, normalized to start of day
  */
 export function getPeriodStartDate(period: CategoryPeriod, date: Date = new Date()): Date {
-  const today = startOfDay(date)
+  // Normalize input date to start of day first
+  const normalizedDate = startOfDay(date)
   
   switch (period) {
     case 'week':
-      return startOfDay(getWeekStart(today))
+      return getWeekStart(normalizedDate)
     case 'month':
-      return startOfDay(getMonthStart(today))
+      return getMonthStart(normalizedDate)
     case 'quarter':
-      return startOfDay(getQuarterStart(today))
+      return getQuarterStart(normalizedDate)
     case 'year':
-      return startOfDay(getYearStart(today))
+      return getYearStart(normalizedDate)
     default:
-      return startOfDay(today)
+      return normalizedDate
   }
 }
 

@@ -55,13 +55,16 @@ export async function GET(req: NextRequest) {
     const overdueBillsList = getOverdueBills(allBills)
 
     // Category breakdown - filter by period if specified
-    const today = new Date()
+    const now = new Date()
+    const today = new Date(now)
     today.setHours(23, 59, 59, 999) // End of today
-    const periodStartDate = getPeriodStartDate(categoryPeriod, today)
+    const periodStartDate = getPeriodStartDate(categoryPeriod, now)
     
     // Filter bills for category breakdown based on dueDate within the selected period
+    // getPeriodStartDate already returns a normalized date (start of day)
     const billsForCategoryBreakdown = allBills.filter((bill) => {
       const dueDate = new Date(bill.dueDate)
+      dueDate.setHours(0, 0, 0, 0) // Normalize to start of day for comparison
       return dueDate >= periodStartDate && dueDate <= today
     })
 
