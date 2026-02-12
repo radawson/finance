@@ -199,6 +199,50 @@ Payment Method: * (required)
 [Save] ← Too many required fields!
 ```
 
+### Predicted Bills
+
+The system generates predicted bills based on recurring patterns to help users anticipate upcoming expenses.
+
+- **PREDICTED Status**: A new bill status distinct from PENDING, DUE_SOON, etc.
+- **Generation**: `GET /api/bills/predicted` generates predictions for the next 30 days (idempotent)
+- **Real Records**: Predicted bills are actual Bill rows in the database, not ephemeral; users can click and edit them
+- **Actualization**: When a predicted bill is edited (amount, date, invoice number, etc.), it auto-transitions from PREDICTED to the appropriate status (PENDING, DUE_SOON, etc.)
+- **Metadata Fields**:
+  - `templateBillId` - FK to the recurring bill that generated the prediction (kept after actualization for history)
+  - `predictionConfidence` - Decimal(3,2) between 0.00 and 1.00
+  - `predictionMethod` - One of: `trend`, `weighted`, `seasonal`, `average`, `synthetic`
+- **Metadata Clearing**: On actualization, `predictionConfidence` and `predictionMethod` are cleared
+- **Dashboard Integration**: Stats API returns `predictedBills` count and `missingBills` (past-due predicted bills)
+- **List Exclusion**: PREDICTED bills are excluded from main bill list by default; use `includePredicted=true` to include
+- **Business Logic**: Implemented in `src/lib/business/prediction-generator.ts` and `src/lib/business/recurring-bills.ts`
+
+### Balance Snapshots
+
+Track vendor account balances over time to visualize trends (e.g., credit card paydown).
+
+- **Model**: `VendorAccountBalanceSnapshot` with `accountId`, `balance` (Decimal(10,2)), `recordedAt`
+- **Automatic Recording**: Snapshots are recorded when a bill is created or updated with `updateAccountBalance: true`
+- **VendorAccount Fields**: `balance` (Decimal) and `interestRate` (Decimal) added to vendor accounts
+- **API**: `GET /api/analysis/credit-card-balances?period=6m` returns snapshot history (3m, 6m, 1y)
+- **Visualization**: `CreditCardBalanceGraph` component renders SVG line charts of balance over time
+- **Index**: Database index on `(accountId, recordedAt)` for efficient querying
+
+### Tags
+
+Free-form string tags on both Bill and Vendor models for flexible categorization.
+
+- **Storage**: PostgreSQL string arrays (`String[] @default([])`)
+- **Constraints**: Each tag max 128 characters; trimmed and validated on save
+- **Filtering**: `GET /api/bills?tags=utilities,monthly` filters bills that contain ALL specified tags (AND logic)
+- **Components**: `TagInput` for editing, `TagDisplay` for read-only rendering
+- **Progressive**: Tags are fully optional and do not affect core bill workflows
+
+### Vendor Address Line 2
+
+- **Field**: Optional `addressLine2` (String?) on Vendor model
+- **Use Case**: Suite numbers, apartment numbers, building names
+- **Progressive**: Does not affect basic vendor creation
+
 ## Future Enhancements
 
 When adding new features, always ask:

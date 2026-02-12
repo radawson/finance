@@ -7,7 +7,7 @@ Get up and running with the accounting System in minutes!
 ### 1. Prerequisites Check
 
 ```bash
-# Check Node.js version (need 18+)
+# Check Node.js version (need 20.19+, 22.12+, or 24+)
 node --version
 
 # Check npm
@@ -41,7 +41,7 @@ npm install
 
 ```bash
 # Copy example env file
-cp .env.example .env
+cp example.env .env
 
 # Edit .env and set minimum required values
 nano .env
@@ -51,7 +51,7 @@ nano .env
 
 ```env
 DATABASE_URL="postgresql://kontadouser:devpassword@localhost:5432/kontado?schema=public"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:3003"
 NEXTAUTH_SECRET="dev-secret-change-in-production-use-openssl-rand-base64-32"
 
 # Keycloak (can skip for now if testing without admin SSO)
@@ -64,9 +64,9 @@ SMTP_HOST="sandbox.smtp.mailtrap.io"
 SMTP_PORT="2525"
 SMTP_USER="your-mailtrap-user"
 SMTP_PASSWORD="your-mailtrap-password"
-SMTP_FROM="IT Support <support@example.com>"
+SMTP_FROM="Kontado <support@example.com>"
 
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3003"
 UPLOAD_DIR="./uploads"
 MAX_FILE_SIZE="10485760"
 ```
@@ -87,19 +87,19 @@ npx prisma studio
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3003](http://localhost:3003)
 
 ### 7. Create Test Accounts
 
 **Regular User:**
-1. Go to http://localhost:3000/register
+1. Go to http://localhost:3003/register
 2. Fill in:
    - Name: Test User
    - Email: user@test.com
    - Password: testpass123
    - Department: Engineering
 3. Click "Create account"
-4. Login at http://localhost:3000/login
+4. Login at http://localhost:3003/login
 
 **Admin User (if Keycloak not configured):**
 
@@ -113,7 +113,7 @@ npx prisma studio
 psql -U kontadouser -d kontado
 
 # In psql, insert admin user:
-INSERT INTO "User" (id, email, name, password, role, "isKeycloakUser", "createdAt", "updatedAt")
+INSERT INTO "users" (id, email, name, password, role, "isKeycloakUser", "createdAt", "updatedAt")
 VALUES (
   gen_random_uuid(),
   'admin@test.com',
@@ -169,14 +169,14 @@ node create-admin.js
 
 ### As a Regular User:
 
-1. **Login** at http://localhost:3000/login
+1. **Login** at http://localhost:3003/login
 2. **Create a bill:**
-   - Click "New Bill" or go to http://localhost:3000/bills
+   - Click "New Bill" or go to http://localhost:3003/bills
    - Fill in title, amount, due date, category (required)
    - Optionally select vendor and account number
    - Submit
-3. **View your bills** at http://localhost:3000/bills
-4. **View dashboard** at http://localhost:3000/dashboard
+3. **View your bills** at http://localhost:3003/bills
+4. **View dashboard** at http://localhost:3003/dashboard
 5. **View bill details:**
    - Click on any bill card from the dashboard
    - This opens the bill detail/edit page
@@ -188,16 +188,17 @@ node create-admin.js
 
 ### As an Admin:
 
-1. **Login** at http://localhost:3000/login
-2. **View admin dashboard** at http://localhost:3000/admin/dashboard
-3. **View all bills** at http://localhost:3000/bills
-4. **Manage a bill:**
+1. **Login** at http://localhost:3003/login (via Keycloak SSO)
+2. **View dashboard** at http://localhost:3003/dashboard (same dashboard, sees all bills)
+3. **View all bills** at http://localhost:3003/bills
+4. **Manage users** at http://localhost:3003/admin/users
+5. **Manage a bill:**
    - Click on any bill card from dashboard or bills list
    - This opens the bill detail/edit page
    - Change status, update details
    - Link bill to vendor and account number
    - Add comments and attachments
-5. **Switch to user view** by clicking "User View" in navbar
+6. **Switch views** by clicking "Admin View" / "User View" in navbar
 
 ### Viewing and Editing Bills
 
@@ -282,22 +283,22 @@ Use [Mailtrap](https://mailtrap.io) for testing:
 
 1. Open two browser windows
 2. Login as user in one, admin in another
-3. Create/update tickets
+3. Create/update bills
 4. Watch real-time updates in both windows
 
 ## Troubleshooting
 
-### Port 3000 already in use
+### Port 3003 already in use
 
 ```bash
-# Find process using port 3000
-lsof -i :3000
+# Find process using port 3003
+lsof -i :3003
 
 # Kill it
 kill -9 <PID>
 
 # Or use different port
-PORT=3001 npm run dev
+PORT=3004 npm run dev
 ```
 
 ### Database connection failed

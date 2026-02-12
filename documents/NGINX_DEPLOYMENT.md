@@ -1,6 +1,6 @@
 # Nginx Deployment Guide for Kontado
 
-This guide will help you deploy the nginx configuration for your Kontado ticketing application.
+This guide will help you deploy the nginx configuration for your Kontado bill tracking application.
 
 ## Prerequisites
 
