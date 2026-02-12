@@ -11,6 +11,7 @@ import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Calendar } 
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import CategoryPieChart from '@/components/CategoryPieChart'
+import CreditCardBalanceGraph from '@/components/CreditCardBalanceGraph'
 import { CategoryPeriod } from '@/lib/date-utils'
 
 export default function DashboardPage() {
@@ -20,6 +21,8 @@ export default function DashboardPage() {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [categoryPeriod, setCategoryPeriod] = useState<CategoryPeriod>('month')
+  const [balancePeriod, setBalancePeriod] = useState('6m')
+  const [creditCardData, setCreditCardData] = useState<{ period: string; accounts: any[] } | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -41,11 +44,24 @@ export default function DashboardPage() {
     }
   }, [categoryPeriod])
 
+  const fetchCreditCardBalances = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/analysis/credit-card-balances?period=${balancePeriod}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCreditCardData(data)
+      }
+    } catch (error) {
+      // Silently fail - widget just won't show
+    }
+  }, [balancePeriod])
+
   useEffect(() => {
     if (session) {
       fetchData()
+      fetchCreditCardBalances()
     }
-  }, [session, fetchData])
+  }, [session, fetchData, fetchCreditCardBalances])
 
   if (!session) {
     return (
@@ -120,6 +136,17 @@ export default function DashboardPage() {
             color="green"
           />
         </div>
+
+        {/* Credit Card Balance Graph */}
+        {creditCardData && creditCardData.accounts.length > 0 && (
+          <div className="mb-8">
+            <CreditCardBalanceGraph
+              accounts={creditCardData.accounts}
+              period={balancePeriod}
+              onPeriodChange={setBalancePeriod}
+            />
+          </div>
+        )}
 
         {/* Upcoming Bills */}
         {stats?.upcomingBillsList && stats.upcomingBillsList.length > 0 && (

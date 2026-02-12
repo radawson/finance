@@ -209,11 +209,25 @@ model VendorAccount {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  type        AccountType? @relation(fields: [accountTypeId], references: [id], onDelete: SetNull)
-  bills       Bill[]
+  vendor           Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  type             AccountType? @relation(fields: [accountTypeId], references: [id], onDelete: SetNull)
+  bills            Bill[]
+  balanceSnapshots VendorAccountBalanceSnapshot[]
 
   @@map("vendor_accounts")
+}
+
+model VendorAccountBalanceSnapshot {
+  id         String   @id @default(uuid())
+  accountId  String
+  balance    Decimal  @db.Decimal(10, 2)
+  recordedAt DateTime @default(now())
+
+  // Relations
+  account VendorAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, recordedAt])
+  @@map("vendor_account_balance_snapshots")
 }
 
 model Notification {

@@ -21,6 +21,7 @@ export interface BillFormData {
   paidDate: string
   invoiceNumber: string
   tags: string[]
+  updateAccountBalance: boolean
 }
 
 export interface RecurrenceFormData {
@@ -62,6 +63,7 @@ export default function BillEditForm({
     paidDate: '',
     invoiceNumber: '',
     tags: [],
+    updateAccountBalance: false,
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -91,6 +93,7 @@ export default function BillEditForm({
         paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
         invoiceNumber: bill.invoiceNumber || '',
         tags: bill.tags || [],
+        updateAccountBalance: false,
       })
 
       // Set recurrence state if bill has recurrence pattern
@@ -503,6 +506,26 @@ export default function BillEditForm({
             Add tags to organize and filter bills. Tags can contain spaces and special characters.
           </p>
         </div>
+
+        {/* Add to Account Balance */}
+        {formData.vendorAccountId && (
+          <div className="border-t border-gray-200 pt-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.updateAccountBalance}
+                onChange={(e) => setFormData({ ...formData, updateAccountBalance: e.target.checked })}
+                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Add {formData.amount ? `$${parseFloat(formData.amount).toFixed(2)}` : 'amount'} to account balance
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1 ml-6">
+              When checked, the bill amount will be added to the linked account&apos;s balance
+            </p>
+          </div>
+        )}
 
         {/* Recurrence Section */}
         <div className="border-t border-gray-200 pt-4">

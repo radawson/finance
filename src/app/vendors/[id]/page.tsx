@@ -29,6 +29,8 @@ export default function VendorDetailsPage() {
   const [accountFormData, setAccountFormData] = useState({
     accountNumber: '',
     accountTypeId: '',
+    balance: '',
+    interestRate: '',
     nickname: '',
     notes: '',
   })
@@ -177,6 +179,8 @@ export default function VendorDetailsPage() {
         body: JSON.stringify({
           accountNumber: accountFormData.accountNumber,
           accountTypeId: accountFormData.accountTypeId || null,
+          balance: accountFormData.balance || null,
+          interestRate: accountFormData.interestRate || null,
           nickname: accountFormData.nickname || null,
           notes: accountFormData.notes || null,
         }),
@@ -189,6 +193,8 @@ export default function VendorDetailsPage() {
         setAccountFormData({
           accountNumber: '',
           accountTypeId: '',
+          balance: '',
+          interestRate: '',
           nickname: '',
           notes: '',
         })
@@ -255,6 +261,8 @@ export default function VendorDetailsPage() {
     setAccountFormData({
       accountNumber: account.accountNumber,
       accountTypeId: account.accountTypeId || account.type?.id || '',
+      balance: account.balance != null ? String(account.balance) : '',
+      interestRate: account.interestRate != null ? String(account.interestRate) : '',
       nickname: account.nickname || '',
       notes: account.notes || '',
     })
@@ -331,6 +339,8 @@ export default function VendorDetailsPage() {
                 setAccountFormData({
                   accountNumber: '',
                   accountTypeId: '',
+                  balance: '',
+                  interestRate: '',
                   nickname: '',
                   notes: '',
                 })
@@ -371,6 +381,13 @@ export default function VendorDetailsPage() {
                             : account.accountNumber}
                           {account.type?.name && ` • ${account.type.name}`}
                         </p>
+                        {(account.balance || account.interestRate) && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {account.balance && `Balance: $${Number(account.balance).toFixed(2)}`}
+                            {account.balance && account.interestRate && ' • '}
+                            {account.interestRate && `Rate: ${Number(account.interestRate).toFixed(2)}%`}
+                          </p>
+                        )}
                         {account.notes && (
                           <p className="text-sm text-gray-500 mt-1">{account.notes}</p>
                         )}
@@ -465,6 +482,44 @@ export default function VendorDetailsPage() {
                     placeholder="e.g., Primary Mortgage, HELOC"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Balance
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={accountFormData.balance}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                          setAccountFormData({ ...accountFormData, balance: val })
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Interest Rate (%)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={accountFormData.interestRate}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                          setAccountFormData({ ...accountFormData, interestRate: val })
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Notes
@@ -492,6 +547,8 @@ export default function VendorDetailsPage() {
                       setAccountFormData({
                         accountNumber: '',
                         accountTypeId: '',
+                        balance: '',
+                        interestRate: '',
                         nickname: '',
                         notes: '',
                       })

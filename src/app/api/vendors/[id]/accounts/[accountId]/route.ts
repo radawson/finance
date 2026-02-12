@@ -6,10 +6,13 @@ import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
 import { emitToVendor } from '@/lib/socketio-server'
 import { SocketEvents } from '@/lib/socketio-server'
+import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
 
 const updateVendorAccountSchema = z.object({
   accountNumber: z.string().min(1).optional(),
   accountTypeId: z.string().optional().nullable(),
+  balance: z.union([z.string(), z.number()]).optional().nullable(),
+  interestRate: z.union([z.string(), z.number()]).optional().nullable(),
   nickname: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
@@ -81,6 +84,8 @@ export async function PATCH(
       data: {
         accountNumber: data.accountNumber,
         accountTypeId: data.accountTypeId !== undefined ? (data.accountTypeId || null) : undefined,
+        balance: data.balance !== undefined ? (data.balance != null ? data.balance : null) : undefined,
+        interestRate: data.interestRate !== undefined ? (data.interestRate != null ? data.interestRate : null) : undefined,
         nickname: data.nickname !== undefined ? (data.nickname || null) : undefined,
         notes: data.notes !== undefined ? (data.notes || null) : undefined,
         isActive: data.isActive,
@@ -89,6 +94,11 @@ export async function PATCH(
         type: true,
       },
     })
+
+    // Record balance snapshot if balance was updated
+    if (data.balance !== undefined && data.balance != null) {
+      await recordBalanceSnapshot(accountId, data.balance)
+    }
 
     // Emit WebSocket event for real-time updates
     emitToVendor(id, SocketEvents.VENDOR_ACCOUNT_UPDATED, updatedAccount)

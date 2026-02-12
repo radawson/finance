@@ -7,6 +7,7 @@ import { calculateBillStatus } from '@/lib/bills'
 import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
 import { emitToBill, emitToUser, SocketEvents } from '@/lib/socketio-server'
+import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
 
 const updateBillSchema = z.object({
   title: z.string().min(1).optional(),
@@ -21,6 +22,7 @@ const updateBillSchema = z.object({
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
+  updateAccountBalance: z.boolean().optional(),
 })
 
 export async function GET(
@@ -273,6 +275,26 @@ export async function PATCH(
         recurrencePattern: true,
       },
     })
+
+    // Update account balance if requested
+    if (body.updateAccountBalance) {
+      const targetAccountId = data.vendorAccountId !== undefined ? data.vendorAccountId : existingBill.vendorAccountId
+      const amount = data.amount !== undefined ? data.amount : Number(existingBill.amount)
+      if (targetAccountId) {
+        const account = await prisma.vendorAccount.findUnique({
+          where: { id: targetAccountId },
+        })
+        if (account) {
+          const currentBalance = account.balance ? Number(account.balance) : 0
+          const newBalance = (currentBalance + amount).toFixed(2)
+          await prisma.vendorAccount.update({
+            where: { id: targetAccountId },
+            data: { balance: newBalance },
+          })
+          await recordBalanceSnapshot(targetAccountId, newBalance)
+        }
+      }
+    }
 
     // Emit WebSocket event for silent UI update (to bill room)
     emitToBill(id, SocketEvents.BILL_UPDATED, {

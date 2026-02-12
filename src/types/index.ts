@@ -1,6 +1,10 @@
 import { Role, BillStatus, RecurrenceFrequency } from '@/generated/prisma/client'
+import { Decimal } from '@/generated/prisma/internal/prismaNamespace'
 
 export type { Role, BillStatus, RecurrenceFrequency }
+
+// Flexible decimal type: Prisma Decimal on server, string after JSON serialization on client
+export type DecimalValue = Decimal | string | number
 
 // UUID validation regex (replaces deprecated z.string().uuid())
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -58,6 +62,8 @@ export interface VendorAccount {
   accountNumber: string
   accountTypeId?: string | null
   accountType?: string | null  // Legacy field for backward compatibility
+  balance?: DecimalValue | null  // Prisma Decimal on server, string on client
+  interestRate?: DecimalValue | null  // Prisma Decimal on server, string on client
   nickname?: string | null
   notes?: string | null
   isActive: boolean
@@ -65,6 +71,13 @@ export interface VendorAccount {
   updatedAt: Date
   vendor?: Vendor | null
   type?: AccountType | null
+}
+
+export interface VendorAccountBalanceSnapshot {
+  id: string
+  accountId: string
+  balance: DecimalValue  // Prisma Decimal on server, string on client
+  recordedAt: Date
 }
 
 export interface Vendor {

@@ -6,10 +6,13 @@ import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
 import { emitToVendor } from '@/lib/socketio-server'
 import { SocketEvents } from '@/lib/socketio-server'
+import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
 
 const vendorAccountSchema = z.object({
   accountNumber: z.string().min(1, 'Account number is required'),
   accountTypeId: z.string().optional().nullable(),
+  balance: z.union([z.string(), z.number()]).optional().nullable(),
+  interestRate: z.union([z.string(), z.number()]).optional().nullable(),
   nickname: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
@@ -101,6 +104,8 @@ export async function POST(
       data: {
         accountNumber: data.accountNumber,
         accountTypeId: data.accountTypeId || null,
+        balance: data.balance != null ? data.balance : null,
+        interestRate: data.interestRate != null ? data.interestRate : null,
         nickname: data.nickname || null,
         notes: data.notes || null,
         vendorId: id,
@@ -110,6 +115,11 @@ export async function POST(
         type: true,
       },
     })
+
+    // Record balance snapshot if initial balance was set
+    if (data.balance != null) {
+      await recordBalanceSnapshot(account.id, data.balance)
+    }
 
     // Emit WebSocket event for real-time updates
     emitToVendor(id, SocketEvents.VENDOR_ACCOUNT_CREATED, account)
