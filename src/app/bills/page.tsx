@@ -415,6 +415,7 @@ export default function BillsPage() {
                 paidDate: '',
                 invoiceNumber: '',
                 tags: [],
+                updateAccountBalance: false,
               })
               setIsCreateModalOpen(true)
             }}
@@ -1131,6 +1132,7 @@ export default function BillsPage() {
                         paidDate: '',
                         invoiceNumber: '',
                         tags: [],
+                        updateAccountBalance: false,
                       })
                       setIsRecurring(false)
                       setShowRecurrenceSection(false)
