@@ -22,7 +22,7 @@ const billSchema = z.object({
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
-  updateAccountBalance: z.boolean().optional(),
+  accountBalance: z.number().nonnegative().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -233,20 +233,14 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Update account balance if requested
-    if (body.updateAccountBalance && data.vendorAccountId) {
-      const account = await prisma.vendorAccount.findUnique({
+    // Set account balance if provided
+    if (body.accountBalance !== undefined && data.vendorAccountId) {
+      const newBalance = Number(body.accountBalance).toFixed(2)
+      await prisma.vendorAccount.update({
         where: { id: data.vendorAccountId },
+        data: { balance: newBalance },
       })
-      if (account) {
-        const currentBalance = account.balance ? Number(account.balance) : 0
-        const newBalance = (currentBalance + data.amount).toFixed(2)
-        await prisma.vendorAccount.update({
-          where: { id: data.vendorAccountId },
-          data: { balance: newBalance },
-        })
-        await recordBalanceSnapshot(data.vendorAccountId, newBalance)
-      }
+      await recordBalanceSnapshot(data.vendorAccountId, newBalance)
     }
 
     // Emit WebSocket event for silent UI update (to all authenticated users)

@@ -22,7 +22,7 @@ const updateBillSchema = z.object({
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
-  updateAccountBalance: z.boolean().optional(),
+  accountBalance: z.number().nonnegative().optional(),
 })
 
 export async function GET(
@@ -298,43 +298,16 @@ export async function PATCH(
       },
     })
 
-    // Update account balance when vendorAccount is set/changed
-    if (body.updateAccountBalance) {
+    // Set account balance if provided
+    if (body.accountBalance !== undefined) {
       const targetAccountId = data.vendorAccountId !== undefined ? data.vendorAccountId : existingBill.vendorAccountId
-      const amount = data.amount !== undefined ? data.amount : Number(existingBill.amount)
-      const oldAccountId = existingBill.vendorAccountId
-      const vendorAccountChanged = data.vendorAccountId !== undefined && data.vendorAccountId !== oldAccountId
-
-      // When vendorAccount changed: subtract from old, add to new
-      if (vendorAccountChanged && oldAccountId) {
-        const oldAccount = await prisma.vendorAccount.findUnique({
-          where: { id: oldAccountId },
-        })
-        if (oldAccount) {
-          const currentBalance = oldAccount.balance ? Number(oldAccount.balance) : 0
-          const newBalance = Math.max(0, currentBalance - amount).toFixed(2)
-          await prisma.vendorAccount.update({
-            where: { id: oldAccountId },
-            data: { balance: newBalance },
-          })
-          await recordBalanceSnapshot(oldAccountId, newBalance)
-        }
-      }
-
-      // Add to target account
       if (targetAccountId) {
-        const account = await prisma.vendorAccount.findUnique({
+        const newBalance = Number(body.accountBalance).toFixed(2)
+        await prisma.vendorAccount.update({
           where: { id: targetAccountId },
+          data: { balance: newBalance },
         })
-        if (account) {
-          const currentBalance = account.balance ? Number(account.balance) : 0
-          const newBalance = (currentBalance + amount).toFixed(2)
-          await prisma.vendorAccount.update({
-            where: { id: targetAccountId },
-            data: { balance: newBalance },
-          })
-          await recordBalanceSnapshot(targetAccountId, newBalance)
-        }
+        await recordBalanceSnapshot(targetAccountId, newBalance)
       }
     }
 

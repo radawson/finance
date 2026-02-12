@@ -21,7 +21,7 @@ export interface BillFormData {
   paidDate: string
   invoiceNumber: string
   tags: string[]
-  updateAccountBalance: boolean
+  accountBalance: string
 }
 
 export interface RecurrenceFormData {
@@ -65,7 +65,7 @@ export default function BillEditForm({
     paidDate: '',
     invoiceNumber: '',
     tags: [],
-    updateAccountBalance: false,
+    accountBalance: '',
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -95,7 +95,7 @@ export default function BillEditForm({
         paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
         invoiceNumber: bill.invoiceNumber || '',
         tags: bill.tags || [],
-        updateAccountBalance: false, // User opts in via checkbox to avoid double-add on edit
+        accountBalance: '', // User enters current balance when needed
       })
 
       // Set recurrence state if bill has recurrence pattern
@@ -277,11 +277,10 @@ export default function BillEditForm({
     }
   }, [formData.vendorId, vendorAccounts, vendors, formData.vendorAccountId])
 
-  // When vendorAccount is changed by user (differs from bill), default updateAccountBalance to true
-  // so balance updates when entering a bill with a linked account
+  // Clear account balance when vendor account changes so user must re-enter
   useEffect(() => {
-    if (formData.vendorAccountId && formData.vendorAccountId !== bill?.vendorAccountId) {
-      setFormData(prev => (prev.updateAccountBalance ? prev : { ...prev, updateAccountBalance: true }))
+    if (formData.vendorAccountId !== bill?.vendorAccountId) {
+      setFormData(prev => prev.accountBalance ? { ...prev, accountBalance: '' } : prev)
     }
   }, [formData.vendorAccountId, bill?.vendorAccountId])
 
@@ -555,22 +554,26 @@ export default function BillEditForm({
           </p>
         </div>
 
-        {/* Add to Account Balance */}
+        {/* Account Balance */}
         {formData.vendorAccountId && (
           <div className="border-t border-gray-200 pt-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.updateAccountBalance}
-                onChange={(e) => setFormData({ ...formData, updateAccountBalance: e.target.checked })}
-                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Add {formData.amount ? `$${parseFloat(formData.amount).toFixed(2)}` : 'amount'} to account balance
-              </span>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Account Balance (optional)
             </label>
-            <p className="text-xs text-gray-500 mt-1 ml-6">
-              When checked, the bill amount will be added to the linked account&apos;s balance
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.accountBalance}
+                onChange={(e) => setFormData({ ...formData, accountBalance: e.target.value })}
+                placeholder="0.00"
+                className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Enter the current account balance as of this billing period. This will update the linked account&apos;s recorded balance.
             </p>
           </div>
         )}

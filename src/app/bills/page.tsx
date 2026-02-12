@@ -51,7 +51,7 @@ export default function BillsPage() {
     paidDate: '',
     invoiceNumber: '',
     tags: [] as string[],
-    updateAccountBalance: false,
+    accountBalance: '',
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -270,7 +270,7 @@ export default function BillsPage() {
         invoiceNumber: formData.invoiceNumber || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         isRecurring: isRecurring,
-        updateAccountBalance: formData.vendorAccountId ? (formData.updateAccountBalance ?? true) : false,
+        ...(formData.accountBalance ? { accountBalance: parseFloat(formData.accountBalance) } : {}),
       }
       
       console.log('Submitting bill:', requestBody)
@@ -335,7 +335,7 @@ export default function BillsPage() {
         paidDate: '',
         invoiceNumber: '',
         tags: [],
-        updateAccountBalance: false,
+        accountBalance: '',
       })
       setIsRecurring(false)
       setShowRecurrenceSection(false)
@@ -415,7 +415,7 @@ export default function BillsPage() {
                 paidDate: '',
                 invoiceNumber: '',
                 tags: [],
-                updateAccountBalance: false,
+                accountBalance: '',
               })
               setIsCreateModalOpen(true)
             }}
@@ -583,7 +583,7 @@ export default function BillsPage() {
                   paidDate: '',
                   invoiceNumber: '',
                   tags: [],
-                  updateAccountBalance: false,
+                  accountBalance: '',
                 })
                 setIsCreateModalOpen(true)
               }}
@@ -847,22 +847,22 @@ export default function BillsPage() {
                       onChange={(e) => {
                         const value = e.target.value
                         if (!value) {
-                          setFormData({ ...formData, vendorId: '', vendorAccountId: '', updateAccountBalance: false })
+                          setFormData({ ...formData, vendorId: '', vendorAccountId: '', accountBalance: '' })
                           return
                         }
                         // Check if value contains account separator
                         if (value.includes(':')) {
                           const [vendorId, accountId] = value.split(':')
-                          setFormData({ ...formData, vendorId, vendorAccountId: accountId, updateAccountBalance: true })
+                          setFormData({ ...formData, vendorId, vendorAccountId: accountId, accountBalance: '' })
                         } else {
                           // Vendor selected - check if it has exactly one account
                           const vendor = vendors.find(v => v.id === value)
                           const accounts = vendor?.accounts || []
                           if (accounts.length === 1) {
                             // Auto-select the single account
-                            setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id, updateAccountBalance: true })
+                            setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id, accountBalance: '' })
                           } else {
-                            setFormData({ ...formData, vendorId: value, vendorAccountId: '', updateAccountBalance: false })
+                            setFormData({ ...formData, vendorId: value, vendorAccountId: '', accountBalance: '' })
                           }
                         }
                       }}
@@ -963,19 +963,23 @@ export default function BillsPage() {
 
                 {formData.vendorAccountId && (
                   <div className="border-t border-gray-200 pt-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.updateAccountBalance}
-                        onChange={(e) => setFormData({ ...formData, updateAccountBalance: e.target.checked })}
-                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Add {formData.amount ? `$${parseFloat(formData.amount).toFixed(2)}` : 'amount'} to account balance
-                      </span>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Account Balance (optional)
                     </label>
-                    <p className="text-xs text-gray-500 mt-1 ml-6">
-                      When checked, the bill amount will be added to the linked account&apos;s balance
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.accountBalance}
+                        onChange={(e) => setFormData({ ...formData, accountBalance: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full pl-7 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter the current account balance as of this billing period. This will update the linked account&apos;s recorded balance.
                     </p>
                   </div>
                 )}
@@ -1132,7 +1136,7 @@ export default function BillsPage() {
                         paidDate: '',
                         invoiceNumber: '',
                         tags: [],
-                        updateAccountBalance: false,
+                        accountBalance: '',
                       })
                       setIsRecurring(false)
                       setShowRecurrenceSection(false)
