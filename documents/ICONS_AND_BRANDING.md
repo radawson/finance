@@ -20,8 +20,8 @@ All icons are located in `/src/app/` (Next.js 16 auto-detection):
 ### 1. Manifest (`/src/app/manifest.json`)
 ```json
 {
-  "name": "Informejo - IT Support Tickets",
-  "short_name": "Informejo",
+  "name": "Kontado - Bill Tracking System",
+  "short_name": "Kontado",
   "theme_color": "#2563eb",
   "background_color": "#ffffff"
 }
@@ -40,7 +40,7 @@ Configured with:
 **Navbar (`/src/components/Navbar.tsx`)**
 - Logo appears in navigation bar
 - 32×32px size
-- Paired with "Informejo" text
+- Paired with "Kontado" text
 - Hover effect for interactivity
 
 **Homepage (`/src/app/page.tsx`)**
@@ -50,7 +50,7 @@ Configured with:
 
 ## 🎨 Branding Details
 
-**App Name:** Informejo
+**App Name:** Kontado
 
 **Color Scheme:**
 - Primary: `#2563eb` (blue-600)
@@ -104,7 +104,7 @@ import Image from 'next/image'
 
 <Image 
   src="/logo.png" 
-  alt="Informejo Logo" 
+  alt="Kontado Logo" 
   width={32} 
   height={32}
   className="h-8 w-8"

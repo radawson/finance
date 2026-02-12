@@ -1,6 +1,6 @@
-# Nginx Deployment Guide for Quicket
+# Nginx Deployment Guide for Kontado
 
-This guide will help you deploy the nginx configuration for your Quicket ticketing application.
+This guide will help you deploy the nginx configuration for your Kontado ticketing application.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ sudo apt install nginx -y
 Copy the nginx configuration to the sites-available directory:
 
 ```bash
-sudo cp /home/torvaldsl/quicket/nginx.conf /etc/nginx/sites-available/ticket.partridgecrossing.org
+sudo cp /home/torvaldsl/projects/finance/documents/nginx.conf /etc/nginx/sites-available/finance.partridgecrossing.org
 ```
 
 ### 3. Enable the Site
@@ -30,7 +30,7 @@ sudo cp /home/torvaldsl/quicket/nginx.conf /etc/nginx/sites-available/ticket.par
 Create a symbolic link to enable the site:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/ticket.partridgecrossing.org /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/finance.partridgecrossing.org /etc/nginx/sites-enabled/
 ```
 
 ### 4. Test the Configuration
@@ -77,19 +77,19 @@ sudo systemctl status nginx
 
 Monitor access logs:
 ```bash
-sudo tail -f /var/log/nginx/quicket_access.log
+sudo tail -f /var/log/nginx/kontado_access.log
 ```
 
 Monitor error logs:
 ```bash
-sudo tail -f /var/log/nginx/quicket_error.log
+sudo tail -f /var/log/nginx/kontado_error.log
 ```
 
 ### Test the Application
 
 From your local machine or another server:
 ```bash
-curl -H "Host: ticket.partridgecrossing.org" http://YOUR_SERVER_IP/
+curl -H "Host: finance.partridgecrossing.org" http://YOUR_SERVER_IP/
 ```
 
 ## HAProxy Configuration
@@ -99,14 +99,14 @@ Your HAProxy server at 10.10.13.1 should have a configuration similar to:
 ```haproxy
 frontend http_front
     bind *:80
-    default_backend quicket_backend
+    default_backend kontado_backend
 
-backend quicket_backend
+backend kontado_backend
     mode http
     option forwardfor
     http-request set-header X-Forwarded-Port %[dst_port]
     http-request add-header X-Forwarded-Proto https if { ssl_fc }
-    server quicket YOUR_NGINX_SERVER_IP:80 check
+    server kontado YOUR_NGINX_SERVER_IP:80 check
 ```
 
 ## SSL/HTTPS Setup (Optional but Recommended)
@@ -120,14 +120,14 @@ sudo apt install certbot python3-certbot-nginx -y
 
 2. Obtain a certificate:
 ```bash
-sudo certbot --nginx -d ticket.partridgecrossing.org
+sudo certbot --nginx -d finance.partridgecrossing.org
 ```
 
 3. Certbot will automatically configure SSL in your nginx config.
 
 ### Option 2: Manual SSL Configuration
 
-1. Uncomment the SSL server block in `/etc/nginx/sites-available/ticket.partridgecrossing.org`
+1. Uncomment the SSL server block in `/etc/nginx/sites-available/finance.partridgecrossing.org`
 2. Update the SSL certificate paths
 3. Test and restart nginx
 
@@ -200,7 +200,7 @@ sudo ufw allow from 10.10.13.1 to any port 443 proto tcp
 
 3. Check nginx proxy settings:
    ```bash
-   sudo tail -50 /var/log/nginx/quicket_error.log
+   sudo tail -50 /var/log/nginx/kontado_error.log
    ```
 
 ### WebSocket issues (Socket.IO)
@@ -237,7 +237,7 @@ gzip_types text/plain text/css application/json application/javascript text/xml 
 ## Support
 
 For issues specific to:
-- **Nginx**: Check `/var/log/nginx/quicket_error.log`
+- **Nginx**: Check `/var/log/nginx/kontado_error.log`
 - **PM2**: Run `pm2 logs`
 - **Application**: Check application logs
 

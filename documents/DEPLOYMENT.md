@@ -92,22 +92,22 @@ This will:
 pm2 status
 
 # View logs
-pm2 logs quicket
+pm2 logs kontado
 
 # View real-time logs
-pm2 logs quicket --lines 100
+pm2 logs kontado --lines 100
 
 # Restart application
-pm2 restart quicket
+pm2 restart kontado
 
 # Stop application
-pm2 stop quicket
+pm2 stop kontado
 
 # Monitor resources
 pm2 monit
 
 # Delete process
-pm2 delete quicket
+pm2 delete kontado
 ```
 
 ## Nginx Configuration (Recommended)
@@ -171,10 +171,10 @@ npx prisma migrate dev --name migration_name
 
 ```bash
 # PM2 logs
-pm2 logs quicket
+pm2 logs kontado
 
 # System logs
-journalctl -u quicket -f
+journalctl -u kontado -f
 ```
 
 ### Database Connection Issues
@@ -220,13 +220,13 @@ PM2 will automatically restart if memory exceeds 1GB (configurable in `ecosystem
 ### Database Backup
 
 ```bash
-pg_dump -U username -d quicket > backup_$(date +%Y%m%d).sql
+pg_dump -U username -d kontado > backup_$(date +%Y%m%d).sql
 ```
 
 ### Restore Database
 
 ```bash
-psql -U username -d quicket < backup_20250111.sql
+psql -U username -d kontado < backup_20250111.sql
 ```
 
 ## Monitoring
@@ -263,6 +263,6 @@ git reset --hard HEAD~1
 ## Support
 
 For issues, check:
-- Application logs: `pm2 logs quicket`
-- System logs: `journalctl -u quicket`
+- Application logs: `pm2 logs kontado`
+- System logs: `journalctl -u kontado`
 - Database logs: Check PostgreSQL logs

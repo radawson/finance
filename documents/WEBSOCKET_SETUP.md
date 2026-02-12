@@ -1,8 +1,8 @@
 # WebSocket Implementation Guide
 
-This guide covers the WebSocket (Socket.IO) implementation for real-time updates in Informejo.
+This guide covers the WebSocket (Socket.IO) implementation for real-time updates in Kontado.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
 - [What Changed](#what-changed)
@@ -12,7 +12,7 @@ This guide covers the WebSocket (Socket.IO) implementation for real-time updates
 - [Troubleshooting](#troubleshooting)
 - [HAProxy Configuration](#haproxy-configuration)
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 The application now uses a **custom Node.js server** that wraps Next.js and runs Socket.IO alongside it:
 
@@ -25,7 +25,7 @@ The application now uses a **custom Node.js server** that wraps Next.js and runs
                    ▼
 ┌─────────────────────────────────────────────────────┐
 │                     Nginx                           │
-│          (ticket.partridgecrossing.org)             │
+│          (finance.partridgecrossing.org)            │
 │    ┌────────────────────────────────────┐          │
 │    │  /socket.io/ → WebSocket Handler   │          │
 │    │  / → Next.js Pages                 │          │
@@ -43,7 +43,7 @@ The application now uses a **custom Node.js server** that wraps Next.js and runs
 └─────────────────────────────────────────────────────┘
 ```
 
-## 🔄 What Changed
+## What Changed
 
 ### New Files Created
 
@@ -56,23 +56,21 @@ The application now uses a **custom Node.js server** that wraps Next.js and runs
 2. **`ecosystem.config.js`** - Changed to run `server.js` on port 3003
 3. **`src/components/SocketProvider.tsx`** - Enabled WebSocket connection
 4. **API Routes** - Updated to use Socket.IO helper:
-   - `src/app/api/tickets/route.ts`
-   - `src/app/api/tickets/[id]/route.ts`
-   - `src/app/api/tickets/[id]/comments/route.ts`
-   - `src/app/api/tickets/[id]/attachments/route.ts`
+   - `src/app/api/bills/route.ts`
+   - `src/app/api/bills/[id]/route.ts`
+   - `src/app/api/bills/[id]/comments/route.ts`
+   - `src/app/api/bills/[id]/attachments/route.ts`
+   - `src/app/api/vendors/[id]/accounts/route.ts`
+   - `src/app/api/vendors/[id]/accounts/[accountId]/route.ts`
 5. **`documents/nginx.conf`** - Enhanced with dedicated `/socket.io/` location block
 
-### Deleted Files
-
-- `src/app/api/socket/route.ts` - No longer needed (replaced by custom server)
-
-## 💻 Local Development
+## Local Development
 
 ### Prerequisites
 
 ```bash
-# Ensure you have Node.js 18+ installed
-node --version  # Should be >= 18.18.0
+# Ensure you have Node.js 20.19+ or 22.12+ installed
+node --version
 ```
 
 ### Setup
@@ -107,7 +105,7 @@ node --version  # Should be >= 18.18.0
    - Open browser console at `http://localhost:3003`
    - Look for: `[Socket.IO] Connected successfully: {socket-id}`
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Step 1: Build the Application
 
@@ -128,7 +126,7 @@ Or manually:
 
 ```bash
 # Stop existing process
-pm2 delete informejo
+pm2 delete kontado
 
 # Start with ecosystem config
 pm2 start ecosystem.config.js
@@ -145,7 +143,7 @@ pm2 startup
 Copy the updated nginx configuration:
 
 ```bash
-sudo cp documents/nginx.conf /etc/nginx/sites-available/ticket.partridgecrossing.org
+sudo cp documents/nginx.conf /etc/nginx/sites-available/finance.partridgecrossing.org
 
 # Test configuration
 sudo nginx -t
@@ -161,39 +159,39 @@ sudo systemctl reload nginx
 pm2 status
 
 # View logs
-pm2 logs informejo
+pm2 logs kontado
 
 # Monitor in real-time
 pm2 monit
 ```
 
-## 🧪 Testing WebSockets
+## Testing WebSockets
 
 ### Browser Console Test
 
-1. Open `https://ticket.partridgecrossing.org`
-2. Open Developer Tools → Console
+1. Open `https://finance.partridgecrossing.org`
+2. Open Developer Tools -> Console
 3. Look for Socket.IO connection messages:
    ```
-   [Socket.IO] Connecting to: https://ticket.partridgecrossing.org
+   [Socket.IO] Connecting to: https://finance.partridgecrossing.org
    [Socket.IO] Connected successfully: AbC123XyZ
    ```
 
 ### Real-Time Update Test
 
-1. Open a ticket in **two different browser windows** (or devices)
-2. In Window 1: Add a comment to the ticket
+1. Open a bill in **two different browser windows** (or devices)
+2. In Window 1: Add a comment to the bill
 3. In Window 2: Comment should appear automatically without refresh
-4. Try updating ticket status - both windows should update
+4. Try updating bill status - both windows should update
 
 ### Network Tab Test
 
-1. Open Developer Tools → Network tab
+1. Open Developer Tools -> Network tab
 2. Filter by "WS" (WebSocket)
 3. You should see a connection to `/socket.io/?EIO=4&transport=websocket`
 4. Click on it to see WebSocket frames being sent/received
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Issue: Socket.IO Not Connecting
 
@@ -206,7 +204,7 @@ pm2 monit
 1. **Check server is running:**
    ```bash
    pm2 status
-   pm2 logs informejo --lines 50
+   pm2 logs kontado --lines 50
    ```
 
 2. **Verify port 3003 is listening:**
@@ -217,7 +215,7 @@ pm2 monit
 3. **Check nginx configuration:**
    ```bash
    sudo nginx -t
-   sudo tail -f /var/log/nginx/informejo_error.log
+   sudo tail -f /var/log/nginx/kontado_error.log
    ```
 
 4. **Verify HAProxy is forwarding WebSocket headers:**
@@ -233,7 +231,7 @@ pm2 monit
 
 1. **Check nginx timeout settings:**
    ```nginx
-   # In /etc/nginx/sites-available/ticket.partridgecrossing.org
+   # In /etc/nginx/sites-available/finance.partridgecrossing.org
    location /socket.io/ {
        proxy_read_timeout 86400s;  # 24 hours
        proxy_send_timeout 86400s;  # 24 hours
@@ -249,12 +247,12 @@ pm2 monit
 ### Issue: Updates Only Work on Same Page
 
 **Symptoms:**
-- Comments appear without refresh on ticket detail page
-- But ticket list page doesn't update
+- Comments appear without refresh on bill detail page
+- But bill list page doesn't update
 
 **Expected Behavior:**
-- This is normal! Currently, only the ticket detail pages join Socket.IO rooms
-- The ticket list doesn't auto-update (requires refresh)
+- This is normal! Currently, only the bill detail pages join Socket.IO rooms
+- The bill list doesn't auto-update (requires refresh)
 - To add list auto-update, see "Future Enhancements" section
 
 ### Issue: 502 Bad Gateway
@@ -268,7 +266,7 @@ pm2 monit
 1. **Check if app is running:**
    ```bash
    pm2 status
-   pm2 restart informejo
+   pm2 restart kontado
    ```
 
 2. **Check if port is correct:**
@@ -279,13 +277,13 @@ pm2 monit
 
 3. **Verify upstream in nginx:**
    ```nginx
-   upstream informejo_backend {
+   upstream kontado_backend {
        server 127.0.0.1:3003;
        keepalive 64;
    }
    ```
 
-## 🌐 HAProxy Configuration
+## HAProxy Configuration
 
 Your pfSense HAProxy needs to properly forward WebSocket headers. Here's the configuration:
 
@@ -301,13 +299,13 @@ frontend http-in
     option forwardfor
     
     # Route to backend
-    default_backend informejo_backend
+    default_backend kontado_backend
 ```
 
 ### Backend Configuration
 
 ```haproxy
-backend informejo_backend
+backend kontado_backend
     mode http
     
     # Preserve client info
@@ -344,7 +342,7 @@ frontend https-in
     http-request set-header X-Forwarded-Proto https
     http-request set-header X-Forwarded-Port 443
     
-    default_backend informejo_backend
+    default_backend kontado_backend
 ```
 
 ### Testing HAProxy
@@ -360,24 +358,34 @@ haproxy -c -f /etc/haproxy/haproxy.cfg
 sudo tail -f /var/log/haproxy.log
 ```
 
-## 📊 Real-Time Events
+## Real-Time Events
 
 The following events are emitted via Socket.IO:
 
 | Event | When | Sent To | Data |
 |-------|------|---------|------|
-| `ticket:created` | New ticket created | All clients | Full ticket object |
-| `ticket:updated` | Ticket updated (status, priority, assignment) | All clients + ticket room | Updated ticket object |
-| `comment:added` | New comment added | Ticket room only | Comment object |
-| `attachment:added` | File uploaded to ticket | Ticket room only | Attachment object |
+| `bill:created` | New bill created | All clients | Full bill object |
+| `bill:updated` | Bill updated (status, amount, etc.) | Bill room | Updated bill object |
+| `bill:deleted` | Bill deleted | Bill room | `{ id }` |
+| `bill:status-changed` | Bill status changed | Bill room | Updated bill object |
+| `comment:added` | New comment added | Bill room only | Comment object |
+| `attachment:added` | File uploaded to bill | Bill room only | Attachment object |
+| `vendor:account:created` | Vendor account created | Vendor room | Account object |
+| `vendor:account:updated` | Vendor account updated | Vendor room | Updated account object |
+| `vendor:account:deleted` | Vendor account deleted | Vendor room | `{ id, vendorId }` |
+| `notification:new` | New notification | User room | Notification object |
 
 ### Room Structure
 
-- **`ticket:{ticketId}`** - Room for specific ticket updates
-  - Clients join when viewing a ticket detail page
+- **`bill:{billId}`** - Room for specific bill updates
+  - Clients join when viewing a bill detail page
   - Clients leave when navigating away or disconnecting
+- **`vendor:{vendorId}`** - Room for vendor account updates
+  - Clients join when viewing a vendor detail page
+- **`user:{userId}`** - Room for user-specific notifications
+  - Clients auto-join when authenticated via SocketProvider
 
-## 🔒 Security Considerations
+## Security Considerations
 
 1. **Authentication**: Socket.IO connections don't verify authentication by default
    - Current implementation: Public connection, events are broadcast
@@ -388,7 +396,7 @@ The following events are emitted via Socket.IO:
 3. **CORS**: Currently allows connections from `NEXT_PUBLIC_APP_URL`
    - Update `server.js` CORS settings if needed
 
-## 📈 Monitoring
+## Monitoring
 
 ### PM2 Monitoring
 
@@ -400,7 +408,7 @@ pm2 monit
 pm2 status
 
 # Restart if high memory
-pm2 restart informejo
+pm2 restart kontado
 ```
 
 ### Socket.IO Monitoring
@@ -408,16 +416,18 @@ pm2 restart informejo
 Check server logs for Socket.IO activity:
 
 ```bash
-pm2 logs informejo | grep "Socket.IO"
+pm2 logs kontado | grep "Socket.IO"
 ```
 
 Common log messages:
 - `[Socket.IO] Client connected: {id}` - New connection
-- `[Socket.IO] Socket {id} joined ticket:{ticketId}` - User viewing ticket
-- `[Socket.IO] Emitted 'comment:added' to ticket:{ticketId}` - Event sent
+- `[Socket.IO] Socket {id} joined bill:{billId}` - User viewing bill
+- `[Socket.IO] Emitted 'comment:added' to bill:{billId}` - Event sent
+- `[Socket.IO] Socket {id} joined vendor:{vendorId}` - User viewing vendor
+- `[Socket.IO] Socket {id} joined user:{userId}` - User joined notification room
 - `[Socket.IO] Client disconnected: {id}` - Connection closed
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 Potential improvements for the WebSocket implementation:
 
@@ -425,21 +435,20 @@ Potential improvements for the WebSocket implementation:
 2. **Admin Room**: Create an `admins` room for admin-only notifications
 3. **Typing Indicators**: Show when someone is typing a comment
 4. **Online Status**: Display which users/admins are currently online
-5. **Ticket List Updates**: Auto-update ticket lists when changes occur
-6. **Notification Toasts**: Show toast notifications for real-time events
-7. **Connection Status Indicator**: UI element showing Socket.IO connection status
-8. **Reconnection Logic**: Better handling of connection drops with exponential backoff
+5. **Bill List Updates**: Auto-update bill lists when changes occur
+6. **Connection Status Indicator**: UI element showing Socket.IO connection status
+7. **Reconnection Logic**: Better handling of connection drops with exponential backoff
 
-## 📞 Support
+## Support
 
 If you encounter issues:
 
-1. Check PM2 logs: `pm2 logs informejo`
-2. Check nginx logs: `sudo tail -f /var/log/nginx/informejo_error.log`
+1. Check PM2 logs: `pm2 logs kontado`
+2. Check nginx logs: `sudo tail -f /var/log/nginx/kontado_error.log`
 3. Check browser console for Socket.IO errors
 4. Verify HAProxy is forwarding WebSocket headers correctly
 
-## 📝 Notes
+## Notes
 
 - **Port**: Application runs on port 3003 (changed from 3000)
 - **PM2 Mode**: Using `fork` mode (not cluster) for Socket.IO compatibility
@@ -449,7 +458,6 @@ If you encounter issues:
 
 ---
 
-**Last Updated:** November 12, 2024  
-**Version:** 1.0.0 (WebSocket Implementation)  
-**Author:** Informejo Development Team
-
+**Last Updated:** February 2026  
+**Version:** 0.2.6  
+**Author:** Kontado Development Team

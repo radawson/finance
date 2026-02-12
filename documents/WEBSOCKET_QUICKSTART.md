@@ -31,7 +31,7 @@ That's it! WebSockets are working locally.
 ssh user@your-server
 
 # 2. Navigate to project
-cd /home/torvaldsl/quicket
+cd /home/torvaldsl/projects/finance
 
 # 3. Pull latest dev branch
 git pull origin dev
@@ -52,7 +52,7 @@ The deploy script will:
 
 ```bash
 # Copy the updated nginx config
-sudo cp /home/torvaldsl/quicket/documents/nginx.conf /etc/nginx/sites-available/ticket.partridgecrossing.org
+sudo cp /home/torvaldsl/projects/finance/documents/nginx.conf /etc/nginx/sites-available/finance.partridgecrossing.org
 
 # Test it
 sudo nginx -t
@@ -70,18 +70,18 @@ sudo systemctl reload nginx
 4. Look for: `[Socket.IO] Connected successfully: {some-id}`
 
 ### Method 2: Real-Time Test
-1. Open a ticket in two browser tabs
+1. Open a bill in two browser tabs
 2. Add a comment in tab 1
 3. See it appear in tab 2 instantly (no refresh needed)
 
 ### Method 3: PM2 Logs
 ```bash
-pm2 logs Kontado --lines 50
+pm2 logs kontado --lines 50
 ```
 Look for:
 ```
 [Socket.IO] Client connected: AbC123
-[Socket.IO] Socket AbC123 joined ticket:xyz-123
+[Socket.IO] Socket AbC123 joined bill:xyz-123
 ```
 
 ## 🆘 Something Broken?
@@ -93,10 +93,10 @@ Look for:
 pm2 status
 
 # View logs
-pm2 logs Kontado
+pm2 logs kontado
 
 # Restart if needed
-pm2 restart Kontado
+pm2 restart kontado
 ```
 
 ### Still not working?
@@ -106,14 +106,14 @@ pm2 restart Kontado
 sudo netstat -tlnp | grep 3003
 
 # Check nginx logs
-sudo tail -f /var/log/nginx/Kontado_error.log
+sudo tail -f /var/log/nginx/kontado_error.log
 ```
 
 ### Nuclear option (start fresh):
 
 ```bash
-pm2 delete Kontado
-cd /home/torvaldsl/quicket
+pm2 delete kontado
+cd /home/torvaldsl/projects/finance
 npm run build
 pm2 start ecosystem.config.js
 pm2 save
@@ -140,12 +140,12 @@ See `WEBSOCKET_SETUP.md` for comprehensive documentation.
 
 ## 🎉 That's It!
 
-You now have real-time WebSocket updates working in your Kontado ticketing system!
+You now have real-time WebSocket updates working in your Kontado bill tracking system!
 
 ---
 
 **Questions?** Check the logs:
-- PM2: `pm2 logs Kontado`
-- Nginx: `sudo tail -f /var/log/nginx/Kontado_error.log`
+- PM2: `pm2 logs kontado`
+- Nginx: `sudo tail -f /var/log/nginx/kontado_error.log`
 - Browser: Developer Tools → Console
 

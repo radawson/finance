@@ -1,4 +1,4 @@
-# Kontadoo
+# Kontado
 
 A modern expense and bill management system built with Next.js, TypeScript, Tailwind CSS, and PostgreSQL.
 
