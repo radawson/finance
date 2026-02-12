@@ -66,6 +66,12 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
       )
     }
 
+    // When collapsed, override the grid-assigned height so the card shrinks
+    // to just its header instead of leaving a blank body.
+    const collapsedStyle = !isOpen
+      ? { ...style, height: 'auto', minHeight: 'unset' }
+      : style
+
     return (
       <Collapsible.Root
         open={isOpen}
@@ -74,7 +80,7 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
       >
         <div
           ref={ref}
-          style={style}
+          style={collapsedStyle}
           className={`bg-white rounded-lg shadow-md overflow-hidden flex flex-col ${className}`}
           onMouseDown={onMouseDown}
           onMouseUp={onMouseUp}
