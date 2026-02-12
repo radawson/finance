@@ -149,9 +149,12 @@ export default function BillEditForm({
   }, [])
 
   // Add bill's vendor to vendors list after both bill and vendors are loaded
+  // Also ensure bill's vendorAccount is in the list (e.g. when account is inactive and filtered out by API)
   useEffect(() => {
     if (bill && bill.vendor && bill.vendorId && vendors.length > 0) {
-      const vendorExists = vendors.some((v) => v.id === bill.vendorId)
+      const vendorIndex = vendors.findIndex((v) => v.id === bill.vendorId)
+      const vendorExists = vendorIndex >= 0
+
       if (!vendorExists) {
         // Add the vendor from the bill to the vendors list
         // Include accounts from vendorAccount if available
@@ -176,6 +179,31 @@ export default function BillEditForm({
             : [],
         }
         setVendors((prev) => [...prev, vendorWithAccounts])
+      } else if (bill.vendorAccountId && bill.vendorAccount) {
+        // Vendor exists - ensure bill's account is in the list (handles inactive accounts)
+        const vendor = vendors[vendorIndex]
+        const hasAccount = vendor.accounts?.some((a) => a.id === bill.vendorAccountId)
+        if (!hasAccount) {
+          const accountToAdd = {
+            id: bill.vendorAccount.id,
+            vendorId: bill.vendorAccount.vendorId,
+            accountNumber: bill.vendorAccount.accountNumber,
+            accountTypeId: bill.vendorAccount.accountTypeId || null,
+            accountType: bill.vendorAccount.type?.name || bill.vendorAccount.accountType || null,
+            nickname: bill.vendorAccount.nickname || null,
+            notes: bill.vendorAccount.notes || null,
+            isActive: bill.vendorAccount.isActive,
+            createdAt: new Date(bill.vendorAccount.createdAt),
+            updatedAt: new Date(bill.vendorAccount.updatedAt),
+            type: bill.vendorAccount.type || null,
+          }
+          setVendors((prev) => {
+            const next = [...prev]
+            const v = { ...next[vendorIndex], accounts: [...(next[vendorIndex].accounts || []), accountToAdd] }
+            next[vendorIndex] = v
+            return next
+          })
+        }
       }
     }
   }, [bill, vendors])
