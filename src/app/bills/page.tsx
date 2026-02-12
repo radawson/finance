@@ -51,6 +51,7 @@ export default function BillsPage() {
     paidDate: '',
     invoiceNumber: '',
     tags: [] as string[],
+    updateAccountBalance: false,
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -269,6 +270,7 @@ export default function BillsPage() {
         invoiceNumber: formData.invoiceNumber || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         isRecurring: isRecurring,
+        updateAccountBalance: formData.vendorAccountId ? (formData.updateAccountBalance ?? true) : false,
       }
       
       console.log('Submitting bill:', requestBody)
@@ -333,6 +335,7 @@ export default function BillsPage() {
         paidDate: '',
         invoiceNumber: '',
         tags: [],
+        updateAccountBalance: false,
       })
       setIsRecurring(false)
       setShowRecurrenceSection(false)
@@ -579,6 +582,7 @@ export default function BillsPage() {
                   paidDate: '',
                   invoiceNumber: '',
                   tags: [],
+                  updateAccountBalance: false,
                 })
                 setIsCreateModalOpen(true)
               }}
@@ -842,22 +846,22 @@ export default function BillsPage() {
                       onChange={(e) => {
                         const value = e.target.value
                         if (!value) {
-                          setFormData({ ...formData, vendorId: '', vendorAccountId: '' })
+                          setFormData({ ...formData, vendorId: '', vendorAccountId: '', updateAccountBalance: false })
                           return
                         }
                         // Check if value contains account separator
                         if (value.includes(':')) {
                           const [vendorId, accountId] = value.split(':')
-                          setFormData({ ...formData, vendorId, vendorAccountId: accountId })
+                          setFormData({ ...formData, vendorId, vendorAccountId: accountId, updateAccountBalance: true })
                         } else {
                           // Vendor selected - check if it has exactly one account
                           const vendor = vendors.find(v => v.id === value)
                           const accounts = vendor?.accounts || []
                           if (accounts.length === 1) {
                             // Auto-select the single account
-                            setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id })
+                            setFormData({ ...formData, vendorId: value, vendorAccountId: accounts[0].id, updateAccountBalance: true })
                           } else {
-                            setFormData({ ...formData, vendorId: value, vendorAccountId: '' })
+                            setFormData({ ...formData, vendorId: value, vendorAccountId: '', updateAccountBalance: false })
                           }
                         }
                       }}
@@ -955,6 +959,25 @@ export default function BillsPage() {
                     placeholder="Optional invoice number from vendor"
                   />
                 </div>
+
+                {formData.vendorAccountId && (
+                  <div className="border-t border-gray-200 pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.updateAccountBalance}
+                        onChange={(e) => setFormData({ ...formData, updateAccountBalance: e.target.checked })}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Add {formData.amount ? `$${parseFloat(formData.amount).toFixed(2)}` : 'amount'} to account balance
+                      </span>
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1 ml-6">
+                      When checked, the bill amount will be added to the linked account&apos;s balance
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

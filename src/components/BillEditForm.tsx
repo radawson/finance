@@ -95,7 +95,7 @@ export default function BillEditForm({
         paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
         invoiceNumber: bill.invoiceNumber || '',
         tags: bill.tags || [],
-        updateAccountBalance: false,
+        updateAccountBalance: false, // User opts in via checkbox to avoid double-add on edit
       })
 
       // Set recurrence state if bill has recurrence pattern
@@ -276,6 +276,14 @@ export default function BillEditForm({
       }
     }
   }, [formData.vendorId, vendorAccounts, vendors, formData.vendorAccountId])
+
+  // When vendorAccount is changed by user (differs from bill), default updateAccountBalance to true
+  // so balance updates when entering a bill with a linked account
+  useEffect(() => {
+    if (formData.vendorAccountId && formData.vendorAccountId !== bill?.vendorAccountId) {
+      setFormData(prev => (prev.updateAccountBalance ? prev : { ...prev, updateAccountBalance: true }))
+    }
+  }, [formData.vendorAccountId, bill?.vendorAccountId])
 
   // Update recurrence defaults when due date changes (if recurrence is enabled but not yet configured)
   useEffect(() => {

@@ -63,29 +63,30 @@ export function formatPhoneForDisplay(phone: string | null | undefined): string 
   
   if (digits.length === 0) return ''
 
-  // Determine country code
+  // Determine country code - US/Canada (+1) needs special handling to avoid
+  // combining country code with area code (e.g. 123-456-7890 where 123 is area code)
   let countryCode = '+1'
   let numberDigits = digits
 
-  if (normalized.startsWith('+')) {
-    // Extract country code (1-3 digits after +)
+  // US/Canada: 11 digits starting with 1 (1 + 10-digit number), or 10 digits (no leading 1),
+  // or partial starting with 1 (1 is country code)
+  const isUSCanada =
+    (digits.length === 11 && digits[0] === '1') ||
+    (digits.length === 10) ||
+    (digits.length < 10 && digits[0] === '1')
+  if (isUSCanada) {
+    countryCode = '+1'
+    numberDigits = digits[0] === '1' ? digits.substring(1) : digits
+  } else if (normalized.startsWith('+')) {
+    // Other countries: extract country code (1-3 digits after +)
     const countryCodeMatch = normalized.match(/^\+(\d{1,3})/)
     if (countryCodeMatch) {
       countryCode = `+${countryCodeMatch[1]}`
-      // Remove country code digits from the number
       const countryCodeDigits = countryCodeMatch[1]
       if (digits.startsWith(countryCodeDigits)) {
         numberDigits = digits.substring(countryCodeDigits.length)
       }
     }
-  } else {
-    // No + prefix, assume US number
-    // If 11 digits starting with 1, remove the leading 1
-    if (digits.length === 11 && digits[0] === '1') {
-      numberDigits = digits.substring(1)
-    }
-    // If 10 digits, use as-is
-    // If less than 10, use as-is (partial number)
   }
 
   // Handle US/Canada (+1) format

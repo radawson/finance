@@ -298,10 +298,30 @@ export async function PATCH(
       },
     })
 
-    // Update account balance if requested
+    // Update account balance when vendorAccount is set/changed
     if (body.updateAccountBalance) {
       const targetAccountId = data.vendorAccountId !== undefined ? data.vendorAccountId : existingBill.vendorAccountId
       const amount = data.amount !== undefined ? data.amount : Number(existingBill.amount)
+      const oldAccountId = existingBill.vendorAccountId
+      const vendorAccountChanged = data.vendorAccountId !== undefined && data.vendorAccountId !== oldAccountId
+
+      // When vendorAccount changed: subtract from old, add to new
+      if (vendorAccountChanged && oldAccountId) {
+        const oldAccount = await prisma.vendorAccount.findUnique({
+          where: { id: oldAccountId },
+        })
+        if (oldAccount) {
+          const currentBalance = oldAccount.balance ? Number(oldAccount.balance) : 0
+          const newBalance = Math.max(0, currentBalance - amount).toFixed(2)
+          await prisma.vendorAccount.update({
+            where: { id: oldAccountId },
+            data: { balance: newBalance },
+          })
+          await recordBalanceSnapshot(oldAccountId, newBalance)
+        }
+      }
+
+      // Add to target account
       if (targetAccountId) {
         const account = await prisma.vendorAccount.findUnique({
           where: { id: targetAccountId },
