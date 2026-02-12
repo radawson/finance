@@ -118,7 +118,7 @@ Update your production `.env` file:
 ```env
 # Keycloak OIDC - Update with your Keycloak details
 KEYCLOAK_ID="ptx-finance"
-KEYCLOAK_SECRET="lXRcNij1kKnEd0ulsbZn05LF3IojBbSi"
+KEYCLOAK_SECRET="your-client-secret-here"
 KEYCLOAK_ISSUER="https://logon.partridgecrossing.org/realms/ptx"
 
 # NextAuth

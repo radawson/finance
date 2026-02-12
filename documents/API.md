@@ -560,6 +560,57 @@ Deletes a notification.
 
 ---
 
+## Dashboard Endpoints
+
+### GET /api/dashboard/prefs
+Returns the authenticated user's dashboard layout preferences and visible widget IDs. Returns `null` if no preferences have been saved.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "layouts": {
+    "lg": [
+      { "i": "stats", "x": 0, "y": 0, "w": 12, "h": 2 },
+      { "i": "upcoming-bills", "x": 0, "y": 2, "w": 6, "h": 4 }
+    ],
+    "md": [],
+    "sm": [],
+    "xs": []
+  },
+  "visibleWidgetIds": ["stats", "upcoming-bills", "overdue-bills", "category-breakdown"]
+}
+```
+
+**Notes:**
+- Returns `null` (not 404) if the user has not saved any preferences yet
+- Layout keys correspond to responsive breakpoints (`lg`, `md`, `sm`, `xs`)
+
+### PATCH /api/dashboard/prefs
+Creates or updates the authenticated user's dashboard preferences (upsert).
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "layouts": {
+    "lg": [
+      { "i": "stats", "x": 0, "y": 0, "w": 12, "h": 2 }
+    ]
+  },
+  "visibleWidgetIds": ["stats", "upcoming-bills", "overdue-bills"]
+}
+```
+
+**Notes:**
+- Both `layouts` and `visibleWidgetIds` are optional; only provided fields are updated
+- Widget IDs are validated against the known set: `stats`, `expected-bills`, `credit-card`, `upcoming-bills`, `overdue-bills`, `category-breakdown`, `recent-bills`
+- Returns 400 if no fields are provided or widget IDs are invalid
+
+---
+
 ## Account Type Endpoints
 
 ### GET /api/account-types

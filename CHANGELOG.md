@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [documents/CHANGELOG.md](documents/CHANGELOG.md) for the detailed changelog.
 
+## [0.2.7] - 2026-02-12
+- Customizable dashboard with drag-and-drop widget layouts (react-grid-layout)
+- Widget palette for toggling widget visibility
+- `UserDashboardPrefs` model for persisting user dashboard preferences
+- `GET/PATCH /api/dashboard/prefs` endpoints
+- `DashboardWidget` and `DashboardWidgetPalette` components
+
 ## [0.2.6] - 2026-02-12
 - Predicted bills feature (PREDICTED status, `/api/bills/predicted`)
 - Balance snapshots for tracking account balances over time

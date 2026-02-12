@@ -243,6 +243,19 @@ Free-form string tags on both Bill and Vendor models for flexible categorization
 - **Use Case**: Suite numbers, apartment numbers, building names
 - **Progressive**: Does not affect basic vendor creation
 
+### Dashboard Customization
+
+Users can customize their dashboard layout and choose which widgets to display.
+
+- **Model**: `UserDashboardPrefs` with `userId`, `layouts` (JSON), `visibleWidgetIds` (String[])
+- **Drag-and-Drop**: Dashboard uses `react-grid-layout` for repositioning and resizing widgets
+- **Widget Palette**: `DashboardWidgetPalette` component lets users toggle widget visibility
+- **Persistence**: Layout and visibility preferences saved via `GET/PATCH /api/dashboard/prefs`
+- **Responsive**: Layouts stored per breakpoint (`lg`, `md`, `sm`, `xs`) for responsive behavior
+- **Defaults**: When no preferences are saved, all widgets with data are shown in a default layout
+- **Available Widgets**: Overview (stats), Expected Bills, Credit Card Balances, Upcoming Bills, Overdue Bills, Category Breakdown, Recent Bills
+- **Progressive**: Dashboard works with default layout; customization is entirely optional
+
 ## Future Enhancements
 
 When adding new features, always ask:

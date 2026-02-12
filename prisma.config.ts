@@ -6,7 +6,7 @@ dotenv.config()
 
 export default defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL || 'postgresql://kontado:PASSword01!!@localhost:5432/kontado?schema=public',
+    url: process.env.DATABASE_URL || 'postgresql://kontado:password@localhost:5432/kontado?schema=public',
   },
   schema: 'prisma/schema.prisma',
   migrations: {

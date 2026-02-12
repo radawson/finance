@@ -13,9 +13,6 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.KEYCLOAK_SECRET!,
       issuer: process.env.KEYCLOAK_ISSUER!,
       profile(profile) {
-        // Debug: Log the entire profile to see what Keycloak returns
-        console.log('Keycloak profile:', JSON.stringify(profile, null, 2))
-        
         // Check multiple places where Keycloak might store roles
         const realmRoles = profile.realm_access?.roles || []
         const clientRoles = profile.resource_access?.[process.env.KEYCLOAK_ID!]?.roles || []
@@ -24,7 +21,10 @@ export const authOptions: NextAuthOptions = {
         // Combine all possible role sources
         const allRoles = [...realmRoles, ...clientRoles, ...directRoles]
         
-        console.log('All roles found:', allRoles)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Keycloak profile:', JSON.stringify(profile, null, 2))
+          console.log('All roles found:', allRoles)
+        }
         
         // Determine role based on Keycloak roles (case-insensitive)
         let userRole: Role = Role.USER // Default role
@@ -41,7 +41,9 @@ export const authOptions: NextAuthOptions = {
           userRole = Role.USER // Explicit user role
         }
 
-        console.log('Determined role:', userRole, 'from roles:', allRoles)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Determined role:', userRole, 'from roles:', allRoles)
+        }
 
         return {
           id: profile.sub,
@@ -93,9 +95,10 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       // Handle Keycloak SSO users
       if (account?.provider === 'keycloak') {
-        // Debug: Check if roles are in the access token instead
-        console.log('Keycloak access_token (first 50 chars):', account?.access_token?.substring(0, 50))
-        console.log('Account object keys:', Object.keys(account || {}))
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Keycloak access_token (first 50 chars):', account?.access_token?.substring(0, 50))
+          console.log('Account object keys:', Object.keys(account || {}))
+        }
         
         try {
           const existingUser = await prisma.user.findUnique({
@@ -104,7 +107,9 @@ export const authOptions: NextAuthOptions = {
 
           if (!existingUser) {
             // Create new user from Keycloak (role determined by Keycloak roles)
-            console.log('Creating new Keycloak user:', user.email, 'Role:', user.role)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Creating new Keycloak user:', user.email, 'Role:', user.role)
+            }
             await prisma.user.create({
               data: {
                 id: user.id!, // Use Keycloak's sub as ID
@@ -114,17 +119,23 @@ export const authOptions: NextAuthOptions = {
                 isKeycloakUser: true,
               },
             })
-            console.log('Keycloak user created successfully')
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Keycloak user created successfully')
+            }
           } else {
             // Update existing user's role in case it changed in Keycloak
             if (existingUser.role !== user.role) {
-              console.log('Updating user role:', existingUser.email, 'from', existingUser.role, 'to', user.role)
+              if (process.env.NODE_ENV === 'development') {
+                console.log('Updating user role:', existingUser.email, 'from', existingUser.role, 'to', user.role)
+              }
               await prisma.user.update({
                 where: { id: user.id! },
                 data: { role: user.role as Role },
               })
             }
-            console.log('Existing Keycloak user logging in:', user.email, 'Role:', user.role)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Existing Keycloak user logging in:', user.email, 'Role:', user.role)
+            }
           }
         } catch (error) {
           console.error('Error in Keycloak signIn callback:', error)

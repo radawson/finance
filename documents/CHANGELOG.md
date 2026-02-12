@@ -5,6 +5,25 @@ All notable changes to Kontado will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-02-12
+
+### Added
+
+- **Customizable Dashboard**: Drag-and-drop dashboard with persistent layout preferences
+  - `UserDashboardPrefs` model storing layout JSON and visible widget IDs per user
+  - `GET /api/dashboard/prefs` returns saved dashboard preferences (or `null` if none)
+  - `PATCH /api/dashboard/prefs` upserts dashboard layout and/or visible widget list
+  - `DashboardWidget` wrapper component for consistent widget rendering
+  - `DashboardWidgetPalette` component for toggling widget visibility
+  - `dashboard-layout.ts` defines widget IDs, metadata, and responsive default layouts
+  - Responsive layouts stored per breakpoint (`lg`, `md`, `sm`, `xs`)
+  - Available widgets: Overview, Expected Bills, Credit Card Balances, Upcoming Bills, Overdue Bills, Category Breakdown, Recent Bills
+  - Fully optional — dashboard works with default layout when no preferences are saved
+
+### Database Migrations
+
+- `20260212200000_add_user_dashboard_prefs` - UserDashboardPrefs model with layouts JSON and visibleWidgetIds array
+
 ## [0.2.6] - 2026-02-12
 
 ### Added

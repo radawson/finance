@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with the accounting System in minutes!
+Get up and running with Kontado in minutes!
 
 ## For Development (Local Machine)
 
@@ -103,13 +103,15 @@ Open [http://localhost:3003](http://localhost:3003)
 
 **Admin User (if Keycloak not configured):**
 
-Manually create an admin in the database:
+The easiest way is to use the built-in seed script, which creates a default admin user (`admin@kontado.local` / `password`):
 
 ```bash
-# Run this script to create an admin user
-npx prisma studio
+npm run db:seed
+```
 
-# Or use psql:
+Alternatively, create an admin manually via psql:
+
+```bash
 psql -U kontadouser -d kontado
 
 # In psql, insert admin user:
@@ -126,43 +128,10 @@ VALUES (
 );
 ```
 
-Or use this Node.js script:
+Or use Prisma Studio to view and edit the database directly:
 
-```javascript
-// create-admin.js
-const { PrismaClient } = require('@prisma/client')
-const bcrypt = require('bcryptjs')
-
-const prisma = new PrismaClient()
-
-async function main() {
-  const hashedPassword = await bcrypt.hash('adminpass123', 10)
-  
-  const admin = await prisma.user.create({
-    data: {
-      email: 'admin@test.com',
-      name: 'Admin User',
-      password: hashedPassword,
-      role: 'ADMIN',
-      isKeycloakUser: false,
-    },
-  })
-  
-  console.log('Admin created:', admin)
-}
-
-main()
-  .then(async () => await prisma.$disconnect())
-  .catch(async (e) => {
-    console.error(e)
-    await prisma.$disconnect()
-    process.exit(1)
-  })
-```
-
-Run it:
 ```bash
-node create-admin.js
+npx prisma studio
 ```
 
 ## Testing the Application

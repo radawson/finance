@@ -170,6 +170,7 @@ kontado/
 │   │   │   ├── stats/             # Dashboard statistics
 │   │   │   ├── notifications/     # Notification management
 │   │   │   ├── account-types/     # Account type management
+│   │   │   ├── dashboard/          # Dashboard preferences
 │   │   │   ├── admin/             # Admin endpoints (users)
 │   │   │   └── version/           # App version
 │   │   ├── dashboard/             # Main dashboard
@@ -188,6 +189,7 @@ kontado/
 │   │   ├── analysis.ts            # Analysis/prediction algorithms
 │   │   ├── bills.ts               # Bill status calculation
 │   │   ├── balance-snapshots.ts   # Balance snapshot recording
+│   │   ├── dashboard-layout.ts    # Dashboard widget definitions and layouts
 │   │   └── business/              # Business logic (predictions, recurring)
 │   └── types/
 │       └── index.ts               # TypeScript types
@@ -215,6 +217,7 @@ kontado/
 - **Notification** - Real-time notification system
 - **AccountType** - Account classification (Credit Card, Mortgage, etc.)
 - **VendorAccountBalanceSnapshot** - Balance history over time
+- **UserDashboardPrefs** - Per-user dashboard layout and widget visibility
 
 ## API Reference
 
@@ -233,6 +236,7 @@ See [documents/API.md](documents/API.md) for the complete API reference.
 - `GET/POST /api/vendors` - Vendor management
 - `GET /api/vendors/public` - Public vendor list (no auth)
 - `GET/POST /api/categories` - Category management
+- `GET/PATCH /api/dashboard/prefs` - Dashboard layout preferences
 - `GET /api/notifications` - User notifications
 
 ## Configuration

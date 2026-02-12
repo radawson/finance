@@ -22,8 +22,8 @@ NEXTAUTH_URL="https://your-domain.com"
 NEXTAUTH_SECRET="your-secret-key"  # Generate with: openssl rand -base64 32
 
 # Keycloak (optional)
-KEYCLOAK_CLIENT_ID="your-client-id"
-KEYCLOAK_CLIENT_SECRET="your-client-secret"
+KEYCLOAK_ID="your-client-id"
+KEYCLOAK_SECRET="your-client-secret"
 KEYCLOAK_ISSUER="https://your-keycloak-server.com/realms/your-realm"
 
 # Email (SMTP)
@@ -34,7 +34,7 @@ SMTP_PASSWORD="your-app-password"
 SMTP_FROM="your-email@gmail.com"
 
 # Application
-APP_URL="https://your-domain.com"
+NEXT_PUBLIC_APP_URL="https://your-domain.com"
 ```
 
 ## Production Deployment
