@@ -200,6 +200,8 @@ model VendorAccount {
   accountNumber String
   accountTypeId String?  // Optional: Reference to AccountType
   accountType   String?  // Optional: Legacy field for migration compatibility (will be removed later)
+  balance       Number?
+  interestRate  Number?
   nickname      String?  // Optional: "Primary Mortgage", "HELOC", etc.
   notes         String?  // Optional notes
   isActive      Boolean  @default(true)

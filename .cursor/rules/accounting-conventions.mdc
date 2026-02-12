@@ -1,0 +1,55 @@
+---
+description: Accounting and money-handling best practices (never use float/double)
+alwaysApply: true
+---
+
+# Accounting & Money Conventions
+
+## Core Rule
+
+**Never use `float`, `double`, or any binary floating-point type for money or accounting.** These types cannot accurately represent decimal fractions (e.g., 0.1), causing rounding errors that compound over thousands of transactions.
+
+## Recommended Approaches
+
+| Approach | Use? | Why |
+|----------|------|-----|
+| Integer (cents) | ✅ Best for perf | Fast, exact, no rounding errors |
+| Decimal / BigDecimal | ✅ Best for logic | Exact, handles fractions, readable |
+| Float / Double | ❌ **Never** | Inexact, causes compound errors |
+
+## Best Practices
+
+1. **Store in smallest unit**: Store $10.25 as `1025` (integer cents).
+2. **Use 64-bit integers**: For large amounts, use `BIGINT` (SQL) or `long` (Java/C#) to avoid overflow.
+3. **Database types**: Use `DECIMAL` or `NUMERIC` in SQL—designed for base-10 precision.
+4. **Code libraries**: Use `BigDecimal` (Java/JVM), `Decimal` (Python/C#), or `decimal.js` (JavaScript) instead of native float types.
+5. **Round only at display**: Perform all intermediate calculations without rounding; round only when showing the final result.
+
+## By Language
+
+- **Prisma/PostgreSQL**: Use `Decimal` with `@db.Decimal(precision, scale)` (e.g. `Decimal(10, 2)`) for amounts.
+- **TypeScript/JavaScript**: Use `decimal.js` or store cents as integers.
+- **Python**: Use `Decimal` from `decimal` module.
+
+## Examples
+
+```prisma
+// ✅ GOOD
+amount Decimal @db.Decimal(10, 2)
+```
+
+```typescript
+// ❌ BAD
+const total: number = 1.1 + 2.2;  // float: 3.3000000000000003
+
+// ✅ GOOD
+const totalCents = 110 + 220;  // 330 cents = $3.30
+// or use decimal.js
+import Decimal from 'decimal.js';
+const total = new Decimal('1.1').plus('2.2');
+```
+
+## Exceptions
+
+- **Financial modeling/simulations**: Monte Carlo, stock market sims—where "roughly accurate" suffices, floats may be acceptable.
+- **Unit conversions/fractional units**: Cryptos, interest rates—use Decimal with high precision (4–8 decimal places), not floats.
