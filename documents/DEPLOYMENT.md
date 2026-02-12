@@ -4,7 +4,7 @@ This guide explains how to deploy Kontado to production using PM2.
 
 ## Prerequisites
 
-- Node.js >= 18.18.0
+- Node.js >= 20.19.0 (or 22.12+, or 24+)
 - PostgreSQL database
 - PM2 (will be installed automatically if not present)
 - Docker (optional, for running PostgreSQL locally)
@@ -120,7 +120,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3003;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -133,7 +133,7 @@ server {
 
     # WebSocket support for Socket.IO
     location /socket.io/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3003;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -188,13 +188,13 @@ journalctl -u kontado -f
 
 1. Clear Next.js cache: `rm -rf .next`
 2. Reinstall dependencies: `rm -rf node_modules && npm install`
-3. Check Node.js version: `node --version` (should be >= 18.18.0)
+3. Check Node.js version: `node --version` (should be >= 20.19.0)
 
 ### Port Already in Use
 
 ```bash
-# Find process using port 3000
-lsof -i :3000
+# Find process using port 3003
+lsof -i :3003
 
 # Kill process
 kill -9 <PID>
