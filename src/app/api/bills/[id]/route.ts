@@ -9,9 +9,20 @@ import { UUID_REGEX } from '@/types'
 import { emitToBill, emitToUser, SocketEvents } from '@/lib/socketio-server'
 import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
 
+// Accept amount as string or number, coerce to string for Decimal precision
+const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
+const positiveDecimalString = decimalString.refine(
+  (v) => !isNaN(Number(v)) && Number(v) > 0,
+  { message: 'Amount must be a positive number' }
+)
+const nonnegativeDecimalString = decimalString.refine(
+  (v) => !isNaN(Number(v)) && Number(v) >= 0,
+  { message: 'Value must be a non-negative number' }
+)
+
 const updateBillSchema = z.object({
   title: z.string().min(1).optional(),
-  amount: z.number().positive().optional(),
+  amount: positiveDecimalString.optional(),
   dueDate: z.string().or(z.coerce.date()).optional(),
   categoryId: z.string().regex(UUID_REGEX).optional(),
   description: z.string().optional().nullable(),
@@ -22,7 +33,7 @@ const updateBillSchema = z.object({
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
-  accountBalance: z.number().nonnegative().optional(),
+  accountBalance: nonnegativeDecimalString.optional(),
 })
 
 export async function GET(
@@ -147,7 +158,6 @@ export async function PATCH(
     const body = await req.json()
     const data = updateBillSchema.parse({
       ...body,
-      amount: body.amount ? parseFloat(body.amount) : undefined,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
     })
 

@@ -4,9 +4,16 @@ import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
 import { UUID_REGEX } from '@/types'
 
+// Accept amount as string or number, coerce to string for Decimal precision
+const positiveDecimalString = z.union([z.string(), z.number()])
+  .transform((v) => String(v))
+  .refine((v) => !isNaN(Number(v)) && Number(v) > 0, {
+    message: 'Amount must be a positive number',
+  })
+
 const anonymousBillSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  amount: z.number().positive('Amount must be positive'),
+  amount: positiveDecimalString,
   dueDate: z.string().or(z.coerce.date()),
   categoryId: z.string().regex(UUID_REGEX, 'Invalid category ID'),
   description: z.string().optional(),
@@ -20,7 +27,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const parsedData = anonymousBillSchema.parse({
       ...body,
-      amount: parseFloat(body.amount),
       dueDate: body.dueDate ? new Date(body.dueDate) : new Date(),
     })
 

@@ -91,7 +91,7 @@ export default function BillDetailPage() {
         },
         body: JSON.stringify({
           title: formData.title,
-          amount: parseFloat(formData.amount),
+          amount: formData.amount,
           dueDate: new Date(formData.dueDate).toISOString(),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || null,
@@ -101,7 +101,7 @@ export default function BillDetailPage() {
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
           invoiceNumber: formData.invoiceNumber || null,
           isRecurring: !!recurrenceData,
-          ...(formData.accountBalance ? { accountBalance: parseFloat(formData.accountBalance) } : {}),
+          ...(formData.accountBalance ? { accountBalance: formData.accountBalance } : {}),
         }),
       })
 

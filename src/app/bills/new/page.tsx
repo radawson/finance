@@ -19,9 +19,8 @@ export default function NewBillPage() {
     setIsSaving(true)
 
     try {
-      // Validate amount before sending
-      const amount = parseFloat(formData.amount)
-      if (isNaN(amount) || amount <= 0) {
+      // Validate amount before sending (keep as string for Decimal precision)
+      if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
         toast.error('Please enter a valid amount')
         setIsSaving(false)
         return
@@ -35,7 +34,7 @@ export default function NewBillPage() {
         },
         body: JSON.stringify({
           title: formData.title,
-          amount: amount,
+          amount: formData.amount,
           dueDate: new Date(formData.dueDate).toISOString(),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || undefined,
@@ -45,7 +44,7 @@ export default function NewBillPage() {
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
           invoiceNumber: formData.invoiceNumber || undefined,
           isRecurring: !!recurrenceData,
-          ...(formData.accountBalance ? { accountBalance: parseFloat(formData.accountBalance) } : {}),
+          ...(formData.accountBalance ? { accountBalance: formData.accountBalance } : {}),
         }),
       })
 

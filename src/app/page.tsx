@@ -69,7 +69,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           title: formData.title,
-          amount: parseFloat(formData.amount),
+          amount: formData.amount,
           dueDate: new Date(formData.dueDate).toISOString(),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || undefined,

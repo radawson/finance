@@ -79,6 +79,48 @@ export default function BillEditForm({
 
   const billFormRef = useRef<HTMLFormElement>(null)
 
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data)
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  }
+
+  const fetchVendors = async () => {
+    try {
+      const response = await fetch('/api/vendors')
+      if (response.ok) {
+        const data = await response.json()
+        setVendors(data)
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  }
+
+  const fetchVendorAccounts = async (vendorId: string) => {
+    if (!vendorId) {
+      setVendorAccounts([])
+      return
+    }
+    try {
+      const response = await fetch(`/api/vendors/${vendorId}/accounts`)
+      if (response.ok) {
+        const data = await response.json()
+        setVendorAccounts(data)
+      } else {
+        setVendorAccounts([])
+      }
+    } catch (error) {
+      setVendorAccounts([])
+    }
+  }
+
   // Initialize form data from bill
   useEffect(() => {
     if (bill) {
@@ -208,48 +250,6 @@ export default function BillEditForm({
     }
   }, [bill, vendors])
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('/api/categories')
-      if (response.ok) {
-        const data = await response.json()
-        setCategories(data)
-      }
-    } catch (error) {
-      // Silently fail
-    }
-  }
-
-  const fetchVendors = async () => {
-    try {
-      const response = await fetch('/api/vendors')
-      if (response.ok) {
-        const data = await response.json()
-        setVendors(data)
-      }
-    } catch (error) {
-      // Silently fail
-    }
-  }
-
-  const fetchVendorAccounts = async (vendorId: string) => {
-    if (!vendorId) {
-      setVendorAccounts([])
-      return
-    }
-    try {
-      const response = await fetch(`/api/vendors/${vendorId}/accounts`)
-      if (response.ok) {
-        const data = await response.json()
-        setVendorAccounts(data)
-      } else {
-        setVendorAccounts([])
-      }
-    } catch (error) {
-      setVendorAccounts([])
-    }
-  }
-
   // Fetch accounts when vendor changes
   useEffect(() => {
     if (formData.vendorId) {
@@ -299,9 +299,8 @@ export default function BillEditForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate amount before sending
-    const amount = parseFloat(formData.amount)
-    if (isNaN(amount) || amount <= 0) {
+    // Validate amount before sending (keep as string for Decimal precision)
+    if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
       toast.error('Please enter a valid amount')
       return
     }
