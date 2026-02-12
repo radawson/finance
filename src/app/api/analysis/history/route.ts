@@ -76,6 +76,8 @@ export async function GET(req: NextRequest) {
     const bills = billsRaw.map((bill) => ({
       ...bill,
       amount: Number(bill.amount),
+      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+      predictionMethod: bill.predictionMethod as any,
     }))
 
     // Group bills by period (only for non-custom periods)

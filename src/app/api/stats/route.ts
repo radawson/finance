@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { Role } from '@/generated/prisma/client'
+import { BillStatus, Role } from '@/generated/prisma/client'
 import { getBillsDueSoon, getOverdueBills, getUpcomingBills } from '@/lib/bills'
 import { addDays } from 'date-fns'
 import { getPeriodStartDate, getPeriodEndDate, CategoryPeriod } from '@/lib/date-utils'
@@ -21,8 +21,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const categoryPeriod = (searchParams.get('categoryPeriod') || 'month') as CategoryPeriod
 
-    // Build where clause
-    const where: any = {}
+    // Build where clause — exclude PREDICTED bills from main stats
+    const where: any = {
+      status: { not: BillStatus.PREDICTED },
+    }
 
     // Filter by user if not admin - show bills assigned to user OR unassigned bills
     if (session.user.role !== Role.ADMIN) {
@@ -32,7 +34,7 @@ export async function GET(req: NextRequest) {
       ]
     }
 
-    // Get all bills
+    // Get all non-predicted bills
     const allBills = await prisma.bill.findMany({
       where,
       include: {
@@ -40,6 +42,33 @@ export async function GET(req: NextRequest) {
         vendor: true,
       },
     })
+
+    // Get predicted bills separately
+    const predictedWhere: any = {
+      status: BillStatus.PREDICTED,
+    }
+    if (session.user.role !== Role.ADMIN) {
+      predictedWhere.OR = [
+        { createdById: session.user.id },
+        { createdById: null },
+      ]
+    }
+    const predictedBillsRaw = await prisma.bill.findMany({
+      where: predictedWhere,
+      include: {
+        category: true,
+        vendor: true,
+        vendorAccount: { include: { type: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+    })
+
+    const predictedBillsCount = predictedBillsRaw.length
+    const nowForMissing = new Date()
+    nowForMissing.setHours(0, 0, 0, 0)
+    const missingBillsCount = predictedBillsRaw.filter(
+      (b) => new Date(b.dueDate) < nowForMissing,
+    ).length
 
     // Calculate stats
     const totalBills = allBills.length
@@ -113,6 +142,8 @@ export async function GET(req: NextRequest) {
       .map((bill) => ({
         ...bill,
         amount: Number(bill.amount),
+        predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+        predictionMethod: bill.predictionMethod as any,
         dueDate: new Date(bill.dueDate),
         createdAt: new Date(bill.createdAt),
         updatedAt: new Date(bill.updatedAt),
@@ -144,6 +175,8 @@ export async function GET(req: NextRequest) {
     const recurringBills = recurringBillsRaw.map((bill) => ({
       ...bill,
       amount: Number(bill.amount),
+      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+      predictionMethod: bill.predictionMethod as any,
       dueDate: new Date(bill.dueDate),
       createdAt: new Date(bill.createdAt),
       updatedAt: new Date(bill.updatedAt),
@@ -251,6 +284,8 @@ export async function GET(req: NextRequest) {
       overdueBills,
       paidBills,
       skippedBills,
+      predictedBills: predictedBillsCount,
+      missingBills: missingBillsCount,
       upcomingBills: upcomingBills7.length,
       upcomingBills30: upcomingBills30.length,
       categoryBreakdown,
@@ -260,6 +295,7 @@ export async function GET(req: NextRequest) {
       overdueBillsList: overdueBillsList
         .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
         .slice(0, 10),
+      predictedBillsList: predictedBillsRaw.slice(0, 20),
     }
 
     return NextResponse.json(stats)

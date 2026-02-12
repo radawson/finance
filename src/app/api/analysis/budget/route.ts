@@ -61,6 +61,8 @@ export async function GET(req: NextRequest) {
     const recurringBills = recurringBillsRaw.map((bill) => ({
       ...bill,
       amount: Number(bill.amount),
+      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+      predictionMethod: bill.predictionMethod as any,
     }))
 
     // Fetch actual bills in the date range that might match recurring patterns
@@ -97,6 +99,8 @@ export async function GET(req: NextRequest) {
     const actualBills = actualBillsRaw.map((bill) => ({
       ...bill,
       amount: Number(bill.amount),
+      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+      predictionMethod: bill.predictionMethod as any,
     }))
 
     // Fetch historical bills (2+ years back) for pattern detection
@@ -136,6 +140,8 @@ export async function GET(req: NextRequest) {
     const historicalBills = historicalBillsRaw.map((bill) => ({
       ...bill,
       amount: Number(bill.amount),
+      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+      predictionMethod: bill.predictionMethod as any,
     }))
 
     // Generate predictions from recurrence patterns, merge with actual bills, and detect patterns
@@ -181,6 +187,8 @@ export async function GET(req: NextRequest) {
       const historicBills = historicBillsRaw.map((bill) => ({
         ...bill,
         amount: Number(bill.amount),
+        predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
+        predictionMethod: bill.predictionMethod as any,
       }))
 
       const periodType = period === 'custom' ? 'monthly' : period

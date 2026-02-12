@@ -17,7 +17,7 @@ const updateBillSchema = z.object({
   description: z.string().optional().nullable(),
   vendorId: z.string().regex(UUID_REGEX).optional().nullable(),
   vendorAccountId: z.string().regex(UUID_REGEX).optional().nullable(),
-  status: z.enum(['PENDING', 'DUE_SOON', 'OVERDUE', 'PAID', 'SKIPPED']).optional(),
+  status: z.enum(['PREDICTED', 'PENDING', 'DUE_SOON', 'OVERDUE', 'PAID', 'SKIPPED']).optional(),
   paidDate: z.string().optional().nullable(),
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
@@ -237,6 +237,23 @@ export async function PATCH(
     // it gets assigned to that user
     const isBeingAssigned = existingBill.createdById === null && session.user.id !== null
 
+    // Detect PREDICTED -> actual transition (actualization)
+    // When a predicted bill is being confirmed/actualized, clear prediction metadata
+    const isBeingActualized = existingBill.status === 'PREDICTED' && status && status !== 'PREDICTED'
+
+    // If it's a predicted bill being updated without explicit status change,
+    // auto-transition from PREDICTED to PENDING
+    if (existingBill.status === 'PREDICTED' && !status) {
+      // Any edit to a predicted bill (amount, date, etc.) implies actualization
+      if (data.amount !== undefined || data.dueDate || data.paidDate !== undefined || data.invoiceNumber !== undefined) {
+        const dueDate = data.dueDate ? new Date(data.dueDate) : existingBill.dueDate
+        const paidDate = data.paidDate !== undefined ? (data.paidDate ? new Date(data.paidDate) : null) : existingBill.paidDate
+        status = calculateBillStatus(dueDate, paidDate)
+      }
+    }
+
+    const isActualized = existingBill.status === 'PREDICTED' && status && status !== 'PREDICTED'
+
     // Update bill
     const bill = await prisma.bill.update({
       where: { id },
@@ -256,6 +273,11 @@ export async function PATCH(
         ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
         ...(tagsArray !== undefined && { tags: tagsArray }),
         ...(isBeingAssigned && { createdById: session.user.id }),
+        // Clear prediction metadata when bill is actualized (keep templateBillId for history)
+        ...(isActualized && {
+          predictionConfidence: null,
+          predictionMethod: null,
+        }),
       },
       include: {
         category: true,

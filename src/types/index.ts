@@ -10,6 +10,7 @@ export type DecimalValue = Decimal | string | number
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export enum BillStatusEnum {
+  PREDICTED = 'PREDICTED',
   PENDING = 'PENDING',
   DUE_SOON = 'DUE_SOON',
   OVERDUE = 'OVERDUE',
@@ -113,6 +114,8 @@ export interface RecurrencePattern {
   updatedAt: Date
 }
 
+export type PredictionMethod = 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
+
 export interface Bill {
   id: string
   title: string
@@ -130,6 +133,9 @@ export interface Bill {
   nextDueDate?: Date | null
   invoiceNumber?: string | null
   tags?: string[] // Array of tag strings (max 128 chars each)
+  templateBillId?: string | null // FK to the recurring bill that generated this prediction
+  predictionConfidence?: number | null // 0.00–1.00 confidence score
+  predictionMethod?: PredictionMethod | null // Method used to forecast amount
   createdAt: Date
   updatedAt: Date
   category?: Category
@@ -137,6 +143,8 @@ export interface Bill {
   vendorAccount?: VendorAccount | null
   createdBy?: User | null
   recurrencePattern?: RecurrencePattern | null
+  templateBill?: Bill | null
+  predictions?: Bill[]
   comments?: Comment[]
   attachments?: Attachment[]
   _count?: {
@@ -190,6 +198,8 @@ export interface DashboardStats {
   overdueBills: number
   paidBills: number
   skippedBills: number
+  predictedBills: number // Predicted bills awaiting actualization
+  missingBills: number // Predicted bills past due date
   upcomingBills: number // Bills due in next 7 days
   upcomingBills30: number // Bills due in next 30 days
   categoryBreakdown: {
@@ -209,6 +219,7 @@ export interface DashboardStats {
   recentBills: Bill[]
   upcomingBillsList: Bill[]
   overdueBillsList: Bill[]
+  predictedBillsList: Bill[] // Predicted bills for next 30 days
 }
 
 export type AnalysisPeriod = 'monthly' | 'quarterly' | 'yearly' | 'custom'
@@ -233,7 +244,8 @@ export interface PredictedBill {
   billId?: string
   categoryId?: string
   vendorId?: string | null
-  method?: 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
+  vendorAccountId?: string | null
+  method?: PredictionMethod
   confidence?: number
 }
 

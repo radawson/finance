@@ -7,8 +7,9 @@ import StatsCard from '@/components/StatsCard'
 import BillCard from '@/components/BillCard'
 import BillViewModal from '@/components/BillViewModal'
 import { Bill, DashboardStats } from '@/types'
-import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Calendar } from 'lucide-react'
+import { DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Plus, Calendar, Eye } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import CategoryPieChart from '@/components/CategoryPieChart'
 import CreditCardBalanceGraph from '@/components/CreditCardBalanceGraph'
@@ -16,6 +17,7 @@ import { CategoryPeriod } from '@/lib/date-utils'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
@@ -23,6 +25,8 @@ export default function DashboardPage() {
   const [categoryPeriod, setCategoryPeriod] = useState<CategoryPeriod>('month')
   const [balancePeriod, setBalancePeriod] = useState('6m')
   const [creditCardData, setCreditCardData] = useState<{ period: string; accounts: any[] } | null>(null)
+  const [predictedBills, setPredictedBills] = useState<Bill[]>([])
+  const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -56,12 +60,28 @@ export default function DashboardPage() {
     }
   }, [balancePeriod])
 
+  const fetchPredictedBills = useCallback(async () => {
+    setIsPredictedLoading(true)
+    try {
+      const res = await fetch('/api/bills/predicted')
+      if (res.ok) {
+        const data = await res.json()
+        setPredictedBills(data)
+      }
+    } catch (error) {
+      // Silently fail - predicted bills section just won't show
+    } finally {
+      setIsPredictedLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (session) {
       fetchData()
       fetchCreditCardBalances()
+      fetchPredictedBills()
     }
-  }, [session, fetchData, fetchCreditCardBalances])
+  }, [session, fetchData, fetchCreditCardBalances, fetchPredictedBills])
 
   if (!session) {
     return (
@@ -110,7 +130,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <StatsCard
             title="Total Bills"
             value={stats?.totalBills || 0}
@@ -130,12 +150,55 @@ export default function DashboardPage() {
             color="red"
           />
           <StatsCard
+            title="Predicted"
+            value={stats?.predictedBills || 0}
+            icon={Eye}
+            color="purple"
+          />
+          <StatsCard
             title="Paid"
             value={stats?.paidBills || 0}
             icon={CheckCircle}
             color="green"
           />
         </div>
+
+        {/* Expected Bills (Next 30 Days) */}
+        {predictedBills.length > 0 && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-gray-900">Expected Bills (Next 30 Days)</h2>
+                {(stats?.missingBills ?? 0) > 0 && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    {stats?.missingBills} missing
+                  </span>
+                )}
+              </div>
+              <span className="text-sm text-gray-500">
+                {predictedBills.length} predicted bill{predictedBills.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {predictedBills.map((bill) => (
+                <BillCard 
+                  key={bill.id} 
+                  bill={bill} 
+                  onClick={() => router.push(`/bills/${bill.id}`)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        {isPredictedLoading && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Expected Bills (Next 30 Days)</h2>
+            <div className="bg-white rounded-lg shadow-md p-8 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mr-3"></div>
+              <span className="text-gray-500">Generating predictions...</span>
+            </div>
+          </div>
+        )}
 
         {/* Credit Card Balance Graph */}
         {creditCardData && creditCardData.accounts.length > 0 && (

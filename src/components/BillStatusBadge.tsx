@@ -6,6 +6,10 @@ interface BillStatusBadgeProps {
 
 export default function BillStatusBadge({ status }: BillStatusBadgeProps) {
   const statusConfig = {
+    PREDICTED: {
+      label: 'Predicted',
+      className: 'bg-purple-100 text-purple-800',
+    },
     PENDING: {
       label: 'Pending',
       className: 'bg-gray-100 text-gray-800',

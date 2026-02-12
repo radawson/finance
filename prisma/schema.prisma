@@ -16,6 +16,7 @@ enum Role {
 }
 
 enum BillStatus {
+  PREDICTED
   PENDING
   DUE_SOON
   OVERDUE
@@ -102,24 +103,27 @@ model Vendor {
 }
 
 model Bill {
-  id                 String    @id @default(uuid())
-  title              String
-  description        String?
-  amount             Decimal   @db.Decimal(10, 2)
-  dueDate            DateTime
-  paidDate           DateTime?
-  status             BillStatus @default(PENDING)
-  categoryId         String
-  vendorId           String?   // Optional - can create bill without vendor
-  vendorAccountId   String?   // Optional - can create bill without account
-  createdById        String?   // Nullable for anonymous entries
-  recurrencePatternId String?  @unique
-  isRecurring        Boolean   @default(false)
-  nextDueDate        DateTime?
-  invoiceNumber      String?   // Optional invoice number from vendor
-  tags               String[]  @default([]) // Array of tag strings (max 128 chars each)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  title                String
+  description          String?
+  amount               Decimal   @db.Decimal(10, 2)
+  dueDate              DateTime
+  paidDate             DateTime?
+  status               BillStatus @default(PENDING)
+  categoryId           String
+  vendorId             String?   // Optional - can create bill without vendor
+  vendorAccountId      String?   // Optional - can create bill without account
+  createdById          String?   // Nullable for anonymous entries
+  recurrencePatternId  String?   @unique
+  isRecurring          Boolean   @default(false)
+  nextDueDate          DateTime?
+  invoiceNumber        String?   // Optional invoice number from vendor
+  tags                 String[]  @default([]) // Array of tag strings (max 128 chars each)
+  templateBillId       String?   // FK to the recurring bill that generated this prediction
+  predictionConfidence Decimal?  @db.Decimal(3, 2) // 0.00–1.00 confidence score
+  predictionMethod     String?   // 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Relations
   category          Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -127,6 +131,8 @@ model Bill {
   vendorAccount     VendorAccount?    @relation(fields: [vendorAccountId], references: [id], onDelete: SetNull)
   createdBy         User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
   recurrencePattern RecurrencePattern?
+  templateBill      Bill?             @relation("PredictionTemplate", fields: [templateBillId], references: [id], onDelete: SetNull)
+  predictions       Bill[]            @relation("PredictionTemplate")
   comments          Comment[]
   attachments       Attachment[]
 
