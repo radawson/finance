@@ -14,6 +14,53 @@ export const WIDGET_IDS = {
 
 export type WidgetId = (typeof WIDGET_IDS)[keyof typeof WIDGET_IDS]
 
+export const ALL_WIDGET_IDS: WidgetId[] = Object.values(WIDGET_IDS) as WidgetId[]
+
+// ─── Widget Metadata (for Palette UI) ────────────────────────────────────────
+
+export interface WidgetMeta {
+  label: string
+  description: string
+}
+
+export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
+  [WIDGET_IDS.STATS]: {
+    label: 'Overview',
+    description: 'Bill count summary (total, due soon, overdue, predicted, paid)',
+  },
+  [WIDGET_IDS.EXPECTED_BILLS]: {
+    label: 'Expected Bills',
+    description: 'Predicted bills for the next 30 days',
+  },
+  [WIDGET_IDS.CREDIT_CARD]: {
+    label: 'Credit Card Balances',
+    description: 'Balance trend graph for credit card accounts',
+  },
+  [WIDGET_IDS.UPCOMING_BILLS]: {
+    label: 'Upcoming Bills',
+    description: 'Bills due in the next 7 days',
+  },
+  [WIDGET_IDS.OVERDUE_BILLS]: {
+    label: 'Overdue Bills',
+    description: 'Bills that are past their due date',
+  },
+  [WIDGET_IDS.CATEGORY_BREAKDOWN]: {
+    label: 'Category Breakdown',
+    description: 'Historic and projected spending by category',
+  },
+  [WIDGET_IDS.RECENT_BILLS]: {
+    label: 'Recent Bills',
+    description: 'Most recently created or updated bills',
+  },
+}
+
+// ─── API Response Shape ──────────────────────────────────────────────────────
+
+export interface DashboardPrefsResponse {
+  layouts: DashboardLayouts
+  visibleWidgetIds: string[]
+}
+
 // ─── Breakpoints & Columns ───────────────────────────────────────────────────
 
 export const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480 } as const
