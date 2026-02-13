@@ -12,6 +12,12 @@ interface DashboardWidgetProps {
   badge?: React.ReactNode
   action?: React.ReactNode
   className?: string
+  /** Widget ID for collapse persistence; when provided with onCollapseChange, collapse state is controlled by parent */
+  widgetId?: string
+  /** When true, widget is collapsed (header-only). Used when parent controls state. */
+  isCollapsed?: boolean
+  /** Called when user toggles collapse. Parent should update collapsedWidgetIds and pass new isCollapsed. */
+  onCollapseChange?: (widgetId: string, isCollapsed: boolean) => void
   // These are forwarded by react-grid-layout to the wrapper div
   style?: React.CSSProperties
   onMouseDown?: React.MouseEventHandler
@@ -29,6 +35,9 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
       badge,
       action,
       className = '',
+      widgetId,
+      isCollapsed,
+      onCollapseChange,
       style,
       onMouseDown,
       onMouseUp,
@@ -37,7 +46,17 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
     },
     ref
   ) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen)
+    const isControlled = widgetId != null && onCollapseChange != null
+    const [internalOpen, setInternalOpen] = useState(defaultOpen)
+    const isOpen = isControlled ? !isCollapsed : internalOpen
+
+    const handleOpenChange = (open: boolean) => {
+      if (isControlled && widgetId) {
+        onCollapseChange(widgetId, !open)
+      } else {
+        setInternalOpen(open)
+      }
+    }
 
     if (!collapsible) {
       return (
@@ -75,7 +94,7 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
     return (
       <Collapsible.Root
         open={isOpen}
-        onOpenChange={setIsOpen}
+        onOpenChange={handleOpenChange}
         asChild
       >
         <div

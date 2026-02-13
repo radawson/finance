@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { Responsive, useContainerWidth } from 'react-grid-layout'
-import type { Layout, ResponsiveLayouts } from 'react-grid-layout'
+import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 import Navbar from '@/components/Navbar'
@@ -28,6 +28,7 @@ import {
   loadLayouts,
   clearLayouts,
   getFilteredLayouts,
+  type Breakpoint,
   type DashboardLayouts,
 } from '@/lib/dashboard-layout'
 
@@ -52,6 +53,9 @@ export default function DashboardPage() {
 
   // User-configurable visibility. null = "show all that have data" (default).
   const [userVisibleWidgetIds, setUserVisibleWidgetIds] = useState<Set<string> | null>(null)
+
+  // Collapsed widget IDs (header-only); persisted via API.
+  const [collapsedWidgetIds, setCollapsedWidgetIds] = useState<Set<string>>(new Set())
 
   // ─── Load prefs from API (with localStorage migration) ──────────────────
 
@@ -106,6 +110,11 @@ export default function DashboardPage() {
               setUserVisibleWidgetIds(new Set(visibleIds))
             }
             // visibleIds empty [] → null (show all)
+
+            const collapsedIds = data.collapsedWidgetIds as string[] | undefined
+            if (collapsedIds && Array.isArray(collapsedIds)) {
+              setCollapsedWidgetIds(new Set(collapsedIds))
+            }
           }
         }
       } catch {
@@ -243,16 +252,35 @@ export default function DashboardPage() {
   }, [userVisibleWidgetIds, dataAvailableIds])
 
   // ─── Compute active layouts ──────────────────────────────────────────────
+  // Apply collapse override: collapsed widgets get h=1, minH=1 so the grid compacts rows.
+
+  const applyCollapseOverrides = useCallback(
+    (layout: LayoutItem[]): LayoutItem[] =>
+      layout.map((item) =>
+        collapsedWidgetIds.has(item.i) ? { ...item, h: 1, minH: 1 } : item
+      ),
+    [collapsedWidgetIds]
+  )
 
   const activeLayouts = useMemo(() => {
     if (!prefsLoaded) return DEFAULT_LAYOUTS
-    return getFilteredLayouts(savedLayouts, visibleWidgetIds)
-  }, [savedLayouts, visibleWidgetIds, prefsLoaded])
+    const filtered = getFilteredLayouts(savedLayouts, visibleWidgetIds)
+    const result: DashboardLayouts = {} as DashboardLayouts
+    for (const bp of Object.keys(BREAKPOINTS) as Breakpoint[]) {
+      const layout = filtered[bp] ?? []
+      result[bp] = applyCollapseOverrides(layout)
+    }
+    return result
+  }, [savedLayouts, visibleWidgetIds, prefsLoaded, collapsedWidgetIds, applyCollapseOverrides])
 
   // ─── Save prefs to API (debounced) ──────────────────────────────────────
 
   const savePrefsToApi = useCallback(
-    (data: { layouts?: DashboardLayouts; visibleWidgetIds?: string[] }) => {
+    (data: {
+      layouts?: DashboardLayouts
+      visibleWidgetIds?: string[]
+      collapsedWidgetIds?: string[]
+    }) => {
       if (!session?.user) return
 
       if (saveTimeoutRef.current) {
@@ -260,10 +288,14 @@ export default function DashboardPage() {
       }
       saveTimeoutRef.current = setTimeout(async () => {
         try {
+          const body: Record<string, unknown> = {}
+          if (data.layouts !== undefined) body.layouts = data.layouts
+          if (data.visibleWidgetIds !== undefined) body.visibleWidgetIds = data.visibleWidgetIds
+          if (data.collapsedWidgetIds !== undefined) body.collapsedWidgetIds = data.collapsedWidgetIds
           await fetch('/api/dashboard/prefs', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
+            body: JSON.stringify(body),
           })
         } catch {
           // Silently fail — prefs will be saved next time
@@ -274,18 +306,37 @@ export default function DashboardPage() {
   )
 
   // ─── Layout change handler ─────────────────────────────────────────────
+  // Preserve expanded h/minH for collapsed widgets so we never persist collapsed dimensions.
 
   const handleLayoutChange = useCallback(
     (_currentLayout: Layout, allLayouts: ResponsiveLayouts) => {
-      const merged: DashboardLayouts = {
+      const incoming = allLayouts as unknown as DashboardLayouts
+      const merged: DashboardLayouts = {} as DashboardLayouts
+
+      for (const bp of Object.keys(BREAKPOINTS) as Breakpoint[]) {
+        const baseLayout = (savedLayouts ?? DEFAULT_LAYOUTS)[bp] ?? []
+        const incomingLayout = incoming[bp] ?? []
+        const baseByI = new Map(baseLayout.map((item) => [item.i, item]))
+
+        merged[bp] = incomingLayout.map((item) => {
+          if (collapsedWidgetIds.has(item.i)) {
+            const expanded = baseByI.get(item.i)
+            if (expanded) {
+              return { ...item, h: expanded.h, minH: expanded.minH }
+            }
+          }
+          return item
+        })
+      }
+
+      setSavedLayouts({
         ...DEFAULT_LAYOUTS,
         ...savedLayouts,
-        ...(allLayouts as unknown as DashboardLayouts),
-      }
-      setSavedLayouts(merged)
-      savePrefsToApi({ layouts: merged })
+        ...merged,
+      })
+      savePrefsToApi({ layouts: { ...DEFAULT_LAYOUTS, ...savedLayouts, ...merged } })
     },
-    [savedLayouts, savePrefsToApi]
+    [savedLayouts, collapsedWidgetIds, savePrefsToApi]
   )
 
   // ─── Visibility change handler (from palette) ──────────────────────────
@@ -303,18 +354,38 @@ export default function DashboardPage() {
     [savePrefsToApi]
   )
 
+  // ─── Collapse change handler ────────────────────────────────────────────
+
+  const handleCollapseChange = useCallback(
+    (widgetId: string, isCollapsed: boolean) => {
+      setCollapsedWidgetIds((prev) => {
+        const next = new Set(prev)
+        if (isCollapsed) next.add(widgetId)
+        else next.delete(widgetId)
+        savePrefsToApi({ collapsedWidgetIds: Array.from(next) })
+        return next
+      })
+    },
+    [savePrefsToApi]
+  )
+
   // ─── Reset handler ─────────────────────────────────────────────────────
 
   const handleResetLayout = useCallback(async () => {
     setSavedLayouts(null)
     setUserVisibleWidgetIds(null)
+    setCollapsedWidgetIds(new Set())
 
     if (session?.user) {
       try {
         await fetch('/api/dashboard/prefs', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ layouts: {}, visibleWidgetIds: [] }),
+          body: JSON.stringify({
+            layouts: {},
+            visibleWidgetIds: [],
+            collapsedWidgetIds: [],
+          }),
         })
       } catch {
         // Silently fail
@@ -510,7 +581,10 @@ export default function DashboardPage() {
                 {visibleWidgetIds.has(WIDGET_IDS.EXPECTED_BILLS) && (
                   <DashboardWidget
                     key={WIDGET_IDS.EXPECTED_BILLS}
+                    widgetId={WIDGET_IDS.EXPECTED_BILLS}
                     title="Expected Bills (Next 30 Days)"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.EXPECTED_BILLS)}
+                    onCollapseChange={handleCollapseChange}
                     badge={
                       (stats?.missingBills ?? 0) > 0 ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -547,7 +621,10 @@ export default function DashboardPage() {
                 {visibleWidgetIds.has(WIDGET_IDS.CREDIT_CARD) && creditCardData && (
                   <DashboardWidget
                     key={WIDGET_IDS.CREDIT_CARD}
+                    widgetId={WIDGET_IDS.CREDIT_CARD}
                     title="Credit Card Balances"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.CREDIT_CARD)}
+                    onCollapseChange={handleCollapseChange}
                   >
                     <CreditCardBalanceGraph
                       accounts={creditCardData.accounts}
@@ -561,7 +638,10 @@ export default function DashboardPage() {
                 {visibleWidgetIds.has(WIDGET_IDS.UPCOMING_BILLS) && stats?.upcomingBillsList && (
                   <DashboardWidget
                     key={WIDGET_IDS.UPCOMING_BILLS}
+                    widgetId={WIDGET_IDS.UPCOMING_BILLS}
                     title="Upcoming Bills (Next 7 Days)"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.UPCOMING_BILLS)}
+                    onCollapseChange={handleCollapseChange}
                     action={
                       <Link href="/bills" className="text-primary-600 hover:text-primary-700 font-medium text-sm">
                         View all &rarr;
@@ -587,7 +667,10 @@ export default function DashboardPage() {
                 {visibleWidgetIds.has(WIDGET_IDS.OVERDUE_BILLS) && stats?.overdueBillsList && (
                   <DashboardWidget
                     key={WIDGET_IDS.OVERDUE_BILLS}
+                    widgetId={WIDGET_IDS.OVERDUE_BILLS}
                     title="Overdue Bills"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.OVERDUE_BILLS)}
+                    onCollapseChange={handleCollapseChange}
                     action={
                       <Link href="/bills?status=OVERDUE" className="text-primary-600 hover:text-primary-700 font-medium text-sm">
                         View all &rarr;
@@ -613,7 +696,10 @@ export default function DashboardPage() {
                 {visibleWidgetIds.has(WIDGET_IDS.CATEGORY_BREAKDOWN) && (
                   <DashboardWidget
                     key={WIDGET_IDS.CATEGORY_BREAKDOWN}
+                    widgetId={WIDGET_IDS.CATEGORY_BREAKDOWN}
                     title="Category Breakdown"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.CATEGORY_BREAKDOWN)}
+                    onCollapseChange={handleCollapseChange}
                     action={
                       <div className="flex items-center gap-2">
                         <label htmlFor="category-period" className="text-sm font-medium text-gray-700">
@@ -661,7 +747,10 @@ export default function DashboardPage() {
                 {visibleWidgetIds.has(WIDGET_IDS.RECENT_BILLS) && stats?.recentBills && (
                   <DashboardWidget
                     key={WIDGET_IDS.RECENT_BILLS}
+                    widgetId={WIDGET_IDS.RECENT_BILLS}
                     title="Recent Bills"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.RECENT_BILLS)}
+                    onCollapseChange={handleCollapseChange}
                     action={
                       <Link href="/bills" className="text-primary-600 hover:text-primary-700 font-medium text-sm">
                         View all &rarr;

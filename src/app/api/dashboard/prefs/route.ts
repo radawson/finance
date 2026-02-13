@@ -28,6 +28,11 @@ const patchSchema = z.object({
       message: 'Invalid widget ID',
     })
   ).optional(),
+  collapsedWidgetIds: z.array(
+    z.string().refine((id) => validWidgetIds.includes(id as any), {
+      message: 'Invalid widget ID',
+    })
+  ).optional(),
 })
 
 /**
@@ -54,6 +59,7 @@ export async function GET() {
     return NextResponse.json({
       layouts: prefs.layouts,
       visibleWidgetIds: prefs.visibleWidgetIds,
+      collapsedWidgetIds: prefs.collapsedWidgetIds,
     })
   } catch (error) {
     console.error('Get dashboard prefs error:', error)
@@ -88,6 +94,9 @@ export async function PATCH(req: NextRequest) {
     if (data.visibleWidgetIds !== undefined) {
       updateData.visibleWidgetIds = data.visibleWidgetIds
     }
+    if (data.collapsedWidgetIds !== undefined) {
+      updateData.collapsedWidgetIds = data.collapsedWidgetIds
+    }
 
     // If nothing to update, return early
     if (Object.keys(updateData).length === 0) {
@@ -100,6 +109,7 @@ export async function PATCH(req: NextRequest) {
         userId: session.user.id,
         layouts: data.layouts ?? {},
         visibleWidgetIds: data.visibleWidgetIds ?? [],
+        collapsedWidgetIds: data.collapsedWidgetIds ?? [],
       },
       update: updateData,
     })
@@ -107,6 +117,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({
       layouts: prefs.layouts,
       visibleWidgetIds: prefs.visibleWidgetIds,
+      collapsedWidgetIds: prefs.collapsedWidgetIds,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
