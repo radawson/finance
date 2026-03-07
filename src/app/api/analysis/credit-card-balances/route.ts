@@ -7,9 +7,9 @@ import { subMonths } from 'date-fns'
 /**
  * GET /api/analysis/credit-card-balances?period=6m
  *
- * Returns balance snapshot history for accounts that have balance data.
- * Filters by accounts whose AccountType name contains "Credit" (case-insensitive),
- * or falls back to any account with balance snapshots.
+ * Returns balance snapshot history for credit-card accounts that have balance data.
+ * Includes accounts where either the related AccountType name or legacy accountType
+ * text contains "credit" (case-insensitive).
  *
  * Query params:
  *   - period: '3m' | '6m' | '1y' (default: '6m')
@@ -41,11 +41,26 @@ export async function GET(req: NextRequest) {
         break
     }
 
-    // Find accounts with balance snapshots
-    // Prefer accounts with a "Credit Card" account type, but include any with snapshots
+    // Find only credit-card accounts with balance snapshots
     const accounts = await prisma.vendorAccount.findMany({
       where: {
         isActive: true,
+        OR: [
+          {
+            type: {
+              name: {
+                contains: 'credit',
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            accountType: {
+              contains: 'credit',
+              mode: 'insensitive',
+            },
+          },
+        ],
         balanceSnapshots: {
           some: {
             recordedAt: {
