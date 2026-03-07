@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [documents/CHANGELOG.md](documents/CHANGELOG.md) for the detailed changelog.
 
+## [0.2.8] - 2026-03-07
+- Notes tab added to Notification Center dropdown for logged-in users
+- Persistent per-user notes API (`GET/POST /api/notes`, `PATCH/DELETE /api/notes/[id]`)
+- TODO memo notes with blue alert badges that persist until cleared
+- New `Note` Prisma model and related frontend notes components
+
 ## [0.2.7] - 2026-02-12
 - Customizable dashboard with drag-and-drop widget layouts (react-grid-layout)
 - Widget palette for toggling widget visibility

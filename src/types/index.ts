@@ -291,3 +291,16 @@ export interface Notification {
   createdAt: Date
   user?: User
 }
+
+export interface Note {
+  id: string
+  userId: string
+  content: string
+  isTodo: boolean
+  isCleared: boolean
+  clearedAt?: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type NotificationBadgeType = 'notification' | 'todo'
