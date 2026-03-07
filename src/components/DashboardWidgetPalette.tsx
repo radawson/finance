@@ -21,6 +21,7 @@ interface DashboardWidgetPaletteProps {
   accountTypes: Array<{ id: string; name: string }>
   balanceWidgetInstances: BalanceWidgetInstance[]
   onAddBalanceWidget: (accountTypeId: string, accountTypeName: string) => void
+  onUpdateBalanceWidget: (instanceId: string, accountTypeId: string, accountTypeName: string) => void
   onRemoveBalanceWidget: (instanceId: string) => void
 }
 
@@ -31,6 +32,7 @@ export default function DashboardWidgetPalette({
   accountTypes,
   balanceWidgetInstances,
   onAddBalanceWidget,
+  onUpdateBalanceWidget,
   onRemoveBalanceWidget,
 }: DashboardWidgetPaletteProps) {
   const [open, setOpen] = useState(false)
@@ -211,9 +213,23 @@ export default function DashboardWidgetPalette({
                 balanceWidgetInstances.map((instance) => (
                   <div
                     key={instance.instanceId}
-                    className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2"
+                    className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2"
                   >
-                    <span className="text-sm text-gray-800">{instance.config.accountTypeName}</span>
+                    <select
+                      value={instance.config.accountTypeId}
+                      onChange={(event) => {
+                        const selectedType = accountTypes.find((type) => type.id === event.target.value)
+                        if (!selectedType) return
+                        onUpdateBalanceWidget(instance.instanceId, selectedType.id, selectedType.name)
+                      }}
+                      className="flex-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      {accountTypes.map((accountType) => (
+                        <option key={accountType.id} value={accountType.id}>
+                          {accountType.name}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       onClick={() => onRemoveBalanceWidget(instance.instanceId)}
                       className="text-gray-400 hover:text-red-500 transition-colors"

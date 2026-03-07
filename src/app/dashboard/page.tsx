@@ -71,6 +71,7 @@ export default function DashboardPage() {
   const [balanceWidgetInstances, setBalanceWidgetInstances] = useState<BalanceWidgetInstance[]>([])
   const [balanceWidgetPeriods, setBalanceWidgetPeriods] = useState<Record<string, string>>({})
   const [balanceWidgetData, setBalanceWidgetData] = useState<Record<string, BalanceResponse>>({})
+  const balanceWidgetCacheRef = useRef<Record<string, BalanceResponse>>({})
   const [predictedBills, setPredictedBills] = useState<Bill[]>([])
   const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
@@ -222,6 +223,16 @@ export default function DashboardPage() {
   const fetchBalanceWidgetData = useCallback(
     async (instance: BalanceWidgetInstance, period?: string) => {
       const selectedPeriod = period ?? balanceWidgetPeriods[instance.instanceId] ?? '6m'
+      const cacheKey = `${instance.config.accountTypeId}:${selectedPeriod}`
+      const cachedData = balanceWidgetCacheRef.current[cacheKey]
+
+      if (cachedData) {
+        setBalanceWidgetData((prev) => ({
+          ...prev,
+          [instance.instanceId]: cachedData,
+        }))
+        return
+      }
 
       try {
         const params = new URLSearchParams({
@@ -231,6 +242,7 @@ export default function DashboardPage() {
         const res = await fetch(`/api/analysis/credit-card-balances?${params.toString()}`)
         if (res.ok) {
           const data = await res.json()
+          balanceWidgetCacheRef.current[cacheKey] = data
           setBalanceWidgetData((prev) => ({
             ...prev,
             [instance.instanceId]: data,
@@ -369,7 +381,7 @@ export default function DashboardPage() {
       result[bp] = applyCollapseOverrides(layout)
     }
     return result
-  }, [savedLayouts, allRenderableWidgetIds, prefsLoaded, collapsedWidgetIds, applyCollapseOverrides])
+  }, [savedLayouts, allRenderableWidgetIds, prefsLoaded, applyCollapseOverrides])
 
   // ─── Save prefs to API (debounced) ──────────────────────────────────────
 
@@ -544,6 +556,37 @@ export default function DashboardPage() {
     fetchBalanceWidgetData(instance, '6m')
   }, [addBalanceWidgetLayout, fetchBalanceWidgetData, savePrefsToApi])
 
+  const handleUpdateBalanceWidget = useCallback((instanceId: string, accountTypeId: string, accountTypeName: string) => {
+    let updatedInstance: BalanceWidgetInstance | null = null
+
+    setBalanceWidgetInstances((prev) => {
+      const next = prev.map((instance) => {
+        if (instance.instanceId !== instanceId) return instance
+        updatedInstance = {
+          ...instance,
+          config: {
+            accountTypeId,
+            accountTypeName,
+          },
+        }
+        return updatedInstance
+      })
+      savePrefsToApi({ widgetInstances: next })
+      return next
+    })
+
+    setBalanceWidgetData((prev) => {
+      const next = { ...prev }
+      delete next[instanceId]
+      return next
+    })
+
+    const period = balanceWidgetPeriods[instanceId] ?? '6m'
+    if (updatedInstance) {
+      fetchBalanceWidgetData(updatedInstance, period)
+    }
+  }, [balanceWidgetPeriods, fetchBalanceWidgetData, savePrefsToApi])
+
   const handleRemoveBalanceWidget = useCallback((instanceId: string) => {
     setBalanceWidgetInstances((prev) => {
       const next = prev.filter((instance) => instance.instanceId !== instanceId)
@@ -708,6 +751,7 @@ export default function DashboardPage() {
               accountTypes={accountTypes}
               balanceWidgetInstances={accountTypeBalanceInstances}
               onAddBalanceWidget={handleAddBalanceWidget}
+              onUpdateBalanceWidget={handleUpdateBalanceWidget}
               onRemoveBalanceWidget={handleRemoveBalanceWidget}
             />
             <button
