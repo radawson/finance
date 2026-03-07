@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Checkbox from '@radix-ui/react-checkbox'
-import { X, Check, LayoutGrid } from 'lucide-react'
+import { X, Check, LayoutGrid, Plus, Trash2 } from 'lucide-react'
 import {
   ALL_WIDGET_IDS,
   WIDGET_META,
+  BalanceWidgetInstance,
   type WidgetId,
 } from '@/lib/dashboard-layout'
 
@@ -17,16 +18,25 @@ interface DashboardWidgetPaletteProps {
   dataAvailableIds: Set<string>
   /** Called when user changes visibility */
   onVisibilityChange: (visibleIds: string[]) => void
+  accountTypes: Array<{ id: string; name: string }>
+  balanceWidgetInstances: BalanceWidgetInstance[]
+  onAddBalanceWidget: (accountTypeId: string, accountTypeName: string) => void
+  onRemoveBalanceWidget: (instanceId: string) => void
 }
 
 export default function DashboardWidgetPalette({
   visibleWidgetIds,
   dataAvailableIds,
   onVisibilityChange,
+  accountTypes,
+  balanceWidgetInstances,
+  onAddBalanceWidget,
+  onRemoveBalanceWidget,
 }: DashboardWidgetPaletteProps) {
   const [open, setOpen] = useState(false)
   // Local state for the checked set (initialized from props when dialog opens)
   const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [selectedAccountTypeId, setSelectedAccountTypeId] = useState('')
 
   // Sync local state when dialog opens
   useEffect(() => {
@@ -37,8 +47,9 @@ export default function DashboardWidgetPalette({
         // null = all visible by default
         setChecked(new Set(ALL_WIDGET_IDS))
       }
+      setSelectedAccountTypeId(accountTypes[0]?.id ?? '')
     }
-  }, [open, visibleWidgetIds])
+  }, [open, visibleWidgetIds, accountTypes])
 
   const handleToggle = (id: WidgetId) => {
     setChecked((prev) => {
@@ -69,6 +80,12 @@ export default function DashboardWidgetPalette({
       onVisibilityChange(Array.from(checked))
     }
     setOpen(false)
+  }
+
+  const handleAddBalanceWidget = () => {
+    const selectedType = accountTypes.find((accountType) => accountType.id === selectedAccountTypeId)
+    if (!selectedType) return
+    onAddBalanceWidget(selectedType.id, selectedType.name)
   }
 
   return (
@@ -155,6 +172,59 @@ export default function DashboardWidgetPalette({
                 </label>
               )
             })}
+          </div>
+
+          <div className="pt-3 border-t border-gray-100 mb-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-2">
+              Balance Graph Widgets
+            </h4>
+            <p className="text-xs text-gray-500 mb-3">
+              Add one or more account-type balance widgets.
+            </p>
+
+            <div className="flex items-center gap-2 mb-3">
+              <select
+                value={selectedAccountTypeId}
+                onChange={(event) => setSelectedAccountTypeId(event.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {accountTypes.map((accountType) => (
+                  <option key={accountType.id} value={accountType.id}>
+                    {accountType.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleAddBalanceWidget}
+                disabled={!selectedAccountTypeId || accountTypes.length === 0}
+                className="btn btn-secondary text-sm px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+              >
+                <Plus size={14} />
+                Add
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-36 overflow-y-auto">
+              {balanceWidgetInstances.length === 0 ? (
+                <p className="text-xs text-gray-500">No custom balance widgets yet.</p>
+              ) : (
+                balanceWidgetInstances.map((instance) => (
+                  <div
+                    key={instance.instanceId}
+                    className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2"
+                  >
+                    <span className="text-sm text-gray-800">{instance.config.accountTypeName}</span>
+                    <button
+                      onClick={() => onRemoveBalanceWidget(instance.instanceId)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      title="Remove widget"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">

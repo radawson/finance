@@ -59,6 +59,24 @@ export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
 export interface DashboardPrefsResponse {
   layouts: DashboardLayouts
   visibleWidgetIds: string[]
+  collapsedWidgetIds?: string[]
+  widgetInstances?: BalanceWidgetInstance[]
+}
+
+export const WIDGET_INSTANCE_KIND = {
+  ACCOUNT_TYPE_BALANCE: 'account-type-balance',
+} as const
+
+export type WidgetInstanceKind =
+  (typeof WIDGET_INSTANCE_KIND)[keyof typeof WIDGET_INSTANCE_KIND]
+
+export interface BalanceWidgetInstance {
+  instanceId: string
+  kind: WidgetInstanceKind
+  config: {
+    accountTypeId: string
+    accountTypeName: string
+  }
 }
 
 // ─── Breakpoints & Columns ───────────────────────────────────────────────────

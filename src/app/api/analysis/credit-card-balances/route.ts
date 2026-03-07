@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { subMonths } from 'date-fns'
+import { UUID_REGEX } from '@/types'
 
 /**
  * GET /api/analysis/credit-card-balances?period=6m
@@ -13,6 +14,8 @@ import { subMonths } from 'date-fns'
  *
  * Query params:
  *   - period: '3m' | '6m' | '1y' (default: '6m')
+ *   - accountTypeId: account type UUID (optional)
+ *   - accountTypeName: legacy/fallback name filter (optional)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -24,6 +27,12 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const period = searchParams.get('period') || '6m'
+    const accountTypeId = searchParams.get('accountTypeId')
+    const accountTypeName = searchParams.get('accountTypeName')
+
+    if (accountTypeId && !UUID_REGEX.test(accountTypeId)) {
+      return NextResponse.json({ error: 'Invalid accountTypeId' }, { status: 400 })
+    }
 
     // Calculate start date based on period
     const now = new Date()
@@ -41,26 +50,39 @@ export async function GET(req: NextRequest) {
         break
     }
 
-    // Find only credit-card accounts with balance snapshots
+    const defaultNameFilter = !accountTypeId && !accountTypeName ? 'credit' : undefined
+    const accountTypeNameFilter = accountTypeName ?? defaultNameFilter
+
+    const accountTypeFilter = accountTypeId
+      ? {
+          accountTypeId,
+        }
+      : accountTypeNameFilter
+      ? {
+          OR: [
+            {
+              type: {
+                name: {
+                  contains: accountTypeNameFilter,
+                  mode: 'insensitive' as const,
+                },
+              },
+            },
+            {
+              accountType: {
+                contains: accountTypeNameFilter,
+                mode: 'insensitive' as const,
+              },
+            },
+          ],
+        }
+      : {}
+
+    // Find category-filtered active accounts with snapshots
     const accounts = await prisma.vendorAccount.findMany({
       where: {
         isActive: true,
-        OR: [
-          {
-            type: {
-              name: {
-                contains: 'credit',
-                mode: 'insensitive',
-              },
-            },
-          },
-          {
-            accountType: {
-              contains: 'credit',
-              mode: 'insensitive',
-            },
-          },
-        ],
+        ...accountTypeFilter,
         balanceSnapshots: {
           some: {
             recordedAt: {
@@ -111,6 +133,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       period,
+      accountTypeId: accountTypeId ?? null,
+      accountTypeName: accountTypeNameFilter ?? null,
       accounts: result,
     })
   } catch (error) {

@@ -244,6 +244,7 @@ model UserDashboardPrefs {
   layouts            Json     // { lg: LayoutItem[], md: ..., sm: ..., xs: ... }
   visibleWidgetIds   String[] @default([])  // Empty = show all that have data
   collapsedWidgetIds String[] @default([])  // Widget IDs that are collapsed (header-only)
+  widgetInstances    Json     @default("[]") // Dynamic widget instances and config
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

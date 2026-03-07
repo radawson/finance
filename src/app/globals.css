@@ -45,6 +45,14 @@
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
   }
 
+  .app-page-container {
+    @apply w-full px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .app-nav-container {
+    @apply w-full px-4 sm:px-6 lg:px-8;
+  }
+
   /* Visual feedback animations for WebSocket updates */
   .flash-highlight {
     animation: flashHighlight 1s ease-in-out;

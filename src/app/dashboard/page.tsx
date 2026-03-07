@@ -19,18 +19,43 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import CategoryPieChart from '@/components/CategoryPieChart'
 import CreditCardBalanceGraph from '@/components/CreditCardBalanceGraph'
+import AccountTypeBalanceGraph from '@/components/AccountTypeBalanceGraph'
 import { CategoryPeriod } from '@/lib/date-utils'
 import {
   WIDGET_IDS,
+  WIDGET_INSTANCE_KIND,
   BREAKPOINTS,
   COLS,
   DEFAULT_LAYOUTS,
   loadLayouts,
   clearLayouts,
   getFilteredLayouts,
+  BalanceWidgetInstance,
   type Breakpoint,
   type DashboardLayouts,
 } from '@/lib/dashboard-layout'
+
+interface AccountTypeOption {
+  id: string
+  name: string
+}
+
+interface AccountBalanceData {
+  accountId: string
+  accountLabel: string
+  vendorName: string
+  accountTypeName: string | null
+  currentBalance: string | null
+  interestRate: string | null
+  snapshots: { date: string; balance: string }[]
+}
+
+interface BalanceResponse {
+  period: string
+  accountTypeId: string | null
+  accountTypeName: string | null
+  accounts: AccountBalanceData[]
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -41,7 +66,11 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [categoryPeriod, setCategoryPeriod] = useState<CategoryPeriod>('month')
   const [balancePeriod, setBalancePeriod] = useState('6m')
-  const [creditCardData, setCreditCardData] = useState<{ period: string; accounts: any[] } | null>(null)
+  const [creditCardData, setCreditCardData] = useState<BalanceResponse | null>(null)
+  const [accountTypes, setAccountTypes] = useState<AccountTypeOption[]>([])
+  const [balanceWidgetInstances, setBalanceWidgetInstances] = useState<BalanceWidgetInstance[]>([])
+  const [balanceWidgetPeriods, setBalanceWidgetPeriods] = useState<Record<string, string>>({})
+  const [balanceWidgetData, setBalanceWidgetData] = useState<Record<string, BalanceResponse>>({})
   const [predictedBills, setPredictedBills] = useState<Bill[]>([])
   const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
@@ -115,6 +144,13 @@ export default function DashboardPage() {
             if (collapsedIds && Array.isArray(collapsedIds)) {
               setCollapsedWidgetIds(new Set(collapsedIds))
             }
+
+            const widgetInstances = data.widgetInstances as BalanceWidgetInstance[] | undefined
+            if (widgetInstances && Array.isArray(widgetInstances)) {
+              setBalanceWidgetInstances(widgetInstances)
+            } else {
+              setBalanceWidgetInstances([])
+            }
           }
         }
       } catch {
@@ -171,6 +207,42 @@ export default function DashboardPage() {
     }
   }, [balancePeriod])
 
+  const fetchAccountTypes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/account-types')
+      if (res.ok) {
+        const data = await res.json()
+        setAccountTypes(data)
+      }
+    } catch {
+      // Silently fail - custom widget picker will have no options
+    }
+  }, [])
+
+  const fetchBalanceWidgetData = useCallback(
+    async (instance: BalanceWidgetInstance, period?: string) => {
+      const selectedPeriod = period ?? balanceWidgetPeriods[instance.instanceId] ?? '6m'
+
+      try {
+        const params = new URLSearchParams({
+          period: selectedPeriod,
+          accountTypeId: instance.config.accountTypeId,
+        })
+        const res = await fetch(`/api/analysis/credit-card-balances?${params.toString()}`)
+        if (res.ok) {
+          const data = await res.json()
+          setBalanceWidgetData((prev) => ({
+            ...prev,
+            [instance.instanceId]: data,
+          }))
+        }
+      } catch {
+        // Silently fail - widget can render empty state
+      }
+    },
+    [balanceWidgetPeriods]
+  )
+
   const fetchPredictedBills = useCallback(async () => {
     setIsPredictedLoading(true)
     try {
@@ -190,9 +262,16 @@ export default function DashboardPage() {
     if (session) {
       fetchData()
       fetchCreditCardBalances()
+      fetchAccountTypes()
       fetchPredictedBills()
     }
-  }, [session, fetchData, fetchCreditCardBalances, fetchPredictedBills])
+  }, [session, fetchData, fetchCreditCardBalances, fetchAccountTypes, fetchPredictedBills])
+
+  useEffect(() => {
+    balanceWidgetInstances.forEach((instance) => {
+      fetchBalanceWidgetData(instance)
+    })
+  }, [balanceWidgetInstances, fetchBalanceWidgetData])
 
   // ─── Determine which widgets have data ───────────────────────────────────
 
@@ -251,6 +330,25 @@ export default function DashboardPage() {
     return ids
   }, [userVisibleWidgetIds, dataAvailableIds])
 
+  const accountTypeBalanceInstances = useMemo(
+    () =>
+      balanceWidgetInstances.filter(
+        (instance) => instance.kind === WIDGET_INSTANCE_KIND.ACCOUNT_TYPE_BALANCE
+      ),
+    [balanceWidgetInstances]
+  )
+
+  const dynamicWidgetIds = useMemo(
+    () => new Set(accountTypeBalanceInstances.map((instance) => instance.instanceId)),
+    [accountTypeBalanceInstances]
+  )
+
+  const allRenderableWidgetIds = useMemo(() => {
+    const ids = new Set(visibleWidgetIds)
+    dynamicWidgetIds.forEach((id) => ids.add(id))
+    return ids
+  }, [visibleWidgetIds, dynamicWidgetIds])
+
   // ─── Compute active layouts ──────────────────────────────────────────────
   // Apply collapse override: collapsed widgets get h=1, minH=1 so the grid compacts rows.
 
@@ -264,14 +362,14 @@ export default function DashboardPage() {
 
   const activeLayouts = useMemo(() => {
     if (!prefsLoaded) return DEFAULT_LAYOUTS
-    const filtered = getFilteredLayouts(savedLayouts, visibleWidgetIds)
+    const filtered = getFilteredLayouts(savedLayouts, allRenderableWidgetIds)
     const result: DashboardLayouts = {} as DashboardLayouts
     for (const bp of Object.keys(BREAKPOINTS) as Breakpoint[]) {
       const layout = filtered[bp] ?? []
       result[bp] = applyCollapseOverrides(layout)
     }
     return result
-  }, [savedLayouts, visibleWidgetIds, prefsLoaded, collapsedWidgetIds, applyCollapseOverrides])
+  }, [savedLayouts, allRenderableWidgetIds, prefsLoaded, collapsedWidgetIds, applyCollapseOverrides])
 
   // ─── Save prefs to API (debounced) ──────────────────────────────────────
 
@@ -280,6 +378,7 @@ export default function DashboardPage() {
       layouts?: DashboardLayouts
       visibleWidgetIds?: string[]
       collapsedWidgetIds?: string[]
+      widgetInstances?: BalanceWidgetInstance[]
     }) => {
       if (!session?.user) return
 
@@ -292,6 +391,7 @@ export default function DashboardPage() {
           if (data.layouts !== undefined) body.layouts = data.layouts
           if (data.visibleWidgetIds !== undefined) body.visibleWidgetIds = data.visibleWidgetIds
           if (data.collapsedWidgetIds !== undefined) body.collapsedWidgetIds = data.collapsedWidgetIds
+          if (data.widgetInstances !== undefined) body.widgetInstances = data.widgetInstances
           await fetch('/api/dashboard/prefs', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -369,12 +469,120 @@ export default function DashboardPage() {
     [savePrefsToApi]
   )
 
+  const addBalanceWidgetLayout = useCallback((widgetId: string) => {
+    setSavedLayouts((prev) => {
+      const base = prev ?? DEFAULT_LAYOUTS
+      const next: DashboardLayouts = {
+        lg: [...(base.lg ?? [])],
+        md: [...(base.md ?? [])],
+        sm: [...(base.sm ?? [])],
+        xs: [...(base.xs ?? [])],
+      }
+
+      const candidates: Record<Breakpoint, { w: number; h: number; minW: number; minH: number }> = {
+        lg: { w: 12, h: 6, minW: 6, minH: 4 },
+        md: { w: 10, h: 6, minW: 5, minH: 4 },
+        sm: { w: 6, h: 6, minW: 4, minH: 4 },
+        xs: { w: 4, h: 6, minW: 3, minH: 4 },
+      }
+
+      ;(Object.keys(BREAKPOINTS) as Breakpoint[]).forEach((bp) => {
+        const exists = next[bp].some((item) => item.i === widgetId)
+        if (exists) return
+        const config = candidates[bp]
+        next[bp].push({
+          i: widgetId,
+          x: 0,
+          y: Infinity,
+          w: config.w,
+          h: config.h,
+          minW: config.minW,
+          minH: config.minH,
+        })
+      })
+
+      savePrefsToApi({ layouts: next })
+      return next
+    })
+  }, [savePrefsToApi])
+
+  const removeBalanceWidgetLayout = useCallback((widgetId: string) => {
+    setSavedLayouts((prev) => {
+      if (!prev) return prev
+      const next: DashboardLayouts = {
+        lg: prev.lg.filter((item) => item.i !== widgetId),
+        md: prev.md.filter((item) => item.i !== widgetId),
+        sm: prev.sm.filter((item) => item.i !== widgetId),
+        xs: prev.xs.filter((item) => item.i !== widgetId),
+      }
+      savePrefsToApi({ layouts: next })
+      return next
+    })
+  }, [savePrefsToApi])
+
+  const handleAddBalanceWidget = useCallback((accountTypeId: string, accountTypeName: string) => {
+    const instanceId = `balance-widget-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const instance: BalanceWidgetInstance = {
+      instanceId,
+      kind: WIDGET_INSTANCE_KIND.ACCOUNT_TYPE_BALANCE,
+      config: {
+        accountTypeId,
+        accountTypeName,
+      },
+    }
+
+    setBalanceWidgetInstances((prev) => {
+      const next = [...prev, instance]
+      savePrefsToApi({ widgetInstances: next })
+      return next
+    })
+    setBalanceWidgetPeriods((prev) => ({
+      ...prev,
+      [instanceId]: '6m',
+    }))
+    addBalanceWidgetLayout(instanceId)
+    fetchBalanceWidgetData(instance, '6m')
+  }, [addBalanceWidgetLayout, fetchBalanceWidgetData, savePrefsToApi])
+
+  const handleRemoveBalanceWidget = useCallback((instanceId: string) => {
+    setBalanceWidgetInstances((prev) => {
+      const next = prev.filter((instance) => instance.instanceId !== instanceId)
+      savePrefsToApi({ widgetInstances: next })
+      return next
+    })
+
+    setBalanceWidgetData((prev) => {
+      const next = { ...prev }
+      delete next[instanceId]
+      return next
+    })
+
+    setBalanceWidgetPeriods((prev) => {
+      const next = { ...prev }
+      delete next[instanceId]
+      return next
+    })
+
+    removeBalanceWidgetLayout(instanceId)
+  }, [removeBalanceWidgetLayout, savePrefsToApi])
+
+  const handleBalanceWidgetPeriodChange = useCallback((instance: BalanceWidgetInstance, period: string) => {
+    setBalanceWidgetPeriods((prev) => ({
+      ...prev,
+      [instance.instanceId]: period,
+    }))
+    fetchBalanceWidgetData(instance, period)
+  }, [fetchBalanceWidgetData])
+
   // ─── Reset handler ─────────────────────────────────────────────────────
 
   const handleResetLayout = useCallback(async () => {
     setSavedLayouts(null)
     setUserVisibleWidgetIds(null)
     setCollapsedWidgetIds(new Set())
+    setBalanceWidgetInstances([])
+    setBalanceWidgetData({})
+    setBalanceWidgetPeriods({})
 
     if (session?.user) {
       try {
@@ -385,6 +593,7 @@ export default function DashboardPage() {
             layouts: {},
             visibleWidgetIds: [],
             collapsedWidgetIds: [],
+            widgetInstances: [],
           }),
         })
       } catch {
@@ -445,7 +654,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="app-page-container">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Welcome, {session?.user?.name || 'Guest'}</h1>
@@ -477,7 +686,7 @@ export default function DashboardPage() {
 
   // ─── Empty grid state (user removed all widgets) ─────────────────────────
 
-  const showEmptyGrid = visibleWidgetIds.size === 0
+  const showEmptyGrid = allRenderableWidgetIds.size === 0
 
   // ─── Main dashboard with grid layout ─────────────────────────────────────
 
@@ -485,7 +694,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="app-page-container">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Welcome, {session?.user?.name || 'Guest'}</h1>
@@ -496,6 +705,10 @@ export default function DashboardPage() {
               visibleWidgetIds={userVisibleWidgetIds}
               dataAvailableIds={dataAvailableIds}
               onVisibilityChange={handleVisibilityChange}
+              accountTypes={accountTypes}
+              balanceWidgetInstances={accountTypeBalanceInstances}
+              onAddBalanceWidget={handleAddBalanceWidget}
+              onRemoveBalanceWidget={handleRemoveBalanceWidget}
             />
             <button
               onClick={handleResetLayout}
@@ -633,6 +846,35 @@ export default function DashboardPage() {
                     />
                   </DashboardWidget>
                 )}
+
+                {accountTypeBalanceInstances.map((instance) => {
+                  const widgetData = balanceWidgetData[instance.instanceId]
+                  const widgetPeriod = balanceWidgetPeriods[instance.instanceId] ?? '6m'
+
+                  return (
+                    <DashboardWidget
+                      key={instance.instanceId}
+                      widgetId={instance.instanceId}
+                      title={`${instance.config.accountTypeName} Balances`}
+                      collapsible={false}
+                      action={
+                        <button
+                          onClick={() => handleRemoveBalanceWidget(instance.instanceId)}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium"
+                        >
+                          Remove
+                        </button>
+                      }
+                    >
+                      <AccountTypeBalanceGraph
+                        accounts={widgetData?.accounts ?? []}
+                        period={widgetPeriod}
+                        onPeriodChange={(period) => handleBalanceWidgetPeriodChange(instance, period)}
+                        title={`${instance.config.accountTypeName} Balances`}
+                      />
+                    </DashboardWidget>
+                  )
+                })}
 
                 {/* Upcoming Bills Widget */}
                 {visibleWidgetIds.has(WIDGET_IDS.UPCOMING_BILLS) && stats?.upcomingBillsList && (

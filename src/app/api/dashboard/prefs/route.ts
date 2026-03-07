@@ -3,9 +3,21 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { WIDGET_IDS } from '@/lib/dashboard-layout'
+import { WIDGET_IDS, WIDGET_INSTANCE_KIND } from '@/lib/dashboard-layout'
 
 const validWidgetIds = Object.values(WIDGET_IDS)
+const validWidgetInstanceKinds = Object.values(WIDGET_INSTANCE_KIND)
+
+const widgetInstancesSchema = z.array(z.object({
+  instanceId: z.string().min(1),
+  kind: z.string().refine((kind) => validWidgetInstanceKinds.includes(kind as any), {
+    message: 'Invalid widget instance kind',
+  }),
+  config: z.object({
+    accountTypeId: z.string().min(1),
+    accountTypeName: z.string().min(1),
+  }),
+}))
 
 const patchSchema = z.object({
   layouts: z.record(z.string(), z.array(z.object({
@@ -33,6 +45,7 @@ const patchSchema = z.object({
       message: 'Invalid widget ID',
     })
   ).optional(),
+  widgetInstances: widgetInstancesSchema.optional(),
 })
 
 /**
@@ -60,6 +73,7 @@ export async function GET() {
       layouts: prefs.layouts,
       visibleWidgetIds: prefs.visibleWidgetIds,
       collapsedWidgetIds: prefs.collapsedWidgetIds,
+      widgetInstances: prefs.widgetInstances,
     })
   } catch (error) {
     console.error('Get dashboard prefs error:', error)
@@ -97,6 +111,9 @@ export async function PATCH(req: NextRequest) {
     if (data.collapsedWidgetIds !== undefined) {
       updateData.collapsedWidgetIds = data.collapsedWidgetIds
     }
+    if (data.widgetInstances !== undefined) {
+      updateData.widgetInstances = data.widgetInstances
+    }
 
     // If nothing to update, return early
     if (Object.keys(updateData).length === 0) {
@@ -110,6 +127,7 @@ export async function PATCH(req: NextRequest) {
         layouts: data.layouts ?? {},
         visibleWidgetIds: data.visibleWidgetIds ?? [],
         collapsedWidgetIds: data.collapsedWidgetIds ?? [],
+        widgetInstances: data.widgetInstances ?? [],
       },
       update: updateData,
     })
@@ -118,6 +136,7 @@ export async function PATCH(req: NextRequest) {
       layouts: prefs.layouts,
       visibleWidgetIds: prefs.visibleWidgetIds,
       collapsedWidgetIds: prefs.collapsedWidgetIds,
+      widgetInstances: prefs.widgetInstances,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
