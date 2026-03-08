@@ -76,7 +76,7 @@ export default function DashboardPage() {
   const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
   // ─── Grid layout state ───────────────────────────────────────────────────
-  const { width, containerRef, mounted } = useContainerWidth()
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
   const [savedLayouts, setSavedLayouts] = useState<DashboardLayouts | null>(null)
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -298,7 +298,7 @@ export default function DashboardPage() {
       ids.add(WIDGET_IDS.EXPECTED_BILLS)
     }
 
-    if (creditCardData && creditCardData.accounts.length > 0) {
+    if (creditCardData) {
       ids.add(WIDGET_IDS.CREDIT_CARD)
     }
 

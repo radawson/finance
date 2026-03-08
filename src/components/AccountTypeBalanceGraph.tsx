@@ -53,7 +53,17 @@ export default function AccountTypeBalanceGraph({
     y: number
   } | null>(null)
 
-  if (accounts.length === 0) return null
+  if (accounts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <CreditCard className="h-10 w-10 text-gray-300 mb-3" />
+        <p className="text-sm font-medium text-gray-500">No accounts found</p>
+        <p className="text-xs text-gray-400 mt-1 max-w-xs">
+          Ensure the matching account type is assigned to your vendor accounts on the Vendors page.
+        </p>
+      </div>
+    )
+  }
 
   const allDates = new Set<string>()
   accounts.forEach((account) => {
