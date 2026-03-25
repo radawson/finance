@@ -63,9 +63,7 @@ try {
 const pool = new Pool(poolConfig)
 
 // Create Prisma adapter
-// Type assertion: @types/pg in the project may differ from the copy bundled
-// inside @prisma/adapter-pg, producing a spurious structural mismatch.
-const adapter = new PrismaPg(pool as unknown as ConstructorParameters<typeof PrismaPg>[0])
+const adapter = new PrismaPg(pool)
 
 // Create Prisma client with adapter
 const prisma = new PrismaClient({

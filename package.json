@@ -66,6 +66,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5"
   },
+  "overrides": {
+    "@types/pg": "$@types/pg"
+  },
   "engines": {
     "node": "^20.19 || ^22.12 || >=24.0"
   }
