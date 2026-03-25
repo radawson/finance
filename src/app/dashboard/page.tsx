@@ -76,7 +76,7 @@ export default function DashboardPage() {
   const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
   // ─── Grid layout state ───────────────────────────────────────────────────
-  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
+  const { width, containerRef, mounted } = useContainerWidth()
   const [savedLayouts, setSavedLayouts] = useState<DashboardLayouts | null>(null)
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
