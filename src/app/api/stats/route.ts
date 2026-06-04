@@ -4,10 +4,41 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { BillStatus, Role } from '@/generated/prisma/client'
 import { getBillsDueSoon, getOverdueBills, getUpcomingBills } from '@/lib/bills'
-import { addDays } from 'date-fns'
 import { getPeriodStartDate, getPeriodEndDate, CategoryPeriod } from '@/lib/date-utils'
-import { generateBudgetPredictions } from '@/lib/analysis'
-import { AnalysisPeriod } from '@/types'
+import { generateBudgetWithForecast } from '@/lib/analysis'
+import { AnalysisPeriod, Bill } from '@/types'
+import {
+  filterActualBillsInPeriod,
+  categoryBreakdownFromBills,
+  isActualBill,
+} from '@/lib/business/period-ledger'
+import { categoryBreakdownFromMergeables, predictedBillToMergeable } from '@/lib/business/merge-forecast'
+
+function normalizeBillFromPrisma(raw: any): Bill {
+  return {
+    ...raw,
+    amount: Number(raw.amount),
+    predictionConfidence:
+      raw.predictionConfidence != null ? Number(raw.predictionConfidence) : null,
+    predictionMethod: raw.predictionMethod as Bill['predictionMethod'],
+    dueDate: new Date(raw.dueDate),
+    createdAt: new Date(raw.createdAt),
+    updatedAt: new Date(raw.updatedAt),
+    paidDate: raw.paidDate ? new Date(raw.paidDate) : null,
+    nextDueDate: raw.nextDueDate ? new Date(raw.nextDueDate) : null,
+    recurrencePattern: raw.recurrencePattern
+      ? {
+          ...raw.recurrencePattern,
+          startDate: new Date(raw.recurrencePattern.startDate),
+          endDate: raw.recurrencePattern.endDate
+            ? new Date(raw.recurrencePattern.endDate)
+            : null,
+          createdAt: new Date(raw.recurrencePattern.createdAt),
+          updatedAt: new Date(raw.recurrencePattern.updatedAt),
+        }
+      : null,
+  } as Bill
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,25 +48,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get category period from query params
     const { searchParams } = new URL(req.url)
     const categoryPeriod = (searchParams.get('categoryPeriod') || 'month') as CategoryPeriod
+    const includeForecast = searchParams.get('includeForecast') === 'true'
 
-    // Build where clause — exclude PREDICTED bills from main stats
     const where: any = {
       status: { not: BillStatus.PREDICTED },
     }
 
-    // Filter by user if not admin - show bills assigned to user OR unassigned bills
     if (session.user.role !== Role.ADMIN) {
-      where.OR = [
-        { createdById: session.user.id },
-        { createdById: null }
-      ]
+      where.OR = [{ createdById: session.user.id }, { createdById: null }]
     }
 
-    // Get all non-predicted bills
-    const allBills = await prisma.bill.findMany({
+    const allBillsRaw = await prisma.bill.findMany({
       where,
       include: {
         category: true,
@@ -43,15 +68,14 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Get predicted bills separately
+    const allBills = allBillsRaw.map(normalizeBillFromPrisma)
+    const actualBillsOnly = allBills.filter(isActualBill)
+
     const predictedWhere: any = {
       status: BillStatus.PREDICTED,
     }
     if (session.user.role !== Role.ADMIN) {
-      predictedWhere.OR = [
-        { createdById: session.user.id },
-        { createdById: null },
-      ]
+      predictedWhere.OR = [{ createdById: session.user.id }, { createdById: null }]
     }
     const predictedBillsRaw = await prisma.bill.findMany({
       where: predictedWhere,
@@ -70,209 +94,113 @@ export async function GET(req: NextRequest) {
       (b) => new Date(b.dueDate) < nowForMissing,
     ).length
 
-    // Calculate stats
-    const totalBills = allBills.length
-    const pendingBills = allBills.filter((b) => b.status === 'PENDING').length
-    const dueSoonBills = allBills.filter((b) => b.status === 'DUE_SOON').length
-    const overdueBills = allBills.filter((b) => b.status === 'OVERDUE').length
-    const paidBills = allBills.filter((b) => b.status === 'PAID').length
-    const skippedBills = allBills.filter((b) => b.status === 'SKIPPED').length
+    const totalBills = actualBillsOnly.length
+    const pendingBills = actualBillsOnly.filter((b) => b.status === 'PENDING').length
+    const dueSoonBills = actualBillsOnly.filter((b) => b.status === 'DUE_SOON').length
+    const overdueBills = actualBillsOnly.filter((b) => b.status === 'OVERDUE').length
+    const paidBills = actualBillsOnly.filter((b) => b.status === 'PAID').length
+    const skippedBills = actualBillsOnly.filter((b) => b.status === 'SKIPPED').length
 
-    // Get upcoming bills (next 7 and 30 days)
-    const upcomingBills7 = getBillsDueSoon(allBills, 7)
-    const upcomingBills30 = getUpcomingBills(allBills, 30)
-    const overdueBillsList = getOverdueBills(allBills)
+    const upcomingBills7 = getBillsDueSoon(actualBillsOnly, 7)
+    const upcomingBills30 = getUpcomingBills(actualBillsOnly, 30)
+    const overdueBillsList = getOverdueBills(actualBillsOnly)
 
-    // Category breakdown - filter by period if specified
     const now = new Date()
     const today = new Date(now)
-    today.setHours(23, 59, 59, 999) // End of today
+    today.setHours(23, 59, 59, 999)
     const periodStartDate = getPeriodStartDate(categoryPeriod, now)
-    
-    // Filter bills for category breakdown based on dueDate within the selected period
-    // getPeriodStartDate already returns a normalized date (start of day)
-    const billsForCategoryBreakdown = allBills.filter((bill) => {
-      const dueDate = new Date(bill.dueDate)
-      dueDate.setHours(0, 0, 0, 0) // Normalize to start of day for comparison
-      return dueDate >= periodStartDate && dueDate <= today
-    })
-
-    const categoryMap = new Map<string, { name: string; color: string | null; count: number; totalAmount: number }>()
-
-    billsForCategoryBreakdown.forEach((bill) => {
-      const categoryId = bill.categoryId
-      const categoryName = bill.category.name
-      const categoryColor = bill.category.color
-      const existing = categoryMap.get(categoryId)
-
-      if (existing) {
-        existing.count++
-        existing.totalAmount += Number(bill.amount)
-      } else {
-        categoryMap.set(categoryId, {
-          name: categoryName,
-          color: categoryColor,
-          count: 1,
-          totalAmount: Number(bill.amount),
-        })
-      }
-    })
-
-    const categoryBreakdown = Array.from(categoryMap.entries()).map(([categoryId, data]) => ({
-      categoryId,
-      categoryName: data.name,
-      color: data.color,
-      count: data.count,
-      totalAmount: data.totalAmount,
-    }))
-
-    // Projected category breakdown - bills and predictions from today to period end
     const periodEndDate = getPeriodEndDate(categoryPeriod, today)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(0, 0, 0, 0) // Start of tomorrow
-    
-    // Get actual future bills (dueDate > today && dueDate <= periodEndDate)
-    // Convert Prisma Decimal to number for type compatibility
-    const futureBills = allBills
-      .filter((bill) => {
-        const dueDate = new Date(bill.dueDate)
-        return dueDate > today && dueDate <= periodEndDate
-      })
-      .map((bill) => ({
-        ...bill,
-        amount: Number(bill.amount),
-        predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
-        predictionMethod: bill.predictionMethod as any,
-        dueDate: new Date(bill.dueDate),
-        createdAt: new Date(bill.createdAt),
-        updatedAt: new Date(bill.updatedAt),
-        paidDate: bill.paidDate ? new Date(bill.paidDate) : null,
-        nextDueDate: bill.nextDueDate ? new Date(bill.nextDueDate) : null,
-      }))
 
-    // Get recurring bills for predictions
-    const recurringBillsWhere: any = {
-      isRecurring: true,
-    }
-    if (session.user.role !== Role.ADMIN) {
-      recurringBillsWhere.OR = [
-        { createdById: session.user.id },
-        { createdById: null }
-      ]
-    }
-
-    const recurringBillsRaw = await prisma.bill.findMany({
-      where: recurringBillsWhere,
-      include: {
-        category: true,
-        vendor: true,
-        recurrencePattern: true,
-      },
-    })
-
-    // Convert Prisma Decimal to number for type compatibility
-    const recurringBills = recurringBillsRaw.map((bill) => ({
-      ...bill,
-      amount: Number(bill.amount),
-      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
-      predictionMethod: bill.predictionMethod as any,
-      dueDate: new Date(bill.dueDate),
-      createdAt: new Date(bill.createdAt),
-      updatedAt: new Date(bill.updatedAt),
-      paidDate: bill.paidDate ? new Date(bill.paidDate) : null,
-      nextDueDate: bill.nextDueDate ? new Date(bill.nextDueDate) : null,
-      recurrencePattern: bill.recurrencePattern ? {
-        ...bill.recurrencePattern,
-        startDate: new Date(bill.recurrencePattern.startDate),
-        endDate: bill.recurrencePattern.endDate ? new Date(bill.recurrencePattern.endDate) : null,
-        createdAt: new Date(bill.recurrencePattern.createdAt),
-        updatedAt: new Date(bill.recurrencePattern.updatedAt),
-      } : null,
-    }))
-
-    // Convert CategoryPeriod to AnalysisPeriod for generateBudgetPredictions
-    const analysisPeriodMap: Record<CategoryPeriod, AnalysisPeriod> = {
-      week: 'monthly', // Use monthly as default for week (predictions work better with monthly grouping)
-      month: 'monthly',
-      quarter: 'quarterly',
-      year: 'yearly',
-    }
-    const analysisPeriod = analysisPeriodMap[categoryPeriod]
-
-    // Generate predictions for the future period
-    const predictions = generateBudgetPredictions(
-      recurringBills,
-      tomorrow,
-      periodEndDate,
-      analysisPeriod,
-      futureBills, // Pass actual future bills to replace predictions
-      [] // No historical bills needed for this projection
+    const billsForCategoryBreakdown = filterActualBillsInPeriod(
+      actualBillsOnly,
+      periodStartDate,
+      today,
     )
+    const categoryBreakdown = categoryBreakdownFromBills(billsForCategoryBreakdown)
 
-    // Flatten predictions into a single array of PredictedBill
-    const allPredictedBills = predictions.flatMap((period) => period.bills)
+    const projectedActuals = filterActualBillsInPeriod(
+      actualBillsOnly,
+      periodStartDate,
+      periodEndDate,
+    )
+    const projectedCategoryBreakdown = categoryBreakdownFromBills(projectedActuals)
 
-    // Combine actual future bills with predicted bills
-    // Convert future bills to a format compatible with predictions for category breakdown
-    const projectedBillsForBreakdown = [
-      ...futureBills.map((bill) => ({
-        categoryId: bill.categoryId,
-        categoryName: bill.category.name,
-        categoryColor: bill.category.color,
-        amount: Number(bill.amount),
-      })),
-      ...allPredictedBills
-        .filter((pred) => pred.categoryId) // Only include predictions with categories
-        .map((pred) => {
-          // Find the category for this prediction
-          const bill = allBills.find((b) => b.id === pred.billId) || 
-                      recurringBills.find((b) => b.id === pred.billId)
-          return {
-            categoryId: pred.categoryId!,
-            categoryName: bill?.category?.name || 'Unknown',
-            categoryColor: bill?.category?.color || null,
-            amount: pred.amount,
-          }
-        }),
-    ]
+    let forecastCategoryBreakdown:
+      | ReturnType<typeof categoryBreakdownFromBills>
+      | undefined
 
-    // Calculate projected category breakdown
-    const projectedCategoryMap = new Map<string, { name: string; color: string | null; count: number; totalAmount: number }>()
-
-    projectedBillsForBreakdown.forEach((bill) => {
-      const categoryId = bill.categoryId
-      const categoryName = bill.categoryName
-      const categoryColor = bill.categoryColor
-      const existing = projectedCategoryMap.get(categoryId)
-
-      if (existing) {
-        existing.count++
-        existing.totalAmount += bill.amount
-      } else {
-        projectedCategoryMap.set(categoryId, {
-          name: categoryName,
-          color: categoryColor,
-          count: 1,
-          totalAmount: bill.amount,
-        })
+    if (includeForecast) {
+      const recurringBillsWhere: any = { isRecurring: true }
+      if (session.user.role !== Role.ADMIN) {
+        recurringBillsWhere.OR = [
+          { createdById: session.user.id },
+          { createdById: null },
+        ]
       }
-    })
 
-    const projectedCategoryBreakdown = Array.from(projectedCategoryMap.entries()).map(([categoryId, data]) => ({
-      categoryId,
-      categoryName: data.name,
-      color: data.color,
-      count: data.count,
-      totalAmount: data.totalAmount,
-    }))
+      const recurringBillsRaw = await prisma.bill.findMany({
+        where: recurringBillsWhere,
+        include: {
+          category: true,
+          vendor: true,
+          recurrencePattern: true,
+        },
+      })
 
-    // Recent bills (last 10, ordered by created date)
-    const recentBills = allBills
+      const recurringBills = recurringBillsRaw.map(normalizeBillFromPrisma)
+
+      const analysisPeriodMap: Record<CategoryPeriod, AnalysisPeriod> = {
+        week: 'monthly',
+        month: 'monthly',
+        quarter: 'quarterly',
+        year: 'yearly',
+      }
+      const analysisPeriod = analysisPeriodMap[categoryPeriod]
+
+      const merged = generateBudgetWithForecast(
+        recurringBills,
+        periodStartDate,
+        periodEndDate,
+        analysisPeriod,
+        actualBillsOnly,
+        [],
+        { includeAutoDetect: false, useSimpleForecast: true },
+      )
+
+      const categoryLookup = new Map<
+        string,
+        { name: string; color: string | null }
+      >()
+      for (const bill of allBills) {
+        if (bill.category) {
+          categoryLookup.set(bill.categoryId, {
+            name: bill.category.name,
+            color: bill.category.color ?? null,
+          })
+        }
+      }
+      for (const bill of recurringBills) {
+        if (bill.category) {
+          categoryLookup.set(bill.categoryId, {
+            name: bill.category.name,
+            color: bill.category.color ?? null,
+          })
+        }
+      }
+
+      const mergedEntries = merged.flatMap((p) =>
+        p.bills.map(predictedBillToMergeable),
+      )
+      forecastCategoryBreakdown = categoryBreakdownFromMergeables(
+        mergedEntries,
+        categoryLookup,
+      )
+    }
+
+    const recentBills = actualBillsOnly
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 10)
 
-    // Upcoming bills list (next 7 days, sorted by due date)
     const upcomingBillsList = upcomingBills7
       .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
       .slice(0, 10)
@@ -290,6 +218,9 @@ export async function GET(req: NextRequest) {
       upcomingBills30: upcomingBills30.length,
       categoryBreakdown,
       projectedCategoryBreakdown,
+      ...(forecastCategoryBreakdown
+        ? { forecastCategoryBreakdown }
+        : {}),
       recentBills,
       upcomingBillsList,
       overdueBillsList: overdueBillsList
@@ -301,9 +232,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(stats)
   } catch (error) {
     console.error('Get stats error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -216,6 +216,14 @@ export interface DashboardStats {
     count: number
     totalAmount: number
   }[]
+  /** Recurring forecast merged with actuals; only when includeForecast=true */
+  forecastCategoryBreakdown?: {
+    categoryId: string
+    categoryName: string
+    color: string | null
+    count: number
+    totalAmount: number
+  }[]
   recentBills: Bill[]
   upcomingBillsList: Bill[]
   overdueBillsList: Bill[]
@@ -258,7 +266,11 @@ export interface BudgetPredictionPeriodData {
 
 export interface BudgetPredictionData {
   period: AnalysisPeriod
+  /** Actual bills in range (default view) */
+  actuals: BudgetPredictionPeriodData[]
+  /** Merged actuals + recurring forecast when includeForecast=true */
   predictions: BudgetPredictionPeriodData[]
+  includeForecast?: boolean
   historicData?: HistoricBillsPeriodData[]
 }
 

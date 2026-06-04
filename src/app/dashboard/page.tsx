@@ -65,6 +65,7 @@ export default function DashboardPage() {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [categoryPeriod, setCategoryPeriod] = useState<CategoryPeriod>('month')
+  const [includeForecast, setIncludeForecast] = useState(false)
   const [balancePeriod, setBalancePeriod] = useState('6m')
   const [creditCardData, setCreditCardData] = useState<BalanceResponse | null>(null)
   const [accountTypes, setAccountTypes] = useState<AccountTypeOption[]>([])
@@ -180,6 +181,7 @@ export default function DashboardPage() {
     try {
       const params = new URLSearchParams({
         categoryPeriod: categoryPeriod,
+        ...(includeForecast ? { includeForecast: 'true' } : {}),
       })
       const statsRes = await fetch(`/api/stats?${params}`)
 
@@ -194,7 +196,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [categoryPeriod])
+  }, [categoryPeriod, includeForecast])
 
   const fetchCreditCardBalances = useCallback(async () => {
     try {
@@ -1008,23 +1010,53 @@ export default function DashboardPage() {
                     <div className="space-y-6">
                       {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
                         <div>
-                          <h3 className="text-md font-semibold text-gray-900 mb-3">Historic</h3>
+                          <h3 className="text-md font-semibold text-gray-900 mb-3">Spent (period to date)</h3>
                           <CategoryPieChart data={stats.categoryBreakdown} size={200} />
                         </div>
                       )}
 
-                      {stats?.projectedCategoryBreakdown && stats.projectedCategoryBreakdown.length > 0 ? (
+                      {stats?.projectedCategoryBreakdown &&
+                      stats.projectedCategoryBreakdown.length > 0 ? (
                         <div>
-                          <h3 className="text-md font-semibold text-gray-900 mb-3">Projected</h3>
+                          <h3 className="text-md font-semibold text-gray-900 mb-3">
+                            Period budget (scheduled bills)
+                          </h3>
                           <CategoryPieChart data={stats.projectedCategoryBreakdown} size={200} />
                         </div>
                       ) : (
-                        stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
+                        stats?.categoryBreakdown &&
+                        stats.categoryBreakdown.length > 0 && (
                           <div className="flex items-center justify-center h-32 text-gray-500">
-                            <p>No projected data available for the selected period</p>
+                            <p>No scheduled bills in this period yet</p>
                           </div>
                         )
                       )}
+
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={includeForecast}
+                            onChange={(e) => setIncludeForecast(e.target.checked)}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          Show recurring forecast overlay
+                        </label>
+                      </div>
+
+                      {includeForecast &&
+                        stats?.forecastCategoryBreakdown &&
+                        stats.forecastCategoryBreakdown.length > 0 && (
+                          <div>
+                            <h3 className="text-md font-semibold text-gray-900 mb-3">
+                              With recurring forecast
+                            </h3>
+                            <CategoryPieChart
+                              data={stats.forecastCategoryBreakdown}
+                              size={200}
+                            />
+                          </div>
+                        )}
                     </div>
                   </DashboardWidget>
                 )}

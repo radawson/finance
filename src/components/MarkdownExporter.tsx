@@ -75,13 +75,17 @@ export function exportToMarkdown(
     })
   } else {
     const budgetData = data as BudgetPredictionData
+    const exportPeriods = budgetData.includeForecast
+      ? budgetData.predictions
+      : budgetData.actuals
     lines.push('## Summary')
     lines.push('')
-    const totalPredicted = budgetData.predictions.reduce((sum, period) => sum + period.predictedAmount, 0)
-    const totalBills = budgetData.predictions.reduce((sum, period) => sum + period.billCount, 0)
-    lines.push(`- **Total Periods:** ${budgetData.predictions.length}`)
-    lines.push(`- **Total Predicted Bills:** ${totalBills}`)
-    lines.push(`- **Total Predicted Amount:** $${totalPredicted.toFixed(2)}`)
+    const totalAmount = exportPeriods.reduce((sum, period) => sum + period.predictedAmount, 0)
+    const totalBills = exportPeriods.reduce((sum, period) => sum + period.billCount, 0)
+    lines.push(`- **Total Periods:** ${exportPeriods.length}`)
+    lines.push(`- **Total Bills:** ${totalBills}`)
+    lines.push(`- **Total Amount:** $${totalAmount.toFixed(2)}`)
+    lines.push(`- **Includes forecast overlay:** ${budgetData.includeForecast ? 'Yes' : 'No'}`)
     lines.push('')
     
     if (budgetData.historicData && budgetData.historicData.length > 0) {
@@ -92,20 +96,20 @@ export function exportToMarkdown(
       lines.push('')
     }
     
-    lines.push('## Predicted Periods')
+    lines.push('## Periods')
     lines.push('')
-    lines.push('| Period | Predicted Amount | Bill Count |')
-    lines.push('|--------|------------------|------------|')
+    lines.push('| Period | Amount | Bill Count |')
+    lines.push('|--------|--------|------------|')
     
-    budgetData.predictions.forEach((period) => {
+    exportPeriods.forEach((period) => {
       lines.push(`| ${period.periodLabel} | $${period.predictedAmount.toFixed(2)} | ${period.billCount} |`)
     })
     
     lines.push('')
-    lines.push('## Detailed Predictions')
+    lines.push('## Bill detail')
     lines.push('')
     
-    budgetData.predictions.forEach((period) => {
+    exportPeriods.forEach((period) => {
       lines.push(`### ${period.periodLabel}`)
       lines.push('')
       lines.push(`**Predicted Total:** $${period.predictedAmount.toFixed(2)} | **Count:** ${period.billCount}`)

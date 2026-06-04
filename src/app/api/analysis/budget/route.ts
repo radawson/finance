@@ -3,8 +3,39 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Role, BillStatus } from '@/generated/prisma/client'
-import { generateBudgetPredictions, groupBillsByPeriod, analyzeHistoricalPatterns } from '@/lib/analysis'
-import { AnalysisPeriod } from '@/types'
+import {
+  generateBudgetWithForecast,
+  generatePeriodLedger,
+  groupBillsByPeriod,
+} from '@/lib/analysis'
+import { AnalysisPeriod, Bill } from '@/types'
+import { isActualBill } from '@/lib/business/period-ledger'
+
+function normalizeBillFromPrisma(raw: any): Bill {
+  return {
+    ...raw,
+    amount: Number(raw.amount),
+    predictionConfidence:
+      raw.predictionConfidence != null ? Number(raw.predictionConfidence) : null,
+    predictionMethod: raw.predictionMethod as Bill['predictionMethod'],
+    dueDate: new Date(raw.dueDate),
+    createdAt: new Date(raw.createdAt),
+    updatedAt: new Date(raw.updatedAt),
+    paidDate: raw.paidDate ? new Date(raw.paidDate) : null,
+    nextDueDate: raw.nextDueDate ? new Date(raw.nextDueDate) : null,
+    recurrencePattern: raw.recurrencePattern
+      ? {
+          ...raw.recurrencePattern,
+          startDate: new Date(raw.recurrencePattern.startDate),
+          endDate: raw.recurrencePattern.endDate
+            ? new Date(raw.recurrencePattern.endDate)
+            : null,
+          createdAt: new Date(raw.recurrencePattern.createdAt),
+          updatedAt: new Date(raw.recurrencePattern.updatedAt),
+        }
+      : null,
+  } as Bill
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,192 +50,113 @@ export async function GET(req: NextRequest) {
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
     const includeHistoric = searchParams.get('includeHistoric') === 'true'
+    const includeForecast = searchParams.get('includeForecast') === 'true'
 
-    // Default date range if not provided
     const startDate = startDateParam ? new Date(startDateParam) : new Date()
-    const endDate = endDateParam ? new Date(endDateParam) : (() => {
-      const date = new Date()
-      date.setFullYear(date.getFullYear() + 1)
-      return date
-    })()
+    const endDate = endDateParam
+      ? new Date(endDateParam)
+      : (() => {
+          const date = new Date()
+          date.setFullYear(date.getFullYear() + 1)
+          return date
+        })()
 
-    // Build where clause for recurring bills
-    const where: any = {
-      isRecurring: true,
-    }
+    const userFilter =
+      session.user.role !== Role.ADMIN
+        ? { OR: [{ createdById: session.user.id }, { createdById: null }] }
+        : {}
 
-    // Filter by user if not admin
-    if (session.user.role !== Role.ADMIN) {
-      where.OR = [
-        { createdById: session.user.id },
-        { createdById: null },
-      ]
-    }
-
-    // Get recurring bills with their recurrence patterns
-    // These are the "templates" that generate predictions
     const recurringBillsRaw = await prisma.bill.findMany({
-      where,
+      where: { isRecurring: true, ...userFilter },
       include: {
         category: true,
         vendor: true,
-        vendorAccount: {
-          include: {
-            type: true,
-          },
-        },
+        vendorAccount: { include: { type: true } },
         recurrencePattern: true,
       },
     })
 
-    // Convert Prisma Decimal to number for type compatibility
-    const recurringBills = recurringBillsRaw.map((bill) => ({
-      ...bill,
-      amount: Number(bill.amount),
-      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
-      predictionMethod: bill.predictionMethod as any,
-    }))
-
-    // Fetch actual bills in the date range that might match recurring patterns
-    // These will replace predictions and enhance future predictions
-    const actualBillsWhere: any = {
-      dueDate: {
-        gte: startDate,
-        lte: endDate,
-      },
-    }
-
-    // Filter by user if not admin (same logic as recurring bills)
-    if (session.user.role !== Role.ADMIN) {
-      actualBillsWhere.OR = [
-        { createdById: session.user.id },
-        { createdById: null },
-      ]
-    }
+    const recurringBills = recurringBillsRaw.map(normalizeBillFromPrisma)
 
     const actualBillsRaw = await prisma.bill.findMany({
-      where: actualBillsWhere,
+      where: {
+        dueDate: { gte: startDate, lte: endDate },
+        status: { not: BillStatus.PREDICTED },
+        ...userFilter,
+      },
       include: {
         category: true,
         vendor: true,
-        vendorAccount: {
-          include: {
-            type: true,
-          },
-        },
+        vendorAccount: { include: { type: true } },
       },
     })
 
-    // Convert Prisma Decimal to number for type compatibility
-    const actualBills = actualBillsRaw.map((bill) => ({
-      ...bill,
-      amount: Number(bill.amount),
-      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
-      predictionMethod: bill.predictionMethod as any,
-    }))
+    const actualBills = actualBillsRaw.map(normalizeBillFromPrisma).filter(isActualBill)
 
-    // Fetch historical bills (2+ years back) for pattern detection
-    // This includes both paid and unpaid bills to detect recurring patterns
     const historicalStartDate = new Date(startDate)
     historicalStartDate.setFullYear(historicalStartDate.getFullYear() - 2)
 
-    const historicalBillsWhere: any = {
-      dueDate: {
-        gte: historicalStartDate,
-        lte: startDate, // Up to but not including the prediction start date
-      },
-    }
-
-    // Filter by user if not admin (same logic as recurring bills)
-    if (session.user.role !== Role.ADMIN) {
-      historicalBillsWhere.OR = [
-        { createdById: session.user.id },
-        { createdById: null },
-      ]
-    }
-
     const historicalBillsRaw = await prisma.bill.findMany({
-      where: historicalBillsWhere,
+      where: {
+        dueDate: { gte: historicalStartDate, lt: startDate },
+        status: { not: BillStatus.PREDICTED },
+        ...userFilter,
+      },
       include: {
         category: true,
         vendor: true,
-        vendorAccount: {
-          include: {
-            type: true,
-          },
-        },
+        vendorAccount: { include: { type: true } },
       },
     })
 
-    // Convert Prisma Decimal to number for type compatibility
-    const historicalBills = historicalBillsRaw.map((bill) => ({
-      ...bill,
-      amount: Number(bill.amount),
-      predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
-      predictionMethod: bill.predictionMethod as any,
-    }))
+    const historicalBills = historicalBillsRaw
+      .map(normalizeBillFromPrisma)
+      .filter(isActualBill)
 
-    // Generate predictions from recurrence patterns, merge with actual bills, and detect patterns
-    // Actual bills will replace predictions for matching dates
-    // Remaining predictions will be enhanced using intelligent forecasting
-    // Historical bills will be analyzed to detect recurring patterns automatically
-    const predictions = generateBudgetPredictions(
-      recurringBills,
-      startDate,
-      endDate,
-      period,
-      actualBills,
-      historicalBills
-    )
+    const actuals = generatePeriodLedger(actualBills, startDate, endDate, period)
+
+    const predictions = includeForecast
+      ? generateBudgetWithForecast(
+          recurringBills,
+          startDate,
+          endDate,
+          period,
+          actualBills,
+          historicalBills,
+          { includeAutoDetect: false, useSimpleForecast: true },
+        )
+      : actuals
 
     let historicData
     if (includeHistoric) {
-      // Get historic paid bills for comparison
       const historicWhere: any = {
         status: BillStatus.PAID,
         paidDate: {
           gte: new Date(startDate.getFullYear() - 1, startDate.getMonth(), startDate.getDate()),
           lte: startDate,
         },
-      }
-
-      if (session.user.role !== Role.ADMIN) {
-        historicWhere.OR = [
-          { createdById: session.user.id },
-          { createdById: null },
-        ]
+        ...userFilter,
       }
 
       const historicBillsRaw = await prisma.bill.findMany({
         where: historicWhere,
-        include: {
-          category: true,
-          vendor: true,
-        },
+        include: { category: true, vendor: true },
       })
 
-      // Convert Prisma Decimal to number for type compatibility
-      const historicBills = historicBillsRaw.map((bill) => ({
-        ...bill,
-        amount: Number(bill.amount),
-        predictionConfidence: bill.predictionConfidence != null ? Number(bill.predictionConfidence) : null,
-        predictionMethod: bill.predictionMethod as any,
-      }))
-
+      const historicBills = historicBillsRaw.map(normalizeBillFromPrisma).filter(isActualBill)
       const periodType = period === 'custom' ? 'monthly' : period
       historicData = groupBillsByPeriod(historicBills, periodType)
     }
 
     return NextResponse.json({
       period,
+      actuals,
       predictions,
+      includeForecast,
       historicData,
     })
   } catch (error) {
     console.error('Get analysis budget error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -68,92 +68,34 @@
 - **Visual**: Color coding for quick status recognition
 - **Non-intrusive**: Doesn't replace list view, complements it
 
-### Budget Prediction Algorithm
+### Budget & Period Ledger (Actuals-First)
 
-The system uses intelligent forecasting to predict future bill amounts 2-4 months ahead with high accuracy.
+Charts and monthly budget totals default to **real bills only** — groceries, one-offs, and scheduled payments you entered. Recurring **templates** (`isRecurring: true`) are not spend events and are excluded from totals.
 
-#### Prediction Methods
+#### Default view (actuals)
 
-The algorithm uses a **hybrid approach** that automatically selects the best prediction method based on available data:
+- Bills with `dueDate` in the selected period
+- `status` is not `PREDICTED`
+- `isRecurring` is false (not a recurrence template row)
+- Implemented in `src/lib/business/period-ledger.ts`
 
-1. **Linear Regression (Trend Analysis)**
-   - Used when 3+ bills exist and trend confidence is high (R² ≥ 0.7)
-   - Calculates slope and intercept using least squares method
-   - Projects future amounts based on detected trend line
-   - Best for bills with clear increasing or decreasing patterns
-   - Example: Electric bills Sep $200, Oct $250, Nov $275 → predicts Dec ~$235
+#### Optional forecast overlay
 
-2. **Weighted Moving Average**
-   - Fallback when trend confidence is low (< 0.7)
-   - Recent bills weighted more heavily (exponential decay: 40%, 30%, 20%, 10%)
-   - Provides stable predictions when trend is unclear
-   - Best for bills with variable amounts but no clear trend
+When the user enables “Include recurring forecast” (Analysis → Periodic Budget, dashboard category widget):
 
-3. **Seasonal Average**
-   - Used when trend confidence is low (< 0.5) AND multiple years of data exist
-   - Groups bills by month across years (e.g., all December bills)
-   - Calculates average for that specific month
-   - Requires 2+ years of data for the target month
-   - Best for bills with seasonal patterns (e.g., insurance premiums)
+- Explicit recurrence patterns only (`isRecurring` + `recurrencePattern`) expand into future slots
+- **Auto-detection** of patterns from history (e.g. repeated grocery trips) is **off** by default — it created duplicate phantom lines
+- Forecast amounts use **simple** logic: template amount or last matching paid instance (`calculateSimpleForecastAmount`)
+- Actual and forecast rows merge with deduplication by vendor/category/account and ±3 day due date (`mergeBillsWithForecast` in `src/lib/business/merge-forecast.ts`)
 
-4. **Simple Average**
-   - Used when only 1-2 bills exist
-   - Provides baseline prediction until more data is available
-   - Lowest confidence (0.3-0.5)
+#### Advanced forecasting (retained, not default)
 
-#### Pattern Detection
+`calculateEnhancedAmount` (trend, weighted average, seasonal) remains available when `useSimpleForecast: false` is passed for specialized use; overlay uses simple amounts to avoid volatile grocery/utility swings.
 
-The system automatically detects recurring patterns from historical data:
+#### APIs
 
-- **Automatic Detection**: Bills with 3+ occurrences are analyzed for patterns
-- **Interval Analysis**: Calculates intervals between consecutive bills
-- **Frequency Detection**: Identifies monthly (~30 days), quarterly (~90 days), biannually (~180 days), or yearly (~365 days) patterns
-- **Confidence Scoring**: Based on interval consistency, sample size, and amount variance
-- **Priority**: Explicit recurrence patterns take precedence over detected patterns
-
-#### Synthetic Data Generation
-
-For bills with `isRecurring: true` but < 3 data points:
-
-- **Virtual Bills**: System synthesizes 2-3 virtual bills at the specified interval
-- **Rudimentary Calculation**: Uses the actual bill amount for all synthetic bills
-- **Temporary**: Once >= 3 real data points exist, synthetic data is replaced
-- **Lower Confidence**: Synthetic predictions marked with confidence 0.4
-
-#### Prediction Workflow
-
-1. **Fetch Historical Data**: Retrieves bills from 2+ years back for pattern analysis
-2. **Detect Patterns**: Automatically identifies recurring bill patterns
-3. **Generate Base Predictions**: Creates predictions from explicit and detected patterns
-4. **Enhance with Actual Bills**: Replaces predictions with actual bills where dates match
-5. **Apply Forecasting**: Uses intelligent algorithms to predict future amounts
-6. **Calculate Confidence**: Assigns confidence scores (0-1) to each prediction
-
-#### Example Scenarios
-
-#### Scenario 1: Trending Bills
-- Electric: Sep $200, Oct $250, Nov $275
-- Method: Linear Regression
-- Prediction: Dec ~$235 (trending upward)
-- Confidence: High (R² > 0.7)
-
-#### Scenario 2: Stable Bills
-- Water: $150/month for 6 months
-- Method: Weighted Moving Average
-- Prediction: Next month ~$150
-- Confidence: Medium-High (0.6-0.7)
-
-#### Scenario 3: Seasonal Bills
-- Insurance: $500/year in March for 3 years
-- Method: Seasonal Average
-- Prediction: Next March ~$500
-- Confidence: Medium (0.6) when trend unclear
-
-#### Scenario 4: New Recurring Bill
-- New Service: 1 bill at $75 with monthly recurrence
-- Method: Synthetic (virtual bills generated)
-- Prediction: Next month ~$75
-- Confidence: Low (0.4) until 3+ real bills exist
+- `GET /api/stats` — `projectedCategoryBreakdown` = period actuals; `forecastCategoryBreakdown` when `includeForecast=true`
+- `GET /api/analysis/budget` — `actuals` (default table) and `predictions` (merged when `includeForecast=true`)
 
 ## Design Decisions
 
@@ -212,7 +154,7 @@ The system generates predicted bills based on recurring patterns to help users a
   - `predictionConfidence` - Decimal(3,2) between 0.00 and 1.00
   - `predictionMethod` - One of: `trend`, `weighted`, `seasonal`, `average`, `synthetic`
 - **Metadata Clearing**: On actualization, `predictionConfidence` and `predictionMethod` are cleared
-- **Dashboard Integration**: Stats API returns `predictedBills` count and `missingBills` (past-due predicted bills)
+- **Dashboard Integration**: Stats API returns `predictedBills` count and `missingBills` (past-due predicted bills); reminder list is separate from category chart totals
 - **List Exclusion**: PREDICTED bills are excluded from main bill list by default; use `includePredicted=true` to include
 - **Business Logic**: Implemented in `src/lib/business/prediction-generator.ts` and `src/lib/business/recurring-bills.ts`
 

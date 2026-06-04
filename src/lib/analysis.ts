@@ -3,6 +3,13 @@ import { RecurrenceFrequency } from '@/generated/prisma/client'
 import { getUpcomingDueDates } from './recurrence'
 import { format, getQuarter, differenceInDays, getDate } from 'date-fns'
 import { enhancePredictionsWithActualData, shouldMatchBill } from './business/recurring-bills'
+import { filterActualBillsInPeriod, isActualBill } from './business/period-ledger'
+import {
+  mergeBillsWithForecast,
+  billToMergeable,
+  predictedBillToMergeable,
+  mergeableToPredictedBill,
+} from './business/merge-forecast'
 
 /**
  * Group bills by period (monthly, quarterly, yearly)
@@ -133,10 +140,78 @@ function synthesizeVirtualBills(
   return virtualBills
 }
 
+export interface BudgetPredictionOptions {
+  /** Auto-detect recurring patterns from history (default false). */
+  includeAutoDetect?: boolean
+  /** Use simple template/last-paid forecast for overlay (default true). */
+  useSimpleForecast?: boolean
+}
+
+/**
+ * Period ledger: actual bills in range only (no templates, no PREDICTED).
+ */
+export function generatePeriodLedger(
+  bills: Bill[],
+  startDate: Date,
+  endDate: Date,
+  period: AnalysisPeriod,
+): BudgetPredictionPeriodData[] {
+  const actuals = filterActualBillsInPeriod(bills, startDate, endDate)
+  const predicted: PredictedBill[] = actuals.map((bill) => ({
+    title: bill.title,
+    amount: Number(bill.amount),
+    dueDate: new Date(bill.dueDate),
+    source: 'recurrence',
+    billId: bill.id,
+    categoryId: bill.categoryId,
+    vendorId: bill.vendorId,
+    vendorAccountId: bill.vendorAccountId,
+  }))
+
+  if (period === 'custom') {
+    return groupPredictedBillsByPeriod(predicted, 'monthly')
+  }
+  return groupPredictedBillsByPeriod(predicted, period)
+}
+
+/**
+ * Generate budget with optional recurring forecast overlay merged into actuals.
+ */
+export function generateBudgetWithForecast(
+  recurringBills: Bill[],
+  startDate: Date,
+  endDate: Date,
+  period: AnalysisPeriod,
+  actualBills: Bill[],
+  historicalBills?: Bill[],
+  options?: BudgetPredictionOptions,
+): BudgetPredictionPeriodData[] {
+  const forecastOnly = generateBudgetPredictions(
+    recurringBills,
+    startDate,
+    endDate,
+    period,
+    [],
+    historicalBills,
+    { ...options, includeAutoDetect: options?.includeAutoDetect },
+  )
+  const forecastSlots = forecastOnly.flatMap((p) => p.bills)
+  const actualsInRange = filterActualBillsInPeriod(actualBills, startDate, endDate)
+  const actualMergeables = actualsInRange.map(billToMergeable)
+  const forecastMergeables = forecastSlots.map(predictedBillToMergeable)
+  const merged = mergeBillsWithForecast(actualMergeables, forecastMergeables)
+  const mergedPredicted = merged.map(mergeableToPredictedBill)
+
+  if (period === 'custom') {
+    return groupPredictedBillsByPeriod(mergedPredicted, 'monthly')
+  }
+  return groupPredictedBillsByPeriod(mergedPredicted, period)
+}
+
 /**
  * Generate budget predictions from recurrence patterns
  * Optionally merges with actual bills to replace predictions and enhance future predictions
- * Also includes predictions from detected patterns in historical data
+ * Auto-detect from historical data is opt-in via includeAutoDetect
  */
 export function generateBudgetPredictions(
   recurringBills: Bill[],
@@ -144,11 +219,13 @@ export function generateBudgetPredictions(
   endDate: Date,
   period: AnalysisPeriod,
   actualBills?: Bill[],
-  historicalBills?: Bill[]
+  historicalBills?: Bill[],
+  options?: BudgetPredictionOptions,
 ): BudgetPredictionPeriodData[] {
   const predictedBills: PredictedBill[] = []
-  const allActualBills = actualBills || []
+  const allActualBills = (actualBills || []).filter(isActualBill)
   const allHistoricalBills = historicalBills || []
+  const includeAutoDetect = options?.includeAutoDetect === true
 
   // Deduplicate recurring bills: group by vendor/account/category and use only one template per group
   const deduplicatedRecurringBills: Bill[] = []
@@ -247,8 +324,8 @@ export function generateBudgetPredictions(
     })
   })
 
-  // Detect patterns from historical bills and generate predictions
-  if (allHistoricalBills.length > 0) {
+  // Detect patterns from historical bills (opt-in only)
+  if (includeAutoDetect && allHistoricalBills.length > 0) {
     const detectedPatterns = analyzeHistoricalPatterns(allHistoricalBills)
 
     for (const pattern of detectedPatterns) {
@@ -308,7 +385,8 @@ export function generateBudgetPredictions(
       predictedBills,
       allActualBills,
       recurringBills,
-      allHistoricalBills // Pass historical bills for seasonal analysis
+      allHistoricalBills,
+      { useSimpleForecast: options?.useSimpleForecast !== false },
     )
   }
 

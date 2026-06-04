@@ -22,6 +22,7 @@ export default function AnalysisPage() {
   const [endDate, setEndDate] = useState<string>(format(addMonths(new Date(), 6), 'yyyy-MM-dd'))
   const [historyData, setHistoryData] = useState<HistoricBillsData | null>(null)
   const [budgetData, setBudgetData] = useState<BudgetPredictionData | null>(null)
+  const [includeForecast, setIncludeForecast] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [isLoadingBudget, setIsLoadingBudget] = useState(false)
 
@@ -33,7 +34,7 @@ export default function AnalysisPage() {
         fetchBudgetData()
       }
     }
-  }, [session, activeView, period, startDate, endDate])
+  }, [session, activeView, period, startDate, endDate, includeForecast])
 
   const fetchHistoryData = async () => {
     setIsLoadingHistory(true)
@@ -68,6 +69,7 @@ export default function AnalysisPage() {
         startDate,
         endDate,
         includeHistoric: 'false',
+        includeForecast: includeForecast ? 'true' : 'false',
       })
 
       const response = await fetch(`/api/analysis/budget?${params}`)
@@ -189,6 +191,8 @@ export default function AnalysisPage() {
               isLoading={isLoadingBudget}
               startDate={startDate}
               endDate={endDate}
+              includeForecast={includeForecast}
+              onIncludeForecastChange={setIncludeForecast}
             />
           </>
         ) : (

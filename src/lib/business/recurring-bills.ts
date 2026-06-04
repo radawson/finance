@@ -1,5 +1,6 @@
 import { Bill, PredictedBill, PredictionMethod } from '@/types'
-import { differenceInDays, isWithinInterval, getMonth, getDate, isWeekend, previousFriday, nextMonday } from 'date-fns'
+import { differenceInDays, getMonth, getDate, isWeekend, previousFriday, nextMonday } from 'date-fns'
+import { isActualBill } from './period-ledger'
 
 /**
  * Determines if a bill matches a recurring bill template
@@ -329,137 +330,189 @@ export function calculateEnhancedAmount(
 }
 
 /**
- * Replaces predictions with actual bills and enhances remaining predictions
- * Actual bills replace predictions where dates match within tolerance
- * Remaining predictions are enhanced using actual bill amounts
- * Historical bills are used for seasonal pattern analysis
+ * Simple forecast: template amount, or last matching paid/actual instance in history.
+ */
+export function calculateSimpleForecastAmount(
+  template: Bill,
+  matchingActualBills: Bill[],
+  matchingHistoricalBills: Bill[] = [],
+): { amount: number; method: PredictionMethod; confidence: number } {
+  const baseAmount = Number(template.amount)
+  const allMatching = [...matchingHistoricalBills, ...matchingActualBills]
+    .filter((b) => b.status !== 'SKIPPED')
+    .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())
+
+  if (allMatching.length > 0) {
+    return {
+      amount: Number(allMatching[0].amount),
+      method: 'average',
+      confidence: 0.75,
+    }
+  }
+
+  return { amount: baseAmount, method: 'average', confidence: 0.5 }
+}
+
+export interface EnhancePredictionsOptions {
+  /** Use template / last-paid amount instead of regression (default true). */
+  useSimpleForecast?: boolean
+}
+
+/**
+ * Replaces predictions with actual bills and enhances remaining predictions.
+ * Orphan predictions (detected patterns, no template) are preserved.
+ * Unmatched future actuals are appended after merge.
  */
 export function enhancePredictionsWithActualData(
   predictions: PredictedBill[],
   actualBills: Bill[],
   recurringTemplates: Bill[],
-  historicalBills?: Bill[]
+  historicalBills?: Bill[],
+  options?: EnhancePredictionsOptions,
 ): PredictedBill[] {
+  const useSimpleForecast = options?.useSimpleForecast !== false
+  const filteredActuals = actualBills.filter(isActualBill)
   const enhanced: PredictedBill[] = []
-  const matchedActualBills = new Set<string>() // Track which actual bills we've matched
+  const matchedActualBillIds = new Set<string>()
+
+  const findTemplateForPrediction = (prediction: PredictedBill): Bill | undefined => {
+    const byId = recurringTemplates.find(
+      (t) => t.id === prediction.billId && t.recurrencePattern,
+    )
+    if (byId) return byId
+    if (prediction.categoryId) {
+      return recurringTemplates.find(
+        (t) =>
+          t.recurrencePattern &&
+          t.categoryId === prediction.categoryId &&
+          t.vendorId === prediction.vendorId &&
+          t.vendorAccountId === prediction.vendorAccountId,
+      )
+    }
+    return undefined
+  }
 
   // First pass: replace predictions with actual bills where dates match
   for (const prediction of predictions) {
     const predictionDate = new Date(prediction.dueDate)
+    const template = findTemplateForPrediction(prediction)
     let matched = false
 
-    // Find matching template for this prediction
-    const template = recurringTemplates.find((t) => t.id === prediction.billId)
-    if (!template) {
-      // No template found, keep original prediction
-      enhanced.push(prediction)
-      continue
-    }
+    if (template) {
+      for (const actualBill of filteredActuals) {
+        if (matchedActualBillIds.has(actualBill.id)) continue
 
-    // Look for actual bills that match this template and date
-    for (const actualBill of actualBills) {
-      if (matchedActualBills.has(actualBill.id)) {
-        continue // Already matched to another prediction
-      }
-
-      if (shouldMatchBill(actualBill, template) && isDateMatch(new Date(actualBill.dueDate), predictionDate)) {
-        // Replace prediction with actual bill
-        enhanced.push({
-          title: actualBill.title,
-          amount: Number(actualBill.amount),
-          dueDate: new Date(actualBill.dueDate),
-          source: 'recurrence', // Keep as recurrence since it's from a recurring pattern
-          billId: actualBill.id,
-          categoryId: actualBill.categoryId,
-          vendorId: actualBill.vendorId,
-        })
-        matchedActualBills.add(actualBill.id)
-        matched = true
-        break
+        if (
+          shouldMatchBill(actualBill, template) &&
+          isDateMatch(new Date(actualBill.dueDate), predictionDate)
+        ) {
+          enhanced.push({
+            title: actualBill.title,
+            amount: Number(actualBill.amount),
+            dueDate: new Date(actualBill.dueDate),
+            source: prediction.source === 'detected' ? 'detected' : 'recurrence',
+            billId: actualBill.id,
+            categoryId: actualBill.categoryId,
+            vendorId: actualBill.vendorId,
+            vendorAccountId: actualBill.vendorAccountId,
+          })
+          matchedActualBillIds.add(actualBill.id)
+          matched = true
+          break
+        }
       }
     }
 
-    // If no match found, keep the prediction (will be enhanced in next step)
     if (!matched) {
       enhanced.push(prediction)
     }
   }
 
-  // Second pass: enhance remaining predictions using actual bill data
-  // Group predictions by template
-  const predictionsByTemplate = new Map<string, { predictions: PredictedBill[]; template: Bill }>()
+  const finalPredictions: PredictedBill[] = []
+  const processedPredictionKeys = new Set<string>()
+
+  const predictionKey = (p: PredictedBill) =>
+    `${p.billId ?? 'none'}-${new Date(p.dueDate).getTime()}-${p.source}`
 
   for (const prediction of enhanced) {
-    // Check if this prediction was replaced with an actual bill
-    const wasReplaced = matchedActualBills.has(prediction.billId || '')
-    
-    let template: Bill | undefined
-    
-    if (wasReplaced) {
-      // This was replaced, find template by matching the actual bill to a template
-      const actualBill = actualBills.find((b) => b.id === prediction.billId)
-      if (actualBill) {
-        template = recurringTemplates.find((t) => shouldMatchBill(actualBill, t) && t.recurrencePattern)
-      }
-    } else {
-      // This is still a prediction, find template by billId (which is the template's id)
-      template = recurringTemplates.find((t) => t.id === prediction.billId)
-    }
+    const key = predictionKey(prediction)
+    if (processedPredictionKeys.has(key)) continue
+    processedPredictionKeys.add(key)
 
-    if (!template) {
-      // No template found, keep as-is
+    const wasReplaced = matchedActualBillIds.has(prediction.billId || '')
+    if (wasReplaced) {
+      finalPredictions.push(prediction)
       continue
     }
 
-    const key = template.id
-    if (!predictionsByTemplate.has(key)) {
-      predictionsByTemplate.set(key, { predictions: [], template })
+    const template = findTemplateForPrediction(prediction)
+    if (!template) {
+      finalPredictions.push(prediction)
+      continue
     }
-    predictionsByTemplate.get(key)!.predictions.push(prediction)
-  }
 
-  // Enhance each template's predictions
-  const finalPredictions: PredictedBill[] = []
+    const matchingActualBills = filteredActuals.filter((bill) =>
+      shouldMatchBill(bill, template),
+    )
+    const matchingHistoricalBills = historicalBills
+      ? historicalBills.filter((b) => shouldMatchBill(b, template))
+      : []
 
-  for (const [templateId, { predictions, template }] of predictionsByTemplate.entries()) {
-    // Find all actual bills that match this template
-    const matchingActualBills = actualBills.filter((bill) => shouldMatchBill(bill, template))
-
-    // Calculate enhanced amount from actual bills
-    const baseAmount = Number(template.amount)
-
-    // Update predictions with enhanced amount
-    for (const prediction of predictions) {
-      // If this prediction was replaced with an actual bill, keep it as-is
-      if (matchedActualBills.has(prediction.billId || '')) {
-        // This is an actual bill that replaced a prediction, keep original amount
-        finalPredictions.push(prediction)
-      } else {
-        // This is a future prediction, enhance it with intelligent forecasting
-        // Get historical bills that match this template for seasonal analysis
-        const matchingHistoricalBills = historicalBills 
-          ? historicalBills.filter((b) => shouldMatchBill(b, template))
-          : []
-        
-        // Combine matching actual bills and historical bills for comprehensive analysis
-        // Note: These shouldn't overlap since historicalBills are before startDate and actualBills are after
-        const allBillsForAnalysis = [...matchingActualBills, ...matchingHistoricalBills]
-        
-        const forecast = calculateEnhancedAmount(
-          matchingActualBills, // Use only recent bills for trend/weighted analysis
-          baseAmount,
-          new Date(prediction.dueDate),
-          allBillsForAnalysis // Pass all matching bills (actual + historical) for seasonal analysis
-        )
-        finalPredictions.push({
-          ...prediction,
-          amount: forecast.amount,
-          method: forecast.method,
-          confidence: forecast.confidence,
-        })
-      }
+    if (useSimpleForecast) {
+      const simple = calculateSimpleForecastAmount(
+        template,
+        matchingActualBills,
+        matchingHistoricalBills,
+      )
+      finalPredictions.push({
+        ...prediction,
+        amount: simple.amount,
+        method: simple.method,
+        confidence: simple.confidence,
+      })
+    } else {
+      const forecast = calculateEnhancedAmount(
+        matchingActualBills,
+        Number(template.amount),
+        new Date(prediction.dueDate),
+        [...matchingActualBills, ...matchingHistoricalBills],
+      )
+      finalPredictions.push({
+        ...prediction,
+        amount: forecast.amount,
+        method: forecast.method,
+        confidence: forecast.confidence,
+      })
     }
   }
 
-  return finalPredictions
+  // Append future actuals not matched to any prediction slot
+  for (const actualBill of filteredActuals) {
+    if (matchedActualBillIds.has(actualBill.id)) continue
+
+    const actualDate = new Date(actualBill.dueDate)
+    const consumedByForecast = predictions.some((pred) => {
+      const template = findTemplateForPrediction(pred)
+      if (!template || !shouldMatchBill(actualBill, template)) return false
+      return isDateMatch(actualDate, new Date(pred.dueDate))
+    })
+
+    if (!consumedByForecast) {
+      finalPredictions.push({
+        title: actualBill.title,
+        amount: Number(actualBill.amount),
+        dueDate: actualDate,
+        source: 'recurrence',
+        billId: actualBill.id,
+        categoryId: actualBill.categoryId,
+        vendorId: actualBill.vendorId,
+        vendorAccountId: actualBill.vendorAccountId,
+      })
+      matchedActualBillIds.add(actualBill.id)
+    }
+  }
+
+  return finalPredictions.sort(
+    (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+  )
 }
