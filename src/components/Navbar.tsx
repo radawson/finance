@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard, BarChart3 } from 'lucide-react'
+import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard, BarChart3, ShoppingCart } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
 
 export default function Navbar() {
@@ -26,6 +26,7 @@ export default function Navbar() {
     : [
         { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/bills', label: 'My Bills', icon: Receipt },
+        { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
         { href: '/bills/calendar', label: 'Calendar', icon: Calendar },
         { href: '/vendors', label: 'Vendors', icon: Building2 },
         { href: '/account-types', label: 'Categories', icon: CreditCard },

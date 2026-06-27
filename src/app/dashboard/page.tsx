@@ -13,7 +13,7 @@ import BillViewModal from '@/components/BillViewModal'
 import DashboardWidget from '@/components/DashboardWidget'
 import DashboardWidgetPalette from '@/components/DashboardWidgetPalette'
 import { Bill, DashboardStats } from '@/types'
-import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, RotateCcw, LayoutGrid } from 'lucide-react'
+import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, RotateCcw, LayoutGrid, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -683,10 +683,16 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-bold text-gray-900">Welcome, {session?.user?.name || 'Guest'}</h1>
               <p className="text-gray-600 mt-1">Here&apos;s an overview of your bills</p>
             </div>
-            <Link href="/bills/new" className="btn btn-primary flex items-center gap-2">
-              <Plus size={20} />
-              New Bill
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/expenses" className="btn btn-secondary flex items-center gap-2">
+                <ShoppingCart size={20} />
+                Log Expense
+              </Link>
+              <Link href="/bills/new" className="btn btn-primary flex items-center gap-2">
+                <Plus size={20} />
+                New Bill
+              </Link>
+            </div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
@@ -742,6 +748,10 @@ export default function DashboardPage() {
               <RotateCcw size={16} />
               Reset Layout
             </button>
+            <Link href="/expenses" className="btn btn-secondary flex items-center gap-2">
+              <ShoppingCart size={20} />
+              Log Expense
+            </Link>
             <Link href="/bills/new" className="btn btn-primary flex items-center gap-2">
               <Plus size={20} />
               New Bill
