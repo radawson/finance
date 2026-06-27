@@ -961,7 +961,7 @@ export default function DashboardPage() {
                       stats.projectedCategoryBreakdown.length > 0 ? (
                         <div>
                           <h3 className="text-md font-semibold text-gray-900 mb-3">
-                            Period budget (scheduled bills)
+                            Spent this period
                           </h3>
                           <CategoryPieChart data={stats.projectedCategoryBreakdown} size={200} />
                         </div>
@@ -969,7 +969,7 @@ export default function DashboardPage() {
                         stats?.categoryBreakdown &&
                         stats.categoryBreakdown.length > 0 && (
                           <div className="flex items-center justify-center h-32 text-gray-500">
-                            <p>No scheduled bills in this period yet</p>
+                            <p>No spend in this period yet</p>
                           </div>
                         )
                       )}

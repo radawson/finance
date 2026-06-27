@@ -27,6 +27,13 @@ test('log a per-trip grocery expense', async ({ page }) => {
   const row = page.getByRole('row', { name: new RegExp(payee) })
   await expect(row).toBeVisible()
   await expect(row.getByText('$73.50')).toBeVisible()
+  // Date must render as *today* (guards the date-only timezone off-by-one).
+  const todayLabel = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  await expect(row.getByText(todayLabel)).toBeVisible()
 
   await page.screenshot({ path: 'e2e/screenshots/01-expenses.png', fullPage: true })
 })

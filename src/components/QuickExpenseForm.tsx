@@ -58,7 +58,9 @@ export default function QuickExpenseForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: form.amount,
-          date: new Date(form.date).toISOString(),
+          // Anchor to local noon so the date never crosses a day boundary when
+          // displayed in a non-UTC timezone (a date-only value, not an instant).
+          date: new Date(`${form.date}T12:00:00`).toISOString(),
           categoryId: form.categoryId,
           payee: form.payee.trim() || undefined,
           note: form.note.trim() || undefined,
