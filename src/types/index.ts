@@ -239,6 +239,15 @@ export interface DashboardStats {
     count: number
     totalAmount: number
   }[]
+  /** Per-envelope budget vs this-period spend (variable categories) */
+  budgetVsActual: {
+    categoryId: string
+    categoryName: string
+    color: string | null
+    budget: number
+    spent: number
+    remaining: number
+  }[]
   /** Recurring forecast merged with actuals; only when includeForecast=true */
   forecastCategoryBreakdown?: {
     categoryId: string

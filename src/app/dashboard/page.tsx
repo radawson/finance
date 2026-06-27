@@ -278,6 +278,10 @@ export default function DashboardPage() {
       ids.add(WIDGET_IDS.STATS)
     }
 
+    if (stats?.budgetVsActual && stats.budgetVsActual.length > 0) {
+      ids.add(WIDGET_IDS.BUDGET)
+    }
+
     if (creditCardData) {
       ids.add(WIDGET_IDS.CREDIT_CARD)
     }
@@ -814,6 +818,54 @@ export default function DashboardPage() {
                         icon={CheckCircle}
                         color="green"
                       />
+                    </div>
+                  </DashboardWidget>
+                )}
+
+                {/* Budget Burn-down Widget */}
+                {visibleWidgetIds.has(WIDGET_IDS.BUDGET) && stats?.budgetVsActual && (
+                  <DashboardWidget
+                    key={WIDGET_IDS.BUDGET}
+                    widgetId={WIDGET_IDS.BUDGET}
+                    title="Budget Burn-down (this month)"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.BUDGET)}
+                    onCollapseChange={handleCollapseChange}
+                    action={
+                      <Link href="/budget" className="text-sm text-primary-600 hover:text-primary-700">
+                        Manage →
+                      </Link>
+                    }
+                  >
+                    <div className="space-y-4">
+                      {stats.budgetVsActual.map((b) => {
+                        const ratio = b.budget > 0 ? b.spent / b.budget : 0
+                        const barColor =
+                          ratio >= 1 ? 'bg-red-500' : ratio >= 0.8 ? 'bg-yellow-500' : 'bg-green-500'
+                        return (
+                          <div key={b.categoryId}>
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <div className="flex items-center">
+                                {b.color && (
+                                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: b.color }} />
+                                )}
+                                <span className="font-medium text-gray-900">{b.categoryName}</span>
+                              </div>
+                              <span className="text-gray-600">
+                                ${b.spent.toFixed(2)} / ${b.budget.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`${barColor} h-2 rounded-full`}
+                                style={{ width: `${Math.min(100, ratio * 100)}%` }}
+                              />
+                            </div>
+                            <p className={`text-xs mt-1 ${b.remaining < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                              ${Math.abs(b.remaining).toFixed(2)} {b.remaining < 0 ? 'over' : 'left'}
+                            </p>
+                          </div>
+                        )
+                      })}
                     </div>
                   </DashboardWidget>
                 )}

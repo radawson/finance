@@ -59,6 +59,8 @@ test('dashboard surfaces ledger spend and the Log Expense action', async ({ page
   await page.goto('/dashboard')
   await expect(page.getByRole('link', { name: /Log Expense/i }).first()).toBeVisible()
   await expect(page.getByText('Category Breakdown')).toBeVisible()
+  // Budget burn-down widget (Food envelope was set in the prior spec).
+  await expect(page.getByText('Budget Burn-down (this month)')).toBeVisible()
 
   await page.screenshot({ path: 'e2e/screenshots/03-dashboard.png', fullPage: true })
 })

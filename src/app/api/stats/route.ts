@@ -100,6 +100,28 @@ export async function GET(req: NextRequest) {
       filterExpensesInPeriod(expensesForBreakdown, periodStartDate, periodEndDate),
     )
 
+    // Budget burn-down: each of the user's envelopes vs this-period spend.
+    const spentMap = new Map<string, number>()
+    for (const c of categoryBreakdown) spentMap.set(c.categoryId, c.totalAmount)
+    const userEnvelopes = await prisma.budgetEnvelope.findMany({
+      where: { userId: session.user.id },
+      include: { category: true },
+    })
+    const budgetVsActual = userEnvelopes
+      .map((e) => {
+        const budget = Number(e.amount)
+        const spent = spentMap.get(e.categoryId) ?? 0
+        return {
+          categoryId: e.categoryId,
+          categoryName: e.category?.name ?? 'Unknown',
+          color: e.category?.color ?? null,
+          budget,
+          spent,
+          remaining: budget - spent,
+        }
+      })
+      .sort((a, b) => a.categoryName.localeCompare(b.categoryName))
+
     let forecastCategoryBreakdown:
       | ReturnType<typeof categoryBreakdownFromExpenses>
       | undefined
@@ -191,6 +213,7 @@ export async function GET(req: NextRequest) {
       upcomingBills30: upcomingBills30.length,
       categoryBreakdown,
       projectedCategoryBreakdown,
+      budgetVsActual,
       ...(forecastCategoryBreakdown
         ? { forecastCategoryBreakdown }
         : {}),
