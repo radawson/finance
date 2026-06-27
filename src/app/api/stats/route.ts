@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { BillStatus, Role } from '@/generated/prisma/client'
+import { Role } from '@/generated/prisma/client'
 import { getBillsDueSoon, getOverdueBills, getUpcomingBills } from '@/lib/bills'
 import { getPeriodStartDate, getPeriodEndDate, CategoryPeriod } from '@/lib/date-utils'
 import { generateBudgetWithForecast } from '@/lib/analysis'
@@ -18,9 +18,6 @@ function normalizeBillFromPrisma(raw: any): Bill {
   return {
     ...raw,
     amount: Number(raw.amount),
-    predictionConfidence:
-      raw.predictionConfidence != null ? Number(raw.predictionConfidence) : null,
-    predictionMethod: raw.predictionMethod as Bill['predictionMethod'],
     dueDate: new Date(raw.dueDate),
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),
@@ -52,9 +49,7 @@ export async function GET(req: NextRequest) {
     const categoryPeriod = (searchParams.get('categoryPeriod') || 'month') as CategoryPeriod
     const includeForecast = searchParams.get('includeForecast') === 'true'
 
-    const where: any = {
-      status: { not: BillStatus.PREDICTED },
-    }
+    const where: any = {}
 
     if (session.user.role !== Role.ADMIN) {
       where.OR = [{ createdById: session.user.id }, { createdById: null }]
@@ -70,29 +65,6 @@ export async function GET(req: NextRequest) {
 
     const allBills = allBillsRaw.map(normalizeBillFromPrisma)
     const actualBillsOnly = allBills.filter(isActualBill)
-
-    const predictedWhere: any = {
-      status: BillStatus.PREDICTED,
-    }
-    if (session.user.role !== Role.ADMIN) {
-      predictedWhere.OR = [{ createdById: session.user.id }, { createdById: null }]
-    }
-    const predictedBillsRaw = await prisma.bill.findMany({
-      where: predictedWhere,
-      include: {
-        category: true,
-        vendor: true,
-        vendorAccount: { include: { type: true } },
-      },
-      orderBy: { dueDate: 'asc' },
-    })
-
-    const predictedBillsCount = predictedBillsRaw.length
-    const nowForMissing = new Date()
-    nowForMissing.setHours(0, 0, 0, 0)
-    const missingBillsCount = predictedBillsRaw.filter(
-      (b) => new Date(b.dueDate) < nowForMissing,
-    ).length
 
     const totalBills = actualBillsOnly.length
     const pendingBills = actualBillsOnly.filter((b) => b.status === 'PENDING').length
@@ -212,8 +184,6 @@ export async function GET(req: NextRequest) {
       overdueBills,
       paidBills,
       skippedBills,
-      predictedBills: predictedBillsCount,
-      missingBills: missingBillsCount,
       upcomingBills: upcomingBills7.length,
       upcomingBills30: upcomingBills30.length,
       categoryBreakdown,
@@ -226,7 +196,6 @@ export async function GET(req: NextRequest) {
       overdueBillsList: overdueBillsList
         .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
         .slice(0, 10),
-      predictedBillsList: predictedBillsRaw.slice(0, 20),
     }
 
     return NextResponse.json(stats)

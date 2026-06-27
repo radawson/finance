@@ -148,7 +148,7 @@ export interface BudgetPredictionOptions {
 }
 
 /**
- * Period ledger: actual bills in range only (no templates, no PREDICTED).
+ * Period ledger: actual bills in range only (excludes recurring templates).
  */
 export function generatePeriodLedger(
   bills: Bill[],

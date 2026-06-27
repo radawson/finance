@@ -13,7 +13,7 @@ import BillViewModal from '@/components/BillViewModal'
 import DashboardWidget from '@/components/DashboardWidget'
 import DashboardWidgetPalette from '@/components/DashboardWidgetPalette'
 import { Bill, DashboardStats } from '@/types'
-import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, Eye, RotateCcw, LayoutGrid } from 'lucide-react'
+import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, RotateCcw, LayoutGrid } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -73,8 +73,6 @@ export default function DashboardPage() {
   const [balanceWidgetPeriods, setBalanceWidgetPeriods] = useState<Record<string, string>>({})
   const [balanceWidgetData, setBalanceWidgetData] = useState<Record<string, BalanceResponse>>({})
   const balanceWidgetCacheRef = useRef<Record<string, BalanceResponse>>({})
-  const [predictedBills, setPredictedBills] = useState<Bill[]>([])
-  const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
   // ─── Grid layout state ───────────────────────────────────────────────────
   const { width, containerRef, mounted } = useContainerWidth()
@@ -257,29 +255,13 @@ export default function DashboardPage() {
     [balanceWidgetPeriods]
   )
 
-  const fetchPredictedBills = useCallback(async () => {
-    setIsPredictedLoading(true)
-    try {
-      const res = await fetch('/api/bills/predicted')
-      if (res.ok) {
-        const data = await res.json()
-        setPredictedBills(data)
-      }
-    } catch (error) {
-      // Silently fail - predicted bills section just won't show
-    } finally {
-      setIsPredictedLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (session) {
       fetchData()
       fetchCreditCardBalances()
       fetchAccountTypes()
-      fetchPredictedBills()
     }
-  }, [session, fetchData, fetchCreditCardBalances, fetchAccountTypes, fetchPredictedBills])
+  }, [session, fetchData, fetchCreditCardBalances, fetchAccountTypes])
 
   useEffect(() => {
     balanceWidgetInstances.forEach((instance) => {
@@ -294,10 +276,6 @@ export default function DashboardPage() {
 
     if (stats) {
       ids.add(WIDGET_IDS.STATS)
-    }
-
-    if (predictedBills.length > 0 || isPredictedLoading) {
-      ids.add(WIDGET_IDS.EXPECTED_BILLS)
     }
 
     if (creditCardData) {
@@ -324,7 +302,7 @@ export default function DashboardPage() {
     }
 
     return ids
-  }, [stats, predictedBills, isPredictedLoading, creditCardData])
+  }, [stats, creditCardData])
 
   // ─── Compute effective visible widgets ───────────────────────────────────
   // visibleWidgetIds = (userVisibleWidgetIds ?? dataAvailableIds) ∩ dataAvailableIds
@@ -821,58 +799,12 @@ export default function DashboardPage() {
                         color="red"
                       />
                       <StatsCard
-                        title="Predicted"
-                        value={stats?.predictedBills || 0}
-                        icon={Eye}
-                        color="purple"
-                      />
-                      <StatsCard
                         title="Paid"
                         value={stats?.paidBills || 0}
                         icon={CheckCircle}
                         color="green"
                       />
                     </div>
-                  </DashboardWidget>
-                )}
-
-                {/* Expected Bills Widget */}
-                {visibleWidgetIds.has(WIDGET_IDS.EXPECTED_BILLS) && (
-                  <DashboardWidget
-                    key={WIDGET_IDS.EXPECTED_BILLS}
-                    widgetId={WIDGET_IDS.EXPECTED_BILLS}
-                    title="Expected Bills (Next 30 Days)"
-                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.EXPECTED_BILLS)}
-                    onCollapseChange={handleCollapseChange}
-                    badge={
-                      (stats?.missingBills ?? 0) > 0 ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          {stats?.missingBills} missing
-                        </span>
-                      ) : undefined
-                    }
-                    action={
-                      <span className="text-sm text-gray-500">
-                        {predictedBills.length} predicted bill{predictedBills.length !== 1 ? 's' : ''}
-                      </span>
-                    }
-                  >
-                    {isPredictedLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mr-3"></div>
-                        <span className="text-gray-500">Generating predictions...</span>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {predictedBills.map((bill) => (
-                          <BillCard
-                            key={bill.id}
-                            bill={bill}
-                            onClick={() => router.push(`/bills/${bill.id}`)}
-                          />
-                        ))}
-                      </div>
-                    )}
                   </DashboardWidget>
                 )}
 

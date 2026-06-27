@@ -50,7 +50,6 @@ export async function GET(req: NextRequest) {
     const vendorId = searchParams.get('vendorId')
     const isRecurring = searchParams.get('isRecurring')
     const tags = searchParams.get('tags') // Comma-separated list of tags
-    const includePredicted = searchParams.get('includePredicted') === 'true'
 
     // Build where clause
     const where: any = {}
@@ -65,9 +64,6 @@ export async function GET(req: NextRequest) {
 
     if (status) {
       where.status = status
-    } else if (!includePredicted) {
-      // By default, exclude PREDICTED bills from the main bill list
-      where.status = { not: 'PREDICTED' }
     }
 
     if (categoryId) {

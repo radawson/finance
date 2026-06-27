@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
 import BillEditForm, { BillFormData, RecurrenceFormData } from '@/components/BillEditForm'
 import { Bill } from '@/types'
-import { ArrowLeft, Eye } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useSocket } from '@/components/SocketProvider'
@@ -261,55 +261,6 @@ export default function BillDetailPage() {
           Back to Dashboard
         </Link>
 
-        {/* Predicted Bill Banner */}
-        {bill.status === 'PREDICTED' && (
-          <div className="bg-purple-50 border-2 border-dashed border-purple-300 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Eye className="w-5 h-5 text-purple-600" />
-                <div>
-                  <p className="font-medium text-purple-900">This is a predicted bill</p>
-                  <p className="text-sm text-purple-700">
-                    Review and update the details below when the actual bill arrives, then confirm it.
-                    {bill.predictionConfidence != null && (
-                      <span className="ml-1">
-                        Confidence: {Math.round(Number(bill.predictionConfidence) * 100)}%
-                        {bill.predictionMethod && ` (${bill.predictionMethod})`}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={async () => {
-                  setIsSaving(true)
-                  try {
-                    const response = await fetch(`/api/bills/${billId}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ status: 'PENDING' }),
-                    })
-                    if (response.ok) {
-                      toast.success('Bill confirmed')
-                      await fetchBill()
-                    } else {
-                      toast.error('Failed to confirm bill')
-                    }
-                  } catch {
-                    toast.error('Failed to confirm bill')
-                  } finally {
-                    setIsSaving(false)
-                  }
-                }}
-                disabled={isSaving}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50"
-              >
-                Confirm Bill
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Bill Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
@@ -339,7 +290,6 @@ export default function BillDetailPage() {
           onCancel={() => router.push('/dashboard')}
           onDelete={handleDelete}
           isSaving={isSaving}
-          isPredicted={bill.status === 'PREDICTED'}
         />
       </main>
     </div>

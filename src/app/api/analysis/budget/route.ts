@@ -15,9 +15,6 @@ function normalizeBillFromPrisma(raw: any): Bill {
   return {
     ...raw,
     amount: Number(raw.amount),
-    predictionConfidence:
-      raw.predictionConfidence != null ? Number(raw.predictionConfidence) : null,
-    predictionMethod: raw.predictionMethod as Bill['predictionMethod'],
     dueDate: new Date(raw.dueDate),
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),
@@ -81,7 +78,6 @@ export async function GET(req: NextRequest) {
     const actualBillsRaw = await prisma.bill.findMany({
       where: {
         dueDate: { gte: startDate, lte: endDate },
-        status: { not: BillStatus.PREDICTED },
         ...userFilter,
       },
       include: {
@@ -99,7 +95,6 @@ export async function GET(req: NextRequest) {
     const historicalBillsRaw = await prisma.bill.findMany({
       where: {
         dueDate: { gte: historicalStartDate, lt: startDate },
-        status: { not: BillStatus.PREDICTED },
         ...userFilter,
       },
       include: {
