@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
+import { syncExpenseForBill } from '@/lib/business/ledger'
 import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
 import { emitToBill, emitToUser, SocketEvents } from '@/lib/socketio-server'
@@ -247,43 +248,48 @@ export async function PATCH(
     // it gets assigned to that user
     const isBeingAssigned = existingBill.createdById === null && session.user.id !== null
 
-    // Update bill
-    const bill = await prisma.bill.update({
-      where: { id },
-      data: {
-        ...(data.title && { title: data.title }),
-        ...(data.amount !== undefined && { amount: data.amount }),
-        ...(data.dueDate && { dueDate: new Date(data.dueDate) }),
-        ...(data.categoryId && { categoryId: data.categoryId }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
-        ...(data.vendorAccountId !== undefined && { vendorAccountId: data.vendorAccountId }),
-        ...(status && { status }),
-        ...(data.paidDate !== undefined && {
-          paidDate: data.paidDate ? new Date(data.paidDate) : null,
-        }),
-        ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
-        ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
-        ...(tagsArray !== undefined && { tags: tagsArray }),
-        ...(isBeingAssigned && { createdById: session.user.id }),
-      },
-      include: {
-        category: true,
-        vendor: true,
-        vendorAccount: {
-          include: {
-            type: true,
-          },
+    // Update bill (and reconcile its linked ledger expense) atomically
+    const bill = await prisma.$transaction(async (tx) => {
+      const updated = await tx.bill.update({
+        where: { id },
+        data: {
+          ...(data.title && { title: data.title }),
+          ...(data.amount !== undefined && { amount: data.amount }),
+          ...(data.dueDate && { dueDate: new Date(data.dueDate) }),
+          ...(data.categoryId && { categoryId: data.categoryId }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
+          ...(data.vendorAccountId !== undefined && { vendorAccountId: data.vendorAccountId }),
+          ...(status && { status }),
+          ...(data.paidDate !== undefined && {
+            paidDate: data.paidDate ? new Date(data.paidDate) : null,
+          }),
+          ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
+          ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
+          ...(tagsArray !== undefined && { tags: tagsArray }),
+          ...(isBeingAssigned && { createdById: session.user.id }),
         },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+        include: {
+          category: true,
+          vendor: true,
+          vendorAccount: {
+            include: {
+              type: true,
+            },
           },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          recurrencePattern: true,
         },
-        recurrencePattern: true,
-      },
+      })
+      // Unified ledger: paying a bill records its expense; un-paying removes it.
+      await syncExpenseForBill(tx, updated)
+      return updated
     })
 
     // Set account balance if provided
@@ -398,8 +404,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    await prisma.bill.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      // Unified ledger: remove the bill's linked payment expense, if any,
+      // before deleting the bill itself.
+      await tx.expense.deleteMany({ where: { billId: id } })
+      await tx.bill.delete({ where: { id } })
     })
 
     // Emit WebSocket event for silent UI update (to bill room)
