@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { Role, BillStatus } from '@/generated/prisma/client'
+import { Role } from '@/generated/prisma/client'
 import {
   generateBudgetWithForecast,
-  generatePeriodLedger,
-  groupBillsByPeriod,
+  generateExpenseLedger,
+  groupExpensesByPeriodAsHistoric,
 } from '@/lib/analysis'
 import { AnalysisPeriod, Bill } from '@/types'
 import { isActualBill } from '@/lib/business/period-ledger'
@@ -108,7 +108,13 @@ export async function GET(req: NextRequest) {
       .map(normalizeBillFromPrisma)
       .filter(isActualBill)
 
-    const actuals = generatePeriodLedger(actualBills, startDate, endDate, period)
+    // Actual spend comes from the ledger (expenses), not bills.
+    const expensesInRange = await prisma.expense.findMany({
+      where: { date: { gte: startDate, lte: endDate }, ...userFilter },
+      include: { category: true, vendor: true },
+    })
+
+    const actuals = generateExpenseLedger(expensesInRange, startDate, endDate, period)
 
     const predictions = includeForecast
       ? generateBudgetWithForecast(
@@ -124,23 +130,17 @@ export async function GET(req: NextRequest) {
 
     let historicData
     if (includeHistoric) {
-      const historicWhere: any = {
-        status: BillStatus.PAID,
-        paidDate: {
-          gte: new Date(startDate.getFullYear() - 1, startDate.getMonth(), startDate.getDate()),
-          lte: startDate,
-        },
-        ...userFilter,
-      }
-
-      const historicBillsRaw = await prisma.bill.findMany({
-        where: historicWhere,
+      const historicStart = new Date(
+        startDate.getFullYear() - 1,
+        startDate.getMonth(),
+        startDate.getDate(),
+      )
+      const historicExpenses = await prisma.expense.findMany({
+        where: { date: { gte: historicStart, lte: startDate }, ...userFilter },
         include: { category: true, vendor: true },
       })
-
-      const historicBills = historicBillsRaw.map(normalizeBillFromPrisma).filter(isActualBill)
       const periodType = period === 'custom' ? 'monthly' : period
-      historicData = groupBillsByPeriod(historicBills, periodType)
+      historicData = groupExpensesByPeriodAsHistoric(historicExpenses, periodType)
     }
 
     return NextResponse.json({

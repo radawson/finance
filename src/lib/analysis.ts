@@ -1,9 +1,10 @@
-import { Bill, RecurrencePattern, AnalysisPeriod, PredictedBill, BudgetPredictionPeriodData } from '@/types'
+import { Bill, RecurrencePattern, AnalysisPeriod, PredictedBill, BudgetPredictionPeriodData, HistoricBillsPeriodData, DecimalValue } from '@/types'
 import { RecurrenceFrequency } from '@/generated/prisma/client'
 import { getUpcomingDueDates } from './recurrence'
 import { format, getQuarter, differenceInDays, getDate } from 'date-fns'
 import { enhancePredictionsWithActualData, shouldMatchBill } from './business/recurring-bills'
 import { filterActualBillsInPeriod, isActualBill } from './business/period-ledger'
+import { filterExpensesInPeriod } from './business/ledger'
 import {
   mergeBillsWithForecast,
   billToMergeable,
@@ -172,6 +173,61 @@ export function generatePeriodLedger(
     return groupPredictedBillsByPeriod(predicted, 'monthly')
   }
   return groupPredictedBillsByPeriod(predicted, period)
+}
+
+/** Minimal expense shape for ledger-based reporting (accepts Prisma rows). */
+type LedgerExpenseInput = {
+  id?: string
+  date: Date | string
+  amount: DecimalValue
+  categoryId: string
+  vendorId?: string | null
+  payee?: string | null
+  note?: string | null
+  billId?: string | null
+  category?: { name?: string | null; color?: string | null } | null
+  vendor?: { name?: string | null } | null
+}
+
+/**
+ * Expense ledger grouped by period — the actual-spend equivalent of
+ * generatePeriodLedger, sourced from the Expense table (groceries + bill payments).
+ */
+export function generateExpenseLedger(
+  expenses: LedgerExpenseInput[],
+  startDate: Date,
+  endDate: Date,
+  period: AnalysisPeriod,
+): BudgetPredictionPeriodData[] {
+  const inRange = filterExpensesInPeriod(expenses, startDate, endDate)
+  const predicted: PredictedBill[] = inRange.map((e) => ({
+    title: e.payee || e.category?.name || 'Expense',
+    amount: Number(e.amount),
+    dueDate: new Date(e.date),
+    source: 'recurrence',
+    billId: e.billId ?? undefined,
+    categoryId: e.categoryId,
+    vendorId: e.vendorId,
+  }))
+  return groupPredictedBillsByPeriod(predicted, period === 'custom' ? 'monthly' : period)
+}
+
+/**
+ * Group expenses by period into the historic-spend shape consumed by
+ * HistoricBillsView / MarkdownExporter (maps each expense to a bill-like row).
+ */
+export function groupExpensesByPeriodAsHistoric(
+  expenses: LedgerExpenseInput[],
+  period: 'monthly' | 'quarterly' | 'yearly',
+): HistoricBillsPeriodData[] {
+  const billsLike = expenses.map((e) => ({
+    ...e,
+    title: e.payee || e.category?.name || 'Expense',
+    amount: Number(e.amount),
+    dueDate: new Date(e.date),
+    paidDate: new Date(e.date),
+  })) as unknown as Bill[]
+  return groupBillsByPeriod(billsLike, period)
 }
 
 /**
