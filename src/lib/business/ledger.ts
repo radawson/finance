@@ -1,4 +1,4 @@
-import { BillStatus, DecimalValue, Expense } from '@/types'
+import { BillStatus, DecimalValue } from '@/types'
 
 /**
  * The unified ledger seam.
@@ -106,11 +106,11 @@ export async function syncExpenseForBill(tx: LedgerTx, bill: BillForLedger): Pro
 
 // ─── Ledger reads / aggregation (operate on already-fetched Expense[]) ───────
 
-export function filterExpensesInPeriod(
-  expenses: Expense[],
+export function filterExpensesInPeriod<T extends { date: Date | string }>(
+  expenses: T[],
   periodStart: Date,
   periodEnd: Date,
-): Expense[] {
+): T[] {
   const start = new Date(periodStart)
   start.setHours(0, 0, 0, 0)
   const end = new Date(periodEnd)
@@ -130,8 +130,15 @@ export interface CategoryBreakdownEntry {
   totalAmount: number
 }
 
+/** Minimal expense shape for a category breakdown (accepts Prisma rows or Expense). */
+type ExpenseForBreakdown = {
+  categoryId: string
+  amount: DecimalValue
+  category?: { name: string; color?: string | null } | null
+}
+
 /** Category breakdown from ledger expenses (requires category on each expense). */
-export function categoryBreakdownFromExpenses(expenses: Expense[]): CategoryBreakdownEntry[] {
+export function categoryBreakdownFromExpenses(expenses: ExpenseForBreakdown[]): CategoryBreakdownEntry[] {
   const map = new Map<string, CategoryBreakdownEntry>()
 
   for (const expense of expenses) {

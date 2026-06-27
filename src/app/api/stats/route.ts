@@ -7,11 +7,11 @@ import { getBillsDueSoon, getOverdueBills, getUpcomingBills } from '@/lib/bills'
 import { getPeriodStartDate, getPeriodEndDate, CategoryPeriod } from '@/lib/date-utils'
 import { generateBudgetWithForecast } from '@/lib/analysis'
 import { AnalysisPeriod, Bill } from '@/types'
+import { isActualBill } from '@/lib/business/period-ledger'
 import {
-  filterActualBillsInPeriod,
-  categoryBreakdownFromBills,
-  isActualBill,
-} from '@/lib/business/period-ledger'
+  filterExpensesInPeriod,
+  categoryBreakdownFromExpenses,
+} from '@/lib/business/ledger'
 import { categoryBreakdownFromMergeables, predictedBillToMergeable } from '@/lib/business/merge-forecast'
 
 function normalizeBillFromPrisma(raw: any): Bill {
@@ -83,22 +83,25 @@ export async function GET(req: NextRequest) {
     const periodStartDate = getPeriodStartDate(categoryPeriod, now)
     const periodEndDate = getPeriodEndDate(categoryPeriod, today)
 
-    const billsForCategoryBreakdown = filterActualBillsInPeriod(
-      actualBillsOnly,
-      periodStartDate,
-      today,
-    )
-    const categoryBreakdown = categoryBreakdownFromBills(billsForCategoryBreakdown)
+    // Actual spend by category comes from the ledger (expenses), not bills.
+    const expenseWhere: any = {}
+    if (session.user.role !== Role.ADMIN) {
+      expenseWhere.OR = [{ createdById: session.user.id }, { createdById: null }]
+    }
+    const expensesForBreakdown = await prisma.expense.findMany({
+      where: expenseWhere,
+      include: { category: true },
+    })
 
-    const projectedActuals = filterActualBillsInPeriod(
-      actualBillsOnly,
-      periodStartDate,
-      periodEndDate,
+    const categoryBreakdown = categoryBreakdownFromExpenses(
+      filterExpensesInPeriod(expensesForBreakdown, periodStartDate, today),
     )
-    const projectedCategoryBreakdown = categoryBreakdownFromBills(projectedActuals)
+    const projectedCategoryBreakdown = categoryBreakdownFromExpenses(
+      filterExpensesInPeriod(expensesForBreakdown, periodStartDate, periodEndDate),
+    )
 
     let forecastCategoryBreakdown:
-      | ReturnType<typeof categoryBreakdownFromBills>
+      | ReturnType<typeof categoryBreakdownFromExpenses>
       | undefined
 
     if (includeForecast) {
