@@ -159,9 +159,8 @@ export async function GET(req: NextRequest) {
         periodStartDate,
         periodEndDate,
         analysisPeriod,
-        actualBillsOnly,
+        expensesForBreakdown,
         [],
-        { includeAutoDetect: false, useSimpleForecast: true },
       )
 
       const categoryLookup = new Map<

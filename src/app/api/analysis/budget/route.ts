@@ -75,20 +75,7 @@ export async function GET(req: NextRequest) {
 
     const recurringBills = recurringBillsRaw.map(normalizeBillFromPrisma)
 
-    const actualBillsRaw = await prisma.bill.findMany({
-      where: {
-        dueDate: { gte: startDate, lte: endDate },
-        ...userFilter,
-      },
-      include: {
-        category: true,
-        vendor: true,
-        vendorAccount: { include: { type: true } },
-      },
-    })
-
-    const actualBills = actualBillsRaw.map(normalizeBillFromPrisma).filter(isActualBill)
-
+    // Historical bills (past instances) feed the last-paid / seasonal estimator.
     const historicalStartDate = new Date(startDate)
     historicalStartDate.setFullYear(historicalStartDate.getFullYear() - 2)
 
@@ -122,9 +109,8 @@ export async function GET(req: NextRequest) {
           startDate,
           endDate,
           period,
-          actualBills,
+          expensesInRange,
           historicalBills,
-          { includeAutoDetect: false, useSimpleForecast: true },
         )
       : actuals
 

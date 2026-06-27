@@ -1,4 +1,4 @@
-import { Bill, PredictedBill } from '@/types'
+import { Bill, PredictedBill, DecimalValue } from '@/types'
 import { isDateMatch } from './recurring-bills'
 
 export interface MergeableBill {
@@ -10,8 +10,6 @@ export interface MergeableBill {
   vendorAccountId?: string | null
   billId?: string
   source?: PredictedBill['source']
-  method?: PredictedBill['method']
-  confidence?: number
 }
 
 function matchGroupKey(
@@ -95,8 +93,29 @@ export function predictedBillToMergeable(pred: PredictedBill): MergeableBill {
     vendorAccountId: pred.vendorAccountId,
     billId: pred.billId,
     source: pred.source,
-    method: pred.method,
-    confidence: pred.confidence,
+  }
+}
+
+/** An actual ledger expense as a mergeable entry (source = 'actual'). */
+export function expenseToMergeable(expense: {
+  id?: string
+  date: Date | string
+  amount: DecimalValue
+  categoryId: string
+  vendorId?: string | null
+  payee?: string | null
+  billId?: string | null
+  category?: { name?: string | null } | null
+}): MergeableBill {
+  return {
+    title: expense.payee || expense.category?.name || 'Expense',
+    amount: Number(expense.amount),
+    dueDate: new Date(expense.date),
+    categoryId: expense.categoryId,
+    vendorId: expense.vendorId ?? null,
+    vendorAccountId: null,
+    billId: expense.billId ?? undefined,
+    source: 'actual',
   }
 }
 
@@ -110,8 +129,6 @@ export function mergeableToPredictedBill(entry: MergeableBill): PredictedBill {
     categoryId: entry.categoryId,
     vendorId: entry.vendorId,
     vendorAccountId: entry.vendorAccountId,
-    method: entry.method,
-    confidence: entry.confidence,
   }
 }
 

@@ -114,8 +114,6 @@ export interface RecurrencePattern {
   updatedAt: Date
 }
 
-export type PredictionMethod = 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
-
 export interface Bill {
   id: string
   title: string
@@ -279,13 +277,12 @@ export interface PredictedBill {
   title: string
   amount: number
   dueDate: Date
-  source: 'recurrence' | 'historical-analysis' | 'detected'
+  /** 'actual' = a real ledger expense; 'recurrence' = a projected obligation. */
+  source: 'recurrence' | 'actual'
   billId?: string
   categoryId?: string
   vendorId?: string | null
   vendorAccountId?: string | null
-  method?: PredictionMethod
-  confidence?: number
 }
 
 export interface BudgetPredictionPeriodData {
