@@ -63,13 +63,13 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
         <div
           ref={ref}
           style={style}
-          className={`bg-white rounded-lg shadow-md overflow-hidden flex flex-col ${className}`}
+          className={`card-flush flex flex-col ${className}`}
           onMouseDown={onMouseDown}
           onMouseUp={onMouseUp}
           onTouchEnd={onTouchEnd}
           {...rest}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div className="card-header">
             <div className="flex items-center gap-2">
               <GripVertical
                 size={16}
@@ -80,7 +80,7 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
             </div>
             {action && <div className="flex items-center">{action}</div>}
           </div>
-          <div className="p-4 flex-1 overflow-auto">{children}</div>
+          <div className="card-body flex-1 overflow-auto">{children}</div>
         </div>
       )
     }
@@ -100,13 +100,13 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
         <div
           ref={ref}
           style={collapsedStyle}
-          className={`bg-white rounded-lg shadow-md overflow-hidden flex flex-col ${className}`}
+          className={`card-flush flex flex-col ${className}`}
           onMouseDown={onMouseDown}
           onMouseUp={onMouseUp}
           onTouchEnd={onTouchEnd}
           {...rest}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div className="card-header">
             <div className="flex items-center gap-2">
               <GripVertical
                 size={16}
@@ -131,7 +131,7 @@ const DashboardWidget = forwardRef<HTMLDivElement, DashboardWidgetProps>(
             {action && <div className="flex items-center">{action}</div>}
           </div>
           <Collapsible.Content className="flex-1 overflow-auto">
-            <div className="p-4">{children}</div>
+            <div className="card-body">{children}</div>
           </Collapsible.Content>
         </div>
       </Collapsible.Root>
