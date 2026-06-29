@@ -1004,7 +1004,7 @@ export default function DashboardPage() {
                     <div className="space-y-6">
                       {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
                         <div>
-                          <h3 className="text-md font-semibold text-gray-900 mb-3">Spent (period to date)</h3>
+                          <h3 className="text-base font-semibold text-gray-900 mb-3">Spent (period to date)</h3>
                           <CategoryPieChart data={stats.categoryBreakdown} size={200} />
                         </div>
                       )}
@@ -1012,7 +1012,7 @@ export default function DashboardPage() {
                       {stats?.projectedCategoryBreakdown &&
                       stats.projectedCategoryBreakdown.length > 0 ? (
                         <div>
-                          <h3 className="text-md font-semibold text-gray-900 mb-3">
+                          <h3 className="text-base font-semibold text-gray-900 mb-3">
                             Spent this period
                           </h3>
                           <CategoryPieChart data={stats.projectedCategoryBreakdown} size={200} />
@@ -1042,7 +1042,7 @@ export default function DashboardPage() {
                         stats?.forecastCategoryBreakdown &&
                         stats.forecastCategoryBreakdown.length > 0 && (
                           <div>
-                            <h3 className="text-md font-semibold text-gray-900 mb-3">
+                            <h3 className="text-base font-semibold text-gray-900 mb-3">
                               With recurring forecast
                             </h3>
                             <CategoryPieChart

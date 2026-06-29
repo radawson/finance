@@ -238,7 +238,7 @@ export default function CategoriesPage() {
 
         {/* Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 {editingCategory ? 'Edit Category' : 'New Category'}

@@ -46,11 +46,11 @@
   }
 
   .app-page-container {
-    @apply w-full px-4 sm:px-6 lg:px-8 py-8;
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
   }
 
   .app-nav-container {
-    @apply w-full px-4 sm:px-6 lg:px-8;
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   /* Visual feedback animations for WebSocket updates */
