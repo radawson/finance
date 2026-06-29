@@ -108,7 +108,7 @@ export default function AnalysisPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="app-page-container">
+      <main className="app-page-container-wide">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Analysis</h1>
           <p className="text-gray-600 mt-1">

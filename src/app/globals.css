@@ -26,6 +26,12 @@
     @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
   }
 
+  /* Wider container for data-dense pages (dashboard, lists, tables).
+     Effectively full-width with side gutters until ~2560px, then capped. */
+  .app-page-container-wide {
+    @apply w-full max-w-[160rem] mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
   .app-nav-container {
     @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }

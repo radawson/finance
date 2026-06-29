@@ -115,7 +115,7 @@ export default function VendorsPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="app-page-container">
+      <main className="app-page-container-wide">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Vendors</h1>

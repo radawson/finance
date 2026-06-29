@@ -681,7 +681,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <main className="app-page-container">
+        <main className="app-page-container-wide">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Welcome, {session?.user?.name || 'Guest'}</h1>
@@ -727,7 +727,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="app-page-container">
+      <main className="app-page-container-wide">
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
           <div>
             <h1 className="page-title">Welcome, {session?.user?.name || 'Guest'}</h1>
