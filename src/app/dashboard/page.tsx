@@ -75,7 +75,11 @@ export default function DashboardPage() {
   const balanceWidgetCacheRef = useRef<Record<string, BalanceResponse>>({})
 
   // ─── Grid layout state ───────────────────────────────────────────────────
-  const { width, containerRef, mounted } = useContainerWidth()
+  // measureBeforeMount: defer the grid's first render until the real container
+  // width is measured. Without it the grid renders at the hook's 1280px default
+  // and locks its responsive layout there, so on a wide (max-w-[160rem]) page the
+  // widgets stay crammed into a ~1280px band on the left.
+  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
   const [savedLayouts, setSavedLayouts] = useState<DashboardLayouts | null>(null)
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
