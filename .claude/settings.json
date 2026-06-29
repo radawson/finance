@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -o ConnectTimeout=10 -o BatchMode=yes ptx-web02 'echo CONNECTED as $\\(whoami\\) on $\\(hostname\\); echo \"---uname---\"; uname -a; echo \"---finance dir---\"; ls -la ~/finance 2>&1 | head -50')",
+      "Bash(ssh ptx-web02 *)",
+      "Bash(echo \"dump exit=$?\")",
+      "Bash(docker rm *)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(ssh ptx-web02 'cd ~/finance *)",
+      "Bash(ssh ptx-web02 'export PATH=$HOME/.nvm/versions/node/v24.12.0/bin:$PATH *)",
+      "Bash(rm -f /tmp/claude-1000/-home-torvaldsl-projects-finance/4ad6affe-0d24-4c60-b2b4-160b6f1bba18/scratchpad/kontado_rehearsal.sql /tmp/claude-1000/-home-torvaldsl-projects-finance/4ad6affe-0d24-4c60-b2b4-160b6f1bba18/scratchpad/main-schema.prisma /tmp/claude-1000/-home-torvaldsl-projects-finance/4ad6affe-0d24-4c60-b2b4-160b6f1bba18/scratchpad/ledger_model.sql /tmp/claude-1000/-home-torvaldsl-projects-finance/4ad6affe-0d24-4c60-b2b4-160b6f1bba18/scratchpad/*.err)",
+      "Bash(node __TRACKED_VAR__/cssgap.js __TRACKED_VAR__/served.css)",
+      "Bash(grep -oE '\\\\.container[^}]*\\\\}' __TRACKED_VAR__/served.css)",
+      "Bash(echo \"=== new CSS hash served by prod ===\" *)",
+      "Read(//tmp/**)",
+      "Bash(export SCRATCH=/tmp/claude-1000/-home-torvaldsl-projects-finance/4ad6affe-0d24-4c60-b2b4-160b6f1bba18/scratchpad)",
+      "Bash(node -e ' *)",
+      "Bash(grep -A5 '\\\\.app-page-container-wide' __TRACKED_VAR__/wide.css)"
+    ]
+  }
+}
