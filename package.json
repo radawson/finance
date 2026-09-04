@@ -18,7 +18,8 @@
     "db:seed:test": "tsx scripts/generate-test-data.ts",
     "db:update": "./scripts/update-db.sh deploy",
     "db:update:dev": "./scripts/update-db.sh dev",
-    "db:update:seed": "./scripts/update-db.sh deploy --seed"
+    "db:update:seed": "./scripts/update-db.sh deploy --seed",
+    "db:backfill-ledger": "tsx scripts/backfill-ledger.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

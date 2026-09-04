@@ -6,8 +6,7 @@ import {
   HistoricBillsPeriodData,
   DecimalValue,
 } from '@/types'
-import { RecurrenceFrequency } from '@/generated/prisma/client'
-import { getUpcomingDueDates } from './recurrence'
+import { getDueDatesInRange } from './recurrence'
 import { format, getQuarter } from 'date-fns'
 import { shouldMatchBill, estimateRecurringAmount } from './business/recurring-bills'
 import { filterExpensesInPeriod } from './business/ledger'
@@ -157,17 +156,13 @@ export function forecastObligations(
     if (!pattern) continue
 
     const patternStart = new Date(pattern.startDate)
-    const effectiveStart = patternStart > startDate ? patternStart : startDate
-    const patternEnd = pattern.endDate ? new Date(pattern.endDate) : endDate
-    const effectiveEnd = patternEnd < endDate ? patternEnd : endDate
-
-    const maxCount = calculateMaxPeriods(effectiveStart, effectiveEnd, pattern.frequency)
-    const dates = getUpcomingDueDates(
-      effectiveStart,
+    const dates = getDueDatesInRange(
+      patternStart,
       pattern.frequency,
       pattern.dayOfMonth,
-      effectiveEnd,
-      maxCount,
+      startDate,
+      endDate,
+      pattern.endDate ? new Date(pattern.endDate) : null,
     )
     const matchingHistory = historicalBills.filter((b) => shouldMatchBill(b, template))
 
@@ -240,25 +235,4 @@ function groupPredictedBillsByPeriod(
       bills: data.bills.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime()),
     }))
     .sort((a, b) => a.periodLabel.localeCompare(b.periodLabel))
-}
-
-/**
- * Calculate maximum number of periods to generate
- */
-function calculateMaxPeriods(startDate: Date, endDate: Date, frequency: RecurrenceFrequency): number {
-  const diffMs = endDate.getTime() - startDate.getTime()
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-
-  switch (frequency) {
-    case RecurrenceFrequency.MONTHLY:
-      return Math.ceil(diffDays / 30) + 1
-    case RecurrenceFrequency.QUARTERLY:
-      return Math.ceil(diffDays / 90) + 1
-    case RecurrenceFrequency.BIANNUALLY:
-      return Math.ceil(diffDays / 180) + 1
-    case RecurrenceFrequency.YEARLY:
-      return Math.ceil(diffDays / 365) + 1
-    default:
-      return 12
-  }
 }

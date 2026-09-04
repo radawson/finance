@@ -223,6 +223,8 @@ export interface DashboardStats {
   skippedBills: number
   upcomingBills: number // Bills due in next 7 days
   upcomingBills30: number // Bills due in next 30 days
+  /** False only when the user has no bills, expenses, or envelopes */
+  hasAnyData?: boolean
   categoryBreakdown: {
     categoryId: string
     categoryName: string

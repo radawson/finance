@@ -1,5 +1,6 @@
-import { RecurrenceFrequency } from '@/generated/prisma/client'
 import { addMonths, addYears, setDate, isBefore, isAfter } from 'date-fns'
+
+export type RecurrenceFrequencyName = 'MONTHLY' | 'QUARTERLY' | 'BIANNUALLY' | 'YEARLY'
 
 /**
  * Calculate the next due date based on recurrence pattern
@@ -11,23 +12,23 @@ import { addMonths, addYears, setDate, isBefore, isAfter } from 'date-fns'
  */
 export function calculateNextDueDate(
   lastDueDate: Date,
-  frequency: RecurrenceFrequency,
+  frequency: RecurrenceFrequencyName,
   dayOfMonth: number,
   endDate?: Date | null
 ): Date | null {
   let nextDate: Date
 
   switch (frequency) {
-    case RecurrenceFrequency.MONTHLY:
+    case 'MONTHLY':
       nextDate = addMonths(lastDueDate, 1)
       break
-    case RecurrenceFrequency.QUARTERLY:
+    case 'QUARTERLY':
       nextDate = addMonths(lastDueDate, 3)
       break
-    case RecurrenceFrequency.BIANNUALLY:
+    case 'BIANNUALLY':
       nextDate = addMonths(lastDueDate, 6)
       break
-    case RecurrenceFrequency.YEARLY:
+    case 'YEARLY':
       nextDate = addYears(lastDueDate, 1)
       break
     default:
@@ -56,7 +57,7 @@ export function calculateNextDueDate(
  */
 export function getUpcomingDueDates(
   startDate: Date,
-  frequency: RecurrenceFrequency,
+  frequency: RecurrenceFrequencyName,
   dayOfMonth: number,
   endDate?: Date | null,
   count: number = 12
@@ -83,6 +84,55 @@ export function getUpcomingDueDates(
 }
 
 /**
+ * Occurrences of a recurrence that fall in [rangeStart, rangeEnd], inclusive.
+ *
+ * Walks from the pattern's own start (so yearly/quarterly land on the right
+ * months) rather than "add one period to rangeStart", which skipped the
+ * current month for monthly bills.
+ */
+export function getDueDatesInRange(
+  patternStart: Date,
+  frequency: RecurrenceFrequencyName,
+  dayOfMonth: number,
+  rangeStart: Date,
+  rangeEnd: Date,
+  patternEnd?: Date | null
+): Date[] {
+  const windowStart = patternStart > rangeStart ? new Date(patternStart) : new Date(rangeStart)
+  const windowEnd =
+    patternEnd && isBefore(patternEnd, rangeEnd) ? new Date(patternEnd) : new Date(rangeEnd)
+
+  if (isAfter(windowStart, windowEnd)) return []
+
+  let cursor = setDate(
+    new Date(patternStart),
+    Math.min(dayOfMonth, getDaysInMonth(patternStart))
+  )
+  if (isBefore(cursor, patternStart)) {
+    const next = calculateNextDueDate(cursor, frequency, dayOfMonth, windowEnd)
+    if (!next) return []
+    cursor = next
+  }
+
+  for (let i = 0; i < 480; i++) {
+    if (!isBefore(cursor, windowStart)) break
+    const next = calculateNextDueDate(cursor, frequency, dayOfMonth, windowEnd)
+    if (!next) return []
+    cursor = next
+  }
+
+  const dates: Date[] = []
+  for (let i = 0; i < 240; i++) {
+    if (isAfter(cursor, windowEnd)) break
+    dates.push(cursor)
+    const next = calculateNextDueDate(cursor, frequency, dayOfMonth, windowEnd)
+    if (!next) break
+    cursor = next
+  }
+  return dates
+}
+
+/**
  * Get number of days in a month
  * @param date - Date to check
  * @returns Number of days in the month
@@ -100,7 +150,7 @@ function getDaysInMonth(date: Date): number {
  * @returns Validation result with error message if invalid
  */
 export function validateRecurrencePattern(
-  frequency: RecurrenceFrequency,
+  frequency: RecurrenceFrequencyName,
   dayOfMonth: number,
   startDate: Date,
   endDate?: Date | null

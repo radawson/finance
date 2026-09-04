@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { Responsive, useContainerWidth } from 'react-grid-layout'
+import { Responsive } from 'react-grid-layout'
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -74,12 +74,28 @@ export default function DashboardPage() {
   const [balanceWidgetData, setBalanceWidgetData] = useState<Record<string, BalanceResponse>>({})
   const balanceWidgetCacheRef = useRef<Record<string, BalanceResponse>>({})
 
-  // ─── Grid layout state ───────────────────────────────────────────────────
-  // measureBeforeMount: defer the grid's first render until the real container
-  // width is measured. Without it the grid renders at the hook's 1280px default
-  // and locks its responsive layout there, so on a wide (max-w-[160rem]) page the
-  // widgets stay crammed into a ~1280px band on the left.
-  const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
+  // Measure the grid container with a callback ref so the observer attaches
+  // *after* loading finishes and the node is in the DOM. useContainerWidth's
+  // measureBeforeMount option ran its effect while the page still showed the
+  // loading spinner (ref unset), so `mounted` stayed false and the widgets
+  // never rendered.
+  const [gridWidth, setGridWidth] = useState(0)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect()
+      resizeObserverRef.current = null
+    }
+    if (!node) return
+    const update = () => {
+      const w = node.getBoundingClientRect().width
+      if (w > 0) setGridWidth(w)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    resizeObserverRef.current = observer
+  }, [])
   const [savedLayouts, setSavedLayouts] = useState<DashboardLayouts | null>(null)
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -637,13 +653,14 @@ export default function DashboardPage() {
     toast.success('Dashboard layout reset to default')
   }, [session?.user, userId])
 
-  // ─── Cleanup timeout on unmount ──────────────────────────────────────────
+  // ─── Cleanup timeout / observer on unmount ───────────────────────────────
 
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
       }
+      resizeObserverRef.current?.disconnect()
     }
   }, [])
 
@@ -681,7 +698,15 @@ export default function DashboardPage() {
 
   // ─── Empty state ─────────────────────────────────────────────────────────
 
-  if (!stats || stats.totalBills === 0) {
+  const hasCreditCardAccounts = (creditCardData?.accounts?.length ?? 0) > 0
+  const hasDashboardData =
+    Boolean(stats?.hasAnyData) ||
+    (stats != null && stats.totalBills > 0) ||
+    (stats?.upcomingBillsList?.length ?? 0) > 0 ||
+    (stats?.recentBills?.length ?? 0) > 0 ||
+    hasCreditCardAccounts
+
+  if (!hasDashboardData) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
@@ -776,10 +801,10 @@ export default function DashboardPage() {
             </p>
           </div>
         ) : (
-          <div ref={containerRef}>
-            {mounted && (
+          <div ref={containerRef} className="w-full">
+            {gridWidth > 0 && (
               <Responsive
-                width={width}
+                width={gridWidth}
                 breakpoints={BREAKPOINTS}
                 cols={COLS}
                 layouts={activeLayouts}
@@ -937,7 +962,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 gap-4">
                       {stats.upcomingBillsList.map((bill) => (
                         <BillCard
-                          key={bill.id}
+                          key={`${bill.id}-${new Date(bill.dueDate).toISOString()}`}
                           bill={bill}
                           onClick={() => {
                             setSelectedBill(bill)
