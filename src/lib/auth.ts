@@ -4,6 +4,15 @@ import KeycloakProvider from 'next-auth/providers/keycloak'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { Role } from '@/generated/prisma/client'
+import { resolveKeycloakRole } from './keycloak-roles'
+
+function roleFromKeycloak(profile: unknown, accessToken?: string | null, idToken?: string | null): Role {
+  return resolveKeycloakRole({
+    profile: (profile ?? null) as Record<string, unknown> | null,
+    accessToken,
+    idToken,
+  }) as Role
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -13,36 +22,13 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.KEYCLOAK_SECRET!,
       issuer: process.env.KEYCLOAK_ISSUER!,
       profile(profile) {
-        // Check multiple places where Keycloak might store roles
-        const realmRoles = profile.realm_access?.roles || []
-        const clientRoles = profile.resource_access?.[process.env.KEYCLOAK_ID!]?.roles || []
-        const directRoles = profile.roles || []
-        
-        // Combine all possible role sources
-        const allRoles = [...realmRoles, ...clientRoles, ...directRoles]
-        
+        // ID token / userinfo usually omit client roles. Final role is resolved
+        // from the access token in the signIn and jwt callbacks.
+        const userRole = roleFromKeycloak(profile)
+
         if (process.env.NODE_ENV === 'development') {
           console.log('Keycloak profile:', JSON.stringify(profile, null, 2))
-          console.log('All roles found:', allRoles)
-        }
-        
-        // Determine role based on Keycloak roles (case-insensitive)
-        let userRole: Role = Role.USER // Default role
-
-        if (allRoles.some(role =>
-          role.toLowerCase() === 'admin' ||
-          role.toLowerCase() === 'it_admin' ||
-          role.toLowerCase() === 'administrator'
-        )) {
-          userRole = Role.ADMIN
-        } else if (allRoles.some(role => role.toLowerCase() === 'guest')) {
-          userRole = Role.GUEST
-        } else if (allRoles.some(role => role.toLowerCase() === 'user')) {
-          userRole = Role.USER // Explicit user role
-        }
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Determined role:', userRole, 'from roles:', allRoles)
+          console.log('Profile-derived role (may be incomplete):', userRole)
         }
 
         return {
@@ -95,27 +81,28 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       // Handle Keycloak SSO users
       if (account?.provider === 'keycloak') {
+        const userRole = roleFromKeycloak(profile, account.access_token, account.id_token)
+        user.role = userRole
+
         if (process.env.NODE_ENV === 'development') {
-          console.log('Keycloak access_token (first 50 chars):', account?.access_token?.substring(0, 50))
-          console.log('Account object keys:', Object.keys(account || {}))
+          console.log('Keycloak SSO role from access token:', userRole)
         }
-        
+
         try {
           const existingUser = await prisma.user.findUnique({
             where: { id: user.id! }, // Use Keycloak sub (UUID) as primary key
           })
 
           if (!existingUser) {
-            // Create new user from Keycloak (role determined by Keycloak roles)
             if (process.env.NODE_ENV === 'development') {
-              console.log('Creating new Keycloak user:', user.email, 'Role:', user.role)
+              console.log('Creating new Keycloak user:', user.email, 'Role:', userRole)
             }
             await prisma.user.create({
               data: {
                 id: user.id!, // Use Keycloak's sub as ID
                 email: user.email!,
                 name: user.name || 'User',
-                role: user.role as Role,
+                role: userRole,
                 isKeycloakUser: true,
               },
             })
@@ -123,18 +110,18 @@ export const authOptions: NextAuthOptions = {
               console.log('Keycloak user created successfully')
             }
           } else {
-            // Update existing user's role in case it changed in Keycloak
-            if (existingUser.role !== user.role) {
+            // Keep local role in sync with the Keycloak client role
+            if (existingUser.role !== userRole) {
               if (process.env.NODE_ENV === 'development') {
-                console.log('Updating user role:', existingUser.email, 'from', existingUser.role, 'to', user.role)
+                console.log('Updating user role:', existingUser.email, 'from', existingUser.role, 'to', userRole)
               }
               await prisma.user.update({
                 where: { id: user.id! },
-                data: { role: user.role as Role },
+                data: { role: userRole },
               })
             }
             if (process.env.NODE_ENV === 'development') {
-              console.log('Existing Keycloak user logging in:', user.email, 'Role:', user.role)
+              console.log('Existing Keycloak user logging in:', user.email, 'Role:', userRole)
             }
           }
         } catch (error) {
@@ -144,7 +131,7 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, profile }) {
       if (user) {
         // Use Keycloak's sub (UUID) directly as the ID
         token.id = user.id
@@ -152,6 +139,12 @@ export const authOptions: NextAuthOptions = {
         token.isKeycloakUser = user.isKeycloakUser
         token.department = user.department
       }
+
+      // Client roles live on the access token, not the ID-token profile.
+      if (account?.provider === 'keycloak') {
+        token.role = roleFromKeycloak(profile, account.access_token, account.id_token)
+      }
+
       return token
     },
     async session({ session, token }) {
