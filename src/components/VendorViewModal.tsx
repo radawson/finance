@@ -117,6 +117,22 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
                         {account.accountNumber}
                         {account.accountNumber && account.accountNumber.length >= 4 && ` (Last 4: ${account.accountNumber.slice(-4)})`}
                       </div>
+                      {(account.balance ||
+                        account.initialValue ||
+                        account.avgMonthlyPayment ||
+                        account.interestRate) && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          {[
+                            account.balance != null && `Balance $${Number(account.balance).toFixed(2)}`,
+                            account.initialValue != null && `Original $${Number(account.initialValue).toFixed(2)}`,
+                            account.avgMonthlyPayment != null &&
+                              `Avg $${Number(account.avgMonthlyPayment).toFixed(2)}/mo`,
+                            account.interestRate != null && `${Number(account.interestRate).toFixed(2)}%`,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

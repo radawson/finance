@@ -12,6 +12,24 @@ import Link from 'next/link'
 import { useSocket } from '@/components/SocketProvider'
 import { SocketEvents } from '@/lib/socketio-server'
 
+const emptyAccountForm = {
+  accountNumber: '',
+  accountTypeId: '',
+  balance: '',
+  interestRate: '',
+  initialValue: '',
+  avgMonthlyPayment: '',
+  nickname: '',
+  notes: '',
+}
+
+function formatMoney(value: unknown): string | null {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  if (Number.isNaN(n)) return null
+  return n.toFixed(2)
+}
+
 export default function VendorDetailsPage() {
   const { data: session } = useSession()
   const params = useParams()
@@ -26,14 +44,7 @@ export default function VendorDetailsPage() {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<VendorAccount | null>(null)
-  const [accountFormData, setAccountFormData] = useState({
-    accountNumber: '',
-    accountTypeId: '',
-    balance: '',
-    interestRate: '',
-    nickname: '',
-    notes: '',
-  })
+  const [accountFormData, setAccountFormData] = useState(emptyAccountForm)
   const [quickAddFormData, setQuickAddFormData] = useState({
     name: '',
   })
@@ -181,6 +192,8 @@ export default function VendorDetailsPage() {
           accountTypeId: accountFormData.accountTypeId || null,
           balance: accountFormData.balance || null,
           interestRate: accountFormData.interestRate || null,
+          initialValue: accountFormData.initialValue || null,
+          avgMonthlyPayment: accountFormData.avgMonthlyPayment || null,
           nickname: accountFormData.nickname || null,
           notes: accountFormData.notes || null,
         }),
@@ -190,14 +203,7 @@ export default function VendorDetailsPage() {
         toast.success(editingAccount ? 'Account updated' : 'Account created')
         setIsAccountModalOpen(false)
         setEditingAccount(null)
-        setAccountFormData({
-          accountNumber: '',
-          accountTypeId: '',
-          balance: '',
-          interestRate: '',
-          nickname: '',
-          notes: '',
-        })
+        setAccountFormData(emptyAccountForm)
         fetchAccounts()
       } else {
         const data = await response.json()
@@ -263,6 +269,8 @@ export default function VendorDetailsPage() {
       accountTypeId: account.accountTypeId || account.type?.id || '',
       balance: account.balance != null ? String(account.balance) : '',
       interestRate: account.interestRate != null ? String(account.interestRate) : '',
+      initialValue: account.initialValue != null ? String(account.initialValue) : '',
+      avgMonthlyPayment: account.avgMonthlyPayment != null ? String(account.avgMonthlyPayment) : '',
       nickname: account.nickname || '',
       notes: account.notes || '',
     })
@@ -336,14 +344,7 @@ export default function VendorDetailsPage() {
             <button
               onClick={() => {
                 setEditingAccount(null)
-                setAccountFormData({
-                  accountNumber: '',
-                  accountTypeId: '',
-                  balance: '',
-                  interestRate: '',
-                  nickname: '',
-                  notes: '',
-                })
+                setAccountFormData(emptyAccountForm)
                 setIsAccountModalOpen(true)
               }}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -381,11 +382,23 @@ export default function VendorDetailsPage() {
                             : account.accountNumber}
                           {account.type?.name && ` • ${account.type.name}`}
                         </p>
-                        {(account.balance || account.interestRate) && (
+                        {(account.balance ||
+                          account.interestRate ||
+                          account.initialValue ||
+                          account.avgMonthlyPayment) && (
                           <p className="text-sm text-gray-600 mt-1">
-                            {account.balance && `Balance: $${Number(account.balance).toFixed(2)}`}
-                            {account.balance && account.interestRate && ' • '}
-                            {account.interestRate && `Rate: ${Number(account.interestRate).toFixed(2)}%`}
+                            {[
+                              formatMoney(account.balance) && `Balance: $${formatMoney(account.balance)}`,
+                              formatMoney(account.initialValue) &&
+                                `Original: $${formatMoney(account.initialValue)}`,
+                              formatMoney(account.avgMonthlyPayment) &&
+                                `Avg payment: $${formatMoney(account.avgMonthlyPayment)}/mo`,
+                              account.interestRate != null &&
+                                account.interestRate !== '' &&
+                                `Rate: ${Number(account.interestRate).toFixed(2)}%`,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ')}
                           </p>
                         )}
                         {account.notes && (
@@ -511,8 +524,45 @@ export default function VendorDetailsPage() {
                       value={accountFormData.interestRate}
                       onChange={(e) => {
                         const val = e.target.value
-                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                        if (val === '' || /^\d*\.?\d{0,4}$/.test(val)) {
                           setAccountFormData({ ...accountFormData, interestRate: val })
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Initial value
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={accountFormData.initialValue}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                          setAccountFormData({ ...accountFormData, initialValue: val })
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Original principal"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Starting amount for loans, mortgages, etc.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Avg monthly payment
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={accountFormData.avgMonthlyPayment}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                          setAccountFormData({ ...accountFormData, avgMonthlyPayment: val })
                         }
                       }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -544,14 +594,7 @@ export default function VendorDetailsPage() {
                     onClick={() => {
                       setIsAccountModalOpen(false)
                       setEditingAccount(null)
-                      setAccountFormData({
-                        accountNumber: '',
-                        accountTypeId: '',
-                        balance: '',
-                        interestRate: '',
-                        nickname: '',
-                        notes: '',
-                      })
+                      setAccountFormData(emptyAccountForm)
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >

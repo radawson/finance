@@ -266,18 +266,20 @@ model AccountType {
 }
 
 model VendorAccount {
-  id            String   @id @default(uuid())
-  vendorId      String
-  accountNumber String
-  accountTypeId String?  // Optional: Reference to AccountType
-  accountType   String?  // Optional: Legacy field for migration compatibility (will be removed later)
-  balance       Decimal?
-  interestRate  Decimal?
-  nickname      String?  // Optional: "Primary Mortgage", "HELOC", etc.
-  notes         String?  // Optional notes
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  vendorId           String
+  accountNumber      String
+  accountTypeId      String?  // Optional: Reference to AccountType
+  accountType        String?  // Optional: Legacy field for migration compatibility (will be removed later)
+  balance            Decimal?
+  interestRate       Decimal?
+  initialValue       Decimal? @db.Decimal(12, 2) // original principal / starting value
+  avgMonthlyPayment  Decimal? @db.Decimal(12, 2) // typical monthly payment
+  nickname           String?  // Optional: "Primary Mortgage", "HELOC", etc.
+  notes              String?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // Relations
   vendor           Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)

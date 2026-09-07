@@ -65,6 +65,8 @@ export interface VendorAccount {
   accountType?: string | null  // Legacy field for backward compatibility
   balance?: DecimalValue | null  // Prisma Decimal on server, string on client
   interestRate?: DecimalValue | null  // Prisma Decimal on server, string on client
+  initialValue?: DecimalValue | null  // Original principal / starting value
+  avgMonthlyPayment?: DecimalValue | null  // Typical monthly payment
   nickname?: string | null
   notes?: string | null
   isActive: boolean
