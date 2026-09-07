@@ -151,7 +151,7 @@ export default function CategoryPieChart({ data, size = 200 }: CategoryPieChartP
                   ${slice.totalAmount.toFixed(2)}
                 </div>
                 <div className="text-sm text-gray-500">
-                  {slice.count} bill{slice.count !== 1 ? 's' : ''} •{' '}
+                  {slice.count} item{slice.count !== 1 ? 's' : ''} •{' '}
                   {(slice.percentage * 100).toFixed(1)}%
                 </div>
               </div>

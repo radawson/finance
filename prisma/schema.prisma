@@ -16,7 +16,6 @@ enum Role {
 }
 
 enum BillStatus {
-  PREDICTED
   PENDING
   DUE_SOON
   OVERDUE
@@ -28,6 +27,20 @@ enum RecurrenceFrequency {
   MONTHLY
   QUARTERLY
   BIANNUALLY
+  YEARLY
+}
+
+// Drives how a category is projected forward:
+// FIXED    -> projected from scheduled obligations (recurring bills)
+// VARIABLE -> projected from budget envelopes (groceries, dining, fuel, ...)
+enum CategoryKind {
+  FIXED
+  VARIABLE
+}
+
+enum EnvelopePeriod {
+  WEEKLY
+  MONTHLY
   YEARLY
 }
 
@@ -55,23 +68,28 @@ model User {
   notifications     Notification[]
   notes             Note[]
   dashboardPrefs    UserDashboardPrefs?
+  expenses          Expense[]
+  budgetEnvelopes   BudgetEnvelope[]
 
   @@map("users")
 }
 
 model Category {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   name        String
   description String?
   color       String?
-  isGlobal    Boolean  @default(false)
+  kind        CategoryKind @default(VARIABLE) // FIXED -> obligations; VARIABLE -> envelopes
+  isGlobal    Boolean      @default(false)
   userId      String?  // Null for global categories
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   // Relations
-  user  User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bills Bill[]
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bills     Bill[]
+  expenses  Expense[]
+  envelopes BudgetEnvelope[]
 
   @@unique([name, userId])
   @@map("categories")
@@ -100,6 +118,7 @@ model Vendor {
   createdBy User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
   bills     Bill[]
   accounts  VendorAccount[]
+  expenses  Expense[]
 
   @@map("vendors")
 }
@@ -121,9 +140,6 @@ model Bill {
   nextDueDate          DateTime?
   invoiceNumber        String?   // Optional invoice number from vendor
   tags                 String[]  @default([]) // Array of tag strings (max 128 chars each)
-  templateBillId       String?   // FK to the recurring bill that generated this prediction
-  predictionConfidence Decimal?  @db.Decimal(3, 2) // 0.00–1.00 confidence score
-  predictionMethod     String?   // 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -133,8 +149,7 @@ model Bill {
   vendorAccount     VendorAccount?    @relation(fields: [vendorAccountId], references: [id], onDelete: SetNull)
   createdBy         User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
   recurrencePattern RecurrencePattern?
-  templateBill      Bill?             @relation("PredictionTemplate", fields: [templateBillId], references: [id], onDelete: SetNull)
-  predictions       Bill[]            @relation("PredictionTemplate")
+  expense           Expense?          // The ledger entry recorded when this obligation is paid
   comments          Comment[]
   attachments       Attachment[]
 
@@ -155,6 +170,54 @@ model RecurrencePattern {
   bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
 
   @@map("recurrence_patterns")
+}
+
+// The ledger: a single source of truth for every actual outflow of money.
+// Includes per-trip spend (groceries, fuel, dining) and the payment of an
+// obligation (Bill). When a Bill is marked PAID, a linked Expense is created
+// (billId set). A charge is either still owed (Bill) or already spent
+// (Expense) — never both — which removes any double-counting.
+model Expense {
+  id          String   @id @default(uuid())
+  date        DateTime // When the money actually left
+  amount      Decimal  @db.Decimal(10, 2)
+  categoryId  String
+  payee       String?  // Free-text store/merchant ("Tesco", "Shell")
+  note        String?
+  vendorId    String?  // Optional structured vendor link
+  billId      String?  @unique // Set when this expense is the payment of an obligation
+  createdById String?  // Nullable for anonymous entries
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  category  Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  vendor    Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  bill      Bill?    @relation(fields: [billId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById, date])
+  @@index([categoryId, date])
+  @@map("expenses")
+}
+
+// A budget target for a VARIABLE category, carried forward each period.
+// One envelope per (user, category).
+model BudgetEnvelope {
+  id         String         @id @default(uuid())
+  userId     String
+  categoryId String
+  amount     Decimal        @db.Decimal(10, 2)
+  period     EnvelopePeriod @default(MONTHLY)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@map("budget_envelopes")
 }
 
 model Comment {

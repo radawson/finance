@@ -2,25 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { BillStatus, Role } from '@/generated/prisma/client'
-import { getBillsDueSoon, getOverdueBills, getUpcomingBills } from '@/lib/bills'
+import { Role } from '@/generated/prisma/client'
+import { getBillsDueSoon, getOverdueBills, getUpcomingBills, calculateBillStatus } from '@/lib/bills'
 import { getPeriodStartDate, getPeriodEndDate, CategoryPeriod } from '@/lib/date-utils'
-import { generateBudgetWithForecast } from '@/lib/analysis'
-import { AnalysisPeriod, Bill } from '@/types'
+import { addDays } from 'date-fns'
+import { forecastObligations, generateBudgetWithForecast } from '@/lib/analysis'
+import { AnalysisPeriod, Bill, PredictedBill } from '@/types'
+import { isActualBill } from '@/lib/business/period-ledger'
 import {
-  filterActualBillsInPeriod,
-  categoryBreakdownFromBills,
-  isActualBill,
-} from '@/lib/business/period-ledger'
+  filterExpensesInPeriod,
+  categoryBreakdownFromExpenses,
+} from '@/lib/business/ledger'
 import { categoryBreakdownFromMergeables, predictedBillToMergeable } from '@/lib/business/merge-forecast'
+import { isDateMatch, shouldMatchBill } from '@/lib/business/recurring-bills'
 
 function normalizeBillFromPrisma(raw: any): Bill {
   return {
     ...raw,
     amount: Number(raw.amount),
-    predictionConfidence:
-      raw.predictionConfidence != null ? Number(raw.predictionConfidence) : null,
-    predictionMethod: raw.predictionMethod as Bill['predictionMethod'],
     dueDate: new Date(raw.dueDate),
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),
@@ -40,6 +39,17 @@ function normalizeBillFromPrisma(raw: any): Bill {
   } as Bill
 }
 
+function forecastSlotToDashboardBill(slot: PredictedBill, template: Bill): Bill {
+  const dueDate = new Date(slot.dueDate)
+  return {
+    ...template,
+    amount: slot.amount,
+    dueDate,
+    paidDate: null,
+    status: calculateBillStatus(dueDate, null),
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -52,9 +62,7 @@ export async function GET(req: NextRequest) {
     const categoryPeriod = (searchParams.get('categoryPeriod') || 'month') as CategoryPeriod
     const includeForecast = searchParams.get('includeForecast') === 'true'
 
-    const where: any = {
-      status: { not: BillStatus.PREDICTED },
-    }
+    const where: any = {}
 
     if (session.user.role !== Role.ADMIN) {
       where.OR = [{ createdById: session.user.id }, { createdById: null }]
@@ -65,45 +73,22 @@ export async function GET(req: NextRequest) {
       include: {
         category: true,
         vendor: true,
+        recurrencePattern: true,
       },
     })
 
     const allBills = allBillsRaw.map(normalizeBillFromPrisma)
     const actualBillsOnly = allBills.filter(isActualBill)
 
-    const predictedWhere: any = {
-      status: BillStatus.PREDICTED,
-    }
-    if (session.user.role !== Role.ADMIN) {
-      predictedWhere.OR = [{ createdById: session.user.id }, { createdById: null }]
-    }
-    const predictedBillsRaw = await prisma.bill.findMany({
-      where: predictedWhere,
-      include: {
-        category: true,
-        vendor: true,
-        vendorAccount: { include: { type: true } },
-      },
-      orderBy: { dueDate: 'asc' },
-    })
-
-    const predictedBillsCount = predictedBillsRaw.length
-    const nowForMissing = new Date()
-    nowForMissing.setHours(0, 0, 0, 0)
-    const missingBillsCount = predictedBillsRaw.filter(
-      (b) => new Date(b.dueDate) < nowForMissing,
-    ).length
-
-    const totalBills = actualBillsOnly.length
     const pendingBills = actualBillsOnly.filter((b) => b.status === 'PENDING').length
-    const dueSoonBills = actualBillsOnly.filter((b) => b.status === 'DUE_SOON').length
     const overdueBills = actualBillsOnly.filter((b) => b.status === 'OVERDUE').length
     const paidBills = actualBillsOnly.filter((b) => b.status === 'PAID').length
     const skippedBills = actualBillsOnly.filter((b) => b.status === 'SKIPPED').length
 
-    const upcomingBills7 = getBillsDueSoon(actualBillsOnly, 7)
+    const upcomingActuals7 = getBillsDueSoon(actualBillsOnly, 7)
     const upcomingBills30 = getUpcomingBills(actualBillsOnly, 30)
     const overdueBillsList = getOverdueBills(actualBillsOnly)
+    const recurringTemplates = allBills.filter((b) => b.isRecurring && b.recurrencePattern)
 
     const now = new Date()
     const today = new Date(now)
@@ -111,44 +96,50 @@ export async function GET(req: NextRequest) {
     const periodStartDate = getPeriodStartDate(categoryPeriod, now)
     const periodEndDate = getPeriodEndDate(categoryPeriod, today)
 
-    const billsForCategoryBreakdown = filterActualBillsInPeriod(
-      actualBillsOnly,
-      periodStartDate,
-      today,
-    )
-    const categoryBreakdown = categoryBreakdownFromBills(billsForCategoryBreakdown)
+    // Actual spend by category comes from the ledger (expenses), not bills.
+    const expenseWhere: any = {}
+    if (session.user.role !== Role.ADMIN) {
+      expenseWhere.OR = [{ createdById: session.user.id }, { createdById: null }]
+    }
+    const expensesForBreakdown = await prisma.expense.findMany({
+      where: expenseWhere,
+      include: { category: true },
+    })
 
-    const projectedActuals = filterActualBillsInPeriod(
-      actualBillsOnly,
-      periodStartDate,
-      periodEndDate,
+    const categoryBreakdown = categoryBreakdownFromExpenses(
+      filterExpensesInPeriod(expensesForBreakdown, periodStartDate, today),
     )
-    const projectedCategoryBreakdown = categoryBreakdownFromBills(projectedActuals)
+    const projectedCategoryBreakdown = categoryBreakdownFromExpenses(
+      filterExpensesInPeriod(expensesForBreakdown, periodStartDate, periodEndDate),
+    )
+
+    // Budget burn-down: each of the user's envelopes vs this-period spend.
+    const spentMap = new Map<string, number>()
+    for (const c of categoryBreakdown) spentMap.set(c.categoryId, c.totalAmount)
+    const userEnvelopes = await prisma.budgetEnvelope.findMany({
+      where: { userId: session.user.id },
+      include: { category: true },
+    })
+    const budgetVsActual = userEnvelopes
+      .map((e) => {
+        const budget = Number(e.amount)
+        const spent = spentMap.get(e.categoryId) ?? 0
+        return {
+          categoryId: e.categoryId,
+          categoryName: e.category?.name ?? 'Unknown',
+          color: e.category?.color ?? null,
+          budget,
+          spent,
+          remaining: budget - spent,
+        }
+      })
+      .sort((a, b) => a.categoryName.localeCompare(b.categoryName))
 
     let forecastCategoryBreakdown:
-      | ReturnType<typeof categoryBreakdownFromBills>
+      | ReturnType<typeof categoryBreakdownFromExpenses>
       | undefined
 
     if (includeForecast) {
-      const recurringBillsWhere: any = { isRecurring: true }
-      if (session.user.role !== Role.ADMIN) {
-        recurringBillsWhere.OR = [
-          { createdById: session.user.id },
-          { createdById: null },
-        ]
-      }
-
-      const recurringBillsRaw = await prisma.bill.findMany({
-        where: recurringBillsWhere,
-        include: {
-          category: true,
-          vendor: true,
-          recurrencePattern: true,
-        },
-      })
-
-      const recurringBills = recurringBillsRaw.map(normalizeBillFromPrisma)
-
       const analysisPeriodMap: Record<CategoryPeriod, AnalysisPeriod> = {
         week: 'monthly',
         month: 'monthly',
@@ -158,13 +149,12 @@ export async function GET(req: NextRequest) {
       const analysisPeriod = analysisPeriodMap[categoryPeriod]
 
       const merged = generateBudgetWithForecast(
-        recurringBills,
+        recurringTemplates,
         periodStartDate,
         periodEndDate,
         analysisPeriod,
+        expensesForBreakdown,
         actualBillsOnly,
-        [],
-        { includeAutoDetect: false, useSimpleForecast: true },
       )
 
       const categoryLookup = new Map<
@@ -172,14 +162,6 @@ export async function GET(req: NextRequest) {
         { name: string; color: string | null }
       >()
       for (const bill of allBills) {
-        if (bill.category) {
-          categoryLookup.set(bill.categoryId, {
-            name: bill.category.name,
-            color: bill.category.color ?? null,
-          })
-        }
-      }
-      for (const bill of recurringBills) {
         if (bill.category) {
           categoryLookup.set(bill.categoryId, {
             name: bill.category.name,
@@ -201,32 +183,59 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, 10)
 
-    const upcomingBillsList = upcomingBills7
-      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
-      .slice(0, 10)
+    const horizonStart = new Date(now)
+    horizonStart.setHours(0, 0, 0, 0)
+    const horizonEnd = addDays(horizonStart, 7)
+    horizonEnd.setHours(23, 59, 59, 999)
+    const templatesById = new Map(recurringTemplates.map((b) => [b.id, b]))
+    const forecastUpcoming = forecastObligations(
+      recurringTemplates,
+      horizonStart,
+      horizonEnd,
+      actualBillsOnly,
+    )
+      .map((slot) => {
+        const template = slot.billId ? templatesById.get(slot.billId) : undefined
+        return template ? forecastSlotToDashboardBill(slot, template) : null
+      })
+      .filter((b): b is Bill => b != null)
+
+    const upcomingBillsList = [...upcomingActuals7]
+    for (const forecastBill of forecastUpcoming) {
+      const alreadyListed = upcomingBillsList.some(
+        (actual) =>
+          shouldMatchBill(actual, forecastBill) &&
+          isDateMatch(new Date(actual.dueDate), new Date(forecastBill.dueDate)),
+      )
+      if (!alreadyListed) upcomingBillsList.push(forecastBill)
+    }
+    upcomingBillsList.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+    const upcomingBillsListTrimmed = upcomingBillsList.slice(0, 10)
 
     const stats = {
-      totalBills,
+      totalBills: allBills.length,
       pendingBills,
-      dueSoonBills,
+      dueSoonBills: upcomingBillsListTrimmed.length,
       overdueBills,
       paidBills,
       skippedBills,
-      predictedBills: predictedBillsCount,
-      missingBills: missingBillsCount,
-      upcomingBills: upcomingBills7.length,
+      upcomingBills: upcomingBillsListTrimmed.length,
       upcomingBills30: upcomingBills30.length,
+      hasAnyData:
+        allBills.length > 0 ||
+        expensesForBreakdown.length > 0 ||
+        userEnvelopes.length > 0,
       categoryBreakdown,
       projectedCategoryBreakdown,
+      budgetVsActual,
       ...(forecastCategoryBreakdown
         ? { forecastCategoryBreakdown }
         : {}),
       recentBills,
-      upcomingBillsList,
+      upcomingBillsList: upcomingBillsListTrimmed,
       overdueBillsList: overdueBillsList
         .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
         .slice(0, 10),
-      predictedBillsList: predictedBillsRaw.slice(0, 20),
     }
 
     return NextResponse.json(stats)

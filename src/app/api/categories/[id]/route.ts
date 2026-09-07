@@ -9,6 +9,7 @@ const updateCategorySchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional().nullable(),
   color: z.string().optional().nullable(),
+  kind: z.enum(['FIXED', 'VARIABLE']).optional(),
 })
 
 export async function PATCH(
@@ -85,6 +86,7 @@ export async function PATCH(
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.color !== undefined && { color: data.color }),
+        ...(data.kind !== undefined && { kind: data.kind }),
       },
       include: {
         user: {

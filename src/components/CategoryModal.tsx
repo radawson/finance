@@ -75,7 +75,7 @@ export default function CategoryModal({ isOpen, onClose, category, onSuccess }: 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full my-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
           {category ? 'Edit Category' : 'New Category'}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { Responsive, useContainerWidth } from 'react-grid-layout'
+import { Responsive } from 'react-grid-layout'
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -13,7 +13,7 @@ import BillViewModal from '@/components/BillViewModal'
 import DashboardWidget from '@/components/DashboardWidget'
 import DashboardWidgetPalette from '@/components/DashboardWidgetPalette'
 import { Bill, DashboardStats } from '@/types'
-import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, Eye, RotateCcw, LayoutGrid } from 'lucide-react'
+import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, RotateCcw, LayoutGrid, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -73,11 +73,29 @@ export default function DashboardPage() {
   const [balanceWidgetPeriods, setBalanceWidgetPeriods] = useState<Record<string, string>>({})
   const [balanceWidgetData, setBalanceWidgetData] = useState<Record<string, BalanceResponse>>({})
   const balanceWidgetCacheRef = useRef<Record<string, BalanceResponse>>({})
-  const [predictedBills, setPredictedBills] = useState<Bill[]>([])
-  const [isPredictedLoading, setIsPredictedLoading] = useState(false)
 
-  // ─── Grid layout state ───────────────────────────────────────────────────
-  const { width, containerRef, mounted } = useContainerWidth()
+  // Measure the grid container with a callback ref so the observer attaches
+  // *after* loading finishes and the node is in the DOM. useContainerWidth's
+  // measureBeforeMount option ran its effect while the page still showed the
+  // loading spinner (ref unset), so `mounted` stayed false and the widgets
+  // never rendered.
+  const [gridWidth, setGridWidth] = useState(0)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect()
+      resizeObserverRef.current = null
+    }
+    if (!node) return
+    const update = () => {
+      const w = node.getBoundingClientRect().width
+      if (w > 0) setGridWidth(w)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    resizeObserverRef.current = observer
+  }, [])
   const [savedLayouts, setSavedLayouts] = useState<DashboardLayouts | null>(null)
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -257,29 +275,13 @@ export default function DashboardPage() {
     [balanceWidgetPeriods]
   )
 
-  const fetchPredictedBills = useCallback(async () => {
-    setIsPredictedLoading(true)
-    try {
-      const res = await fetch('/api/bills/predicted')
-      if (res.ok) {
-        const data = await res.json()
-        setPredictedBills(data)
-      }
-    } catch (error) {
-      // Silently fail - predicted bills section just won't show
-    } finally {
-      setIsPredictedLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (session) {
       fetchData()
       fetchCreditCardBalances()
       fetchAccountTypes()
-      fetchPredictedBills()
     }
-  }, [session, fetchData, fetchCreditCardBalances, fetchAccountTypes, fetchPredictedBills])
+  }, [session, fetchData, fetchCreditCardBalances, fetchAccountTypes])
 
   useEffect(() => {
     balanceWidgetInstances.forEach((instance) => {
@@ -296,8 +298,8 @@ export default function DashboardPage() {
       ids.add(WIDGET_IDS.STATS)
     }
 
-    if (predictedBills.length > 0 || isPredictedLoading) {
-      ids.add(WIDGET_IDS.EXPECTED_BILLS)
+    if (stats?.budgetVsActual && stats.budgetVsActual.length > 0) {
+      ids.add(WIDGET_IDS.BUDGET)
     }
 
     if (creditCardData) {
@@ -324,7 +326,7 @@ export default function DashboardPage() {
     }
 
     return ids
-  }, [stats, predictedBills, isPredictedLoading, creditCardData])
+  }, [stats, creditCardData])
 
   // ─── Compute effective visible widgets ───────────────────────────────────
   // visibleWidgetIds = (userVisibleWidgetIds ?? dataAvailableIds) ∩ dataAvailableIds
@@ -651,13 +653,14 @@ export default function DashboardPage() {
     toast.success('Dashboard layout reset to default')
   }, [session?.user, userId])
 
-  // ─── Cleanup timeout on unmount ──────────────────────────────────────────
+  // ─── Cleanup timeout / observer on unmount ───────────────────────────────
 
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
       }
+      resizeObserverRef.current?.disconnect()
     }
   }, [])
 
@@ -695,22 +698,36 @@ export default function DashboardPage() {
 
   // ─── Empty state ─────────────────────────────────────────────────────────
 
-  if (!stats || stats.totalBills === 0) {
+  const hasCreditCardAccounts = (creditCardData?.accounts?.length ?? 0) > 0
+  const hasDashboardData =
+    Boolean(stats?.hasAnyData) ||
+    (stats != null && stats.totalBills > 0) ||
+    (stats?.upcomingBillsList?.length ?? 0) > 0 ||
+    (stats?.recentBills?.length ?? 0) > 0 ||
+    hasCreditCardAccounts
+
+  if (!hasDashboardData) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <main className="app-page-container">
+        <main className="app-page-container-wide">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Welcome, {session?.user?.name || 'Guest'}</h1>
               <p className="text-gray-600 mt-1">Here&apos;s an overview of your bills</p>
             </div>
-            <Link href="/bills/new" className="btn btn-primary flex items-center gap-2">
-              <Plus size={20} />
-              New Bill
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/expenses" className="btn btn-secondary flex items-center gap-2">
+                <ShoppingCart size={20} />
+                Log Expense
+              </Link>
+              <Link href="/bills/new" className="btn btn-primary flex items-center gap-2">
+                <Plus size={20} />
+                New Bill
+              </Link>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="card-flush p-12 text-center">
             <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No bills yet</h3>
             <p className="mt-1 text-sm text-gray-500">Get started by creating a new bill.</p>
@@ -739,13 +756,13 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="app-page-container">
-        <div className="flex justify-between items-center mb-8">
+      <main className="app-page-container-wide">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome, {session?.user?.name || 'Guest'}</h1>
-            <p className="text-gray-600 mt-1">Here&apos;s an overview of your bills</p>
+            <h1 className="page-title">Welcome, {session?.user?.name || 'Guest'}</h1>
+            <p className="page-subtitle">Here&apos;s an overview of your bills</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <DashboardWidgetPalette
               visibleWidgetIds={userVisibleWidgetIds}
               dataAvailableIds={dataAvailableIds}
@@ -764,6 +781,10 @@ export default function DashboardPage() {
               <RotateCcw size={16} />
               Reset Layout
             </button>
+            <Link href="/expenses" className="btn btn-secondary flex items-center gap-2">
+              <ShoppingCart size={20} />
+              Log Expense
+            </Link>
             <Link href="/bills/new" className="btn btn-primary flex items-center gap-2">
               <Plus size={20} />
               New Bill
@@ -772,7 +793,7 @@ export default function DashboardPage() {
         </div>
 
         {showEmptyGrid ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+          <div className="card-flush p-12 text-center">
             <LayoutGrid className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No widgets visible</h3>
             <p className="mt-1 text-sm text-gray-500">
@@ -780,10 +801,10 @@ export default function DashboardPage() {
             </p>
           </div>
         ) : (
-          <div ref={containerRef}>
-            {mounted && (
+          <div ref={containerRef} className="w-full">
+            {gridWidth > 0 && (
               <Responsive
-                width={width}
+                width={gridWidth}
                 breakpoints={BREAKPOINTS}
                 cols={COLS}
                 layouts={activeLayouts}
@@ -821,12 +842,6 @@ export default function DashboardPage() {
                         color="red"
                       />
                       <StatsCard
-                        title="Predicted"
-                        value={stats?.predictedBills || 0}
-                        icon={Eye}
-                        color="purple"
-                      />
-                      <StatsCard
                         title="Paid"
                         value={stats?.paidBills || 0}
                         icon={CheckCircle}
@@ -836,43 +851,51 @@ export default function DashboardPage() {
                   </DashboardWidget>
                 )}
 
-                {/* Expected Bills Widget */}
-                {visibleWidgetIds.has(WIDGET_IDS.EXPECTED_BILLS) && (
+                {/* Budget Burn-down Widget */}
+                {visibleWidgetIds.has(WIDGET_IDS.BUDGET) && stats?.budgetVsActual && (
                   <DashboardWidget
-                    key={WIDGET_IDS.EXPECTED_BILLS}
-                    widgetId={WIDGET_IDS.EXPECTED_BILLS}
-                    title="Expected Bills (Next 30 Days)"
-                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.EXPECTED_BILLS)}
+                    key={WIDGET_IDS.BUDGET}
+                    widgetId={WIDGET_IDS.BUDGET}
+                    title="Budget Burn-down (this month)"
+                    isCollapsed={collapsedWidgetIds.has(WIDGET_IDS.BUDGET)}
                     onCollapseChange={handleCollapseChange}
-                    badge={
-                      (stats?.missingBills ?? 0) > 0 ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          {stats?.missingBills} missing
-                        </span>
-                      ) : undefined
-                    }
                     action={
-                      <span className="text-sm text-gray-500">
-                        {predictedBills.length} predicted bill{predictedBills.length !== 1 ? 's' : ''}
-                      </span>
+                      <Link href="/budget" className="text-sm text-primary-600 hover:text-primary-700">
+                        Manage →
+                      </Link>
                     }
                   >
-                    {isPredictedLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mr-3"></div>
-                        <span className="text-gray-500">Generating predictions...</span>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {predictedBills.map((bill) => (
-                          <BillCard
-                            key={bill.id}
-                            bill={bill}
-                            onClick={() => router.push(`/bills/${bill.id}`)}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <div className="space-y-4">
+                      {stats.budgetVsActual.map((b) => {
+                        const ratio = b.budget > 0 ? b.spent / b.budget : 0
+                        const barColor =
+                          ratio >= 1 ? 'bg-red-500' : ratio >= 0.8 ? 'bg-yellow-500' : 'bg-green-500'
+                        return (
+                          <div key={b.categoryId}>
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <div className="flex items-center">
+                                {b.color && (
+                                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: b.color }} />
+                                )}
+                                <span className="font-medium text-gray-900">{b.categoryName}</span>
+                              </div>
+                              <span className="text-gray-600">
+                                ${b.spent.toFixed(2)} / ${b.budget.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`${barColor} h-2 rounded-full`}
+                                style={{ width: `${Math.min(100, ratio * 100)}%` }}
+                              />
+                            </div>
+                            <p className={`text-xs mt-1 ${b.remaining < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                              ${Math.abs(b.remaining).toFixed(2)} {b.remaining < 0 ? 'over' : 'left'}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </DashboardWidget>
                 )}
 
@@ -939,7 +962,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 gap-4">
                       {stats.upcomingBillsList.map((bill) => (
                         <BillCard
-                          key={bill.id}
+                          key={`${bill.id}-${new Date(bill.dueDate).toISOString()}`}
                           bill={bill}
                           onClick={() => {
                             setSelectedBill(bill)
@@ -1010,7 +1033,7 @@ export default function DashboardPage() {
                     <div className="space-y-6">
                       {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 && (
                         <div>
-                          <h3 className="text-md font-semibold text-gray-900 mb-3">Spent (period to date)</h3>
+                          <h3 className="text-base font-semibold text-gray-900 mb-3">Spent (period to date)</h3>
                           <CategoryPieChart data={stats.categoryBreakdown} size={200} />
                         </div>
                       )}
@@ -1018,8 +1041,8 @@ export default function DashboardPage() {
                       {stats?.projectedCategoryBreakdown &&
                       stats.projectedCategoryBreakdown.length > 0 ? (
                         <div>
-                          <h3 className="text-md font-semibold text-gray-900 mb-3">
-                            Period budget (scheduled bills)
+                          <h3 className="text-base font-semibold text-gray-900 mb-3">
+                            Spent this period
                           </h3>
                           <CategoryPieChart data={stats.projectedCategoryBreakdown} size={200} />
                         </div>
@@ -1027,7 +1050,7 @@ export default function DashboardPage() {
                         stats?.categoryBreakdown &&
                         stats.categoryBreakdown.length > 0 && (
                           <div className="flex items-center justify-center h-32 text-gray-500">
-                            <p>No scheduled bills in this period yet</p>
+                            <p>No spend in this period yet</p>
                           </div>
                         )
                       )}
@@ -1048,7 +1071,7 @@ export default function DashboardPage() {
                         stats?.forecastCategoryBreakdown &&
                         stats.forecastCategoryBreakdown.length > 0 && (
                           <div>
-                            <h3 className="text-md font-semibold text-gray-900 mb-3">
+                            <h3 className="text-base font-semibold text-gray-900 mb-3">
                               With recurring forecast
                             </h3>
                             <CategoryPieChart

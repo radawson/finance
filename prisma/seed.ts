@@ -192,39 +192,48 @@ async function main() {
 
   console.log('📂 Seeding default global categories...')
 
-  const defaultCategories = [
-    { name: 'Alarm', description: 'Alarm system and monitoring', color: '#FF6B35' },
-    { name: 'Auto Repairs', description: 'Automotive Repairs and upgrades', color: '#FF9500' },
-    { name: 'Cleaning', description: 'Cleaning and maintenance', color: '#87CEEB' },
-    { name: 'Credit Card', description: 'Credit card payments', color: '#9B59B6' },
-    { name: 'Dental', description: 'Dental bills and expenses', color: '#5DADE2' },
-    { name: 'Education', description: 'Education and learning', color: '#2ECC71' },
-    { name: 'Electricity', description: 'Electric utility bills', color: '#F1C40F' },
-    { name: 'Entertainment', description: 'Entertainment and leisure', color: '#E74C3C' },
-    { name: 'Food', description: 'Food and groceries', color: '#E67E22' },
-    { name: 'Gas', description: 'Natural gas utility bills', color: '#F39C12' },
-    { name: 'Health', description: 'Healthcare and insurance', color: '#1ABC9C' },
-    { name: 'Home Repair', description: 'Home maintenance and repairs', color: '#16A085' },
-    { name: 'Housing', description: 'Housing and utilities', color: '#3498DB' },
-    { name: 'Insurance', description: 'Insurance premiums', color: '#8E44AD' },
-    { name: 'Internet', description: 'Internet service provider bills', color: '#2980B9' },
-    { name: 'Landscaping', description: 'Landscape and Property Maintenance', color: '#82C1E9' },
-    { name: 'Laundry', description: 'Laundry and dry cleaning', color: '#85C1E9' },
-    { name: 'Loan', description: 'Loan payments', color: '#C0392B' },
-    { name: 'Maintenance', description: 'Maintenance and repairs', color: '#27AE60' },
-    { name: 'Medical', description: 'Medical bills and expenses', color: '#E91E63' },
-    { name: 'Miscellaneous', description: 'Miscellaneous expenses', color: '#95A5A6' },
-    { name: 'Mortgage', description: 'Mortgage payments', color: '#34495E' },
-    { name: 'Oil', description: 'Heating oil bills', color: '#D35400' },
-    { name: 'Other', description: 'Other bills and expenses', color: '#7F8C8D' },
-    { name: 'Personal Care', description: 'Personal care and grooming', color: '#EC407A' },
-    { name: 'Phone', description: 'Phone service bills', color: '#1E90FF' },
-    { name: 'Rent', description: 'Rent payments', color: '#2C3E50' },
-    { name: 'Renovation', description: 'Renovation and remodeling', color: '#F4A460' },
-    { name: 'Security', description: 'Security and surveillance', color: '#DC143C' },
-    { name: 'Transportation', description: 'Transportation costs', color: '#4682B4' },
-    { name: 'Water', description: 'Water utility bills', color: '#00CED1' },
-    { name: 'Travel', description: 'Travel and transportation', color: '#52BE80' },
+  // kind classifies the projection source:
+  //   FIXED    -> scheduled obligations (recurring bills with predictable cadence)
+  //   VARIABLE -> envelope-budgeted day-to-day / irregular spend
+  // These are sensible defaults; users can reclassify on the /budget page.
+  const defaultCategories: Array<{
+    name: string
+    description: string
+    color: string
+    kind: 'FIXED' | 'VARIABLE'
+  }> = [
+    { name: 'Alarm', description: 'Alarm system and monitoring', color: '#FF6B35', kind: 'FIXED' },
+    { name: 'Auto Repairs', description: 'Automotive Repairs and upgrades', color: '#FF9500', kind: 'VARIABLE' },
+    { name: 'Cleaning', description: 'Cleaning and maintenance', color: '#87CEEB', kind: 'VARIABLE' },
+    { name: 'Credit Card', description: 'Credit card payments', color: '#9B59B6', kind: 'FIXED' },
+    { name: 'Dental', description: 'Dental bills and expenses', color: '#5DADE2', kind: 'VARIABLE' },
+    { name: 'Education', description: 'Education and learning', color: '#2ECC71', kind: 'VARIABLE' },
+    { name: 'Electricity', description: 'Electric utility bills', color: '#F1C40F', kind: 'FIXED' },
+    { name: 'Entertainment', description: 'Entertainment and leisure', color: '#E74C3C', kind: 'VARIABLE' },
+    { name: 'Food', description: 'Food and groceries', color: '#E67E22', kind: 'VARIABLE' },
+    { name: 'Gas', description: 'Natural gas utility bills', color: '#F39C12', kind: 'FIXED' },
+    { name: 'Health', description: 'Healthcare and insurance', color: '#1ABC9C', kind: 'VARIABLE' },
+    { name: 'Home Repair', description: 'Home maintenance and repairs', color: '#16A085', kind: 'VARIABLE' },
+    { name: 'Housing', description: 'Housing and utilities', color: '#3498DB', kind: 'FIXED' },
+    { name: 'Insurance', description: 'Insurance premiums', color: '#8E44AD', kind: 'FIXED' },
+    { name: 'Internet', description: 'Internet service provider bills', color: '#2980B9', kind: 'FIXED' },
+    { name: 'Landscaping', description: 'Landscape and Property Maintenance', color: '#82C1E9', kind: 'VARIABLE' },
+    { name: 'Laundry', description: 'Laundry and dry cleaning', color: '#85C1E9', kind: 'VARIABLE' },
+    { name: 'Loan', description: 'Loan payments', color: '#C0392B', kind: 'FIXED' },
+    { name: 'Maintenance', description: 'Maintenance and repairs', color: '#27AE60', kind: 'VARIABLE' },
+    { name: 'Medical', description: 'Medical bills and expenses', color: '#E91E63', kind: 'VARIABLE' },
+    { name: 'Miscellaneous', description: 'Miscellaneous expenses', color: '#95A5A6', kind: 'VARIABLE' },
+    { name: 'Mortgage', description: 'Mortgage payments', color: '#34495E', kind: 'FIXED' },
+    { name: 'Oil', description: 'Heating oil bills', color: '#D35400', kind: 'FIXED' },
+    { name: 'Other', description: 'Other bills and expenses', color: '#7F8C8D', kind: 'VARIABLE' },
+    { name: 'Personal Care', description: 'Personal care and grooming', color: '#EC407A', kind: 'VARIABLE' },
+    { name: 'Phone', description: 'Phone service bills', color: '#1E90FF', kind: 'FIXED' },
+    { name: 'Rent', description: 'Rent payments', color: '#2C3E50', kind: 'FIXED' },
+    { name: 'Renovation', description: 'Renovation and remodeling', color: '#F4A460', kind: 'VARIABLE' },
+    { name: 'Security', description: 'Security and surveillance', color: '#DC143C', kind: 'FIXED' },
+    { name: 'Transportation', description: 'Transportation costs', color: '#4682B4', kind: 'VARIABLE' },
+    { name: 'Water', description: 'Water utility bills', color: '#00CED1', kind: 'FIXED' },
+    { name: 'Travel', description: 'Travel and transportation', color: '#52BE80', kind: 'VARIABLE' },
   ]
 
   let categoriesCreated = 0
@@ -248,6 +257,7 @@ async function main() {
           data: {
             description: category.description,
             color: category.color,
+            kind: category.kind,
           },
         })
         categoriesUpdated++
@@ -258,6 +268,7 @@ async function main() {
             name: category.name,
             description: category.description,
             color: category.color,
+            kind: category.kind,
             isGlobal: true,
             userId: null,
           },

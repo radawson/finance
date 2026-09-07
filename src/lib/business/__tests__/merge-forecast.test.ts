@@ -74,10 +74,6 @@ describe('isActualBill', () => {
     updatedAt: new Date(),
   }
 
-  it('excludes PREDICTED status', () => {
-    expect(isActualBill({ ...base, status: 'PREDICTED' })).toBe(false)
-  })
-
   it('excludes recurring templates', () => {
     expect(isActualBill({ ...base, isRecurring: true })).toBe(false)
   })

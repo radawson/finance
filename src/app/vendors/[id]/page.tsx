@@ -418,7 +418,7 @@ export default function VendorDetailsPage() {
 
         {/* Account Modal */}
         {isAccountModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full my-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 {editingAccount ? 'Edit Account' : 'Add Account'}
@@ -565,7 +565,7 @@ export default function VendorDetailsPage() {
 
         {/* Quick Add Account Type Modal */}
         {isQuickAddModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Add Account Type</h2>
               <form onSubmit={handleQuickAdd} className="space-y-4">

@@ -1,12 +1,9 @@
 import { Bill } from '@/types'
 
 /**
- * Bills that represent real spend events (not templates or system predictions).
+ * Bills that represent real spend events (not recurring templates).
  */
 export function isActualBill(bill: Pick<Bill, 'status' | 'isRecurring'>): boolean {
-  if (bill.status === 'PREDICTED') {
-    return false
-  }
   if (bill.isRecurring) {
     return false
   }

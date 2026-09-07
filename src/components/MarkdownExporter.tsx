@@ -21,7 +21,7 @@ export function exportToMarkdown(
   const now = new Date()
 
   // Header
-  lines.push(`# ${type === 'history' ? 'Historic Bills Analysis' : 'Budget Predictions'}`)
+  lines.push(`# ${type === 'history' ? 'Historic Spend Analysis' : 'Budget'}`)
   lines.push('')
   lines.push(`**Generated:** ${format(now, 'yyyy-MM-dd HH:mm:ss')}`)
   if (startDate && endDate) {
@@ -39,38 +39,37 @@ export function exportToMarkdown(
     const totalAmount = historyData.data.reduce((sum, period) => sum + period.totalAmount, 0)
     const totalBills = historyData.data.reduce((sum, period) => sum + period.billCount, 0)
     lines.push(`- **Total Periods:** ${historyData.data.length}`)
-    lines.push(`- **Total Bills:** ${totalBills}`)
+    lines.push(`- **Total Entries:** ${totalBills}`)
     lines.push(`- **Total Amount:** $${totalAmount.toFixed(2)}`)
     lines.push('')
     lines.push('## Period Breakdown')
     lines.push('')
-    lines.push('| Period | Total Amount | Bill Count |')
-    lines.push('|--------|--------------|------------|')
-    
+    lines.push('| Period | Total Amount | Entries |')
+    lines.push('|--------|--------------|---------|')
+
     historyData.data.forEach((period) => {
       lines.push(`| ${period.periodLabel} | $${period.totalAmount.toFixed(2)} | ${period.billCount} |`)
     })
-    
+
     lines.push('')
-    lines.push('## Detailed Bills')
+    lines.push('## Detail')
     lines.push('')
-    
+
     historyData.data.forEach((period) => {
       lines.push(`### ${period.periodLabel}`)
       lines.push('')
       lines.push(`**Total:** $${period.totalAmount.toFixed(2)} | **Count:** ${period.billCount}`)
       lines.push('')
-      lines.push('| Title | Amount | Due Date | Paid Date | Category | Vendor |')
-      lines.push('|-------|--------|----------|-----------|----------|--------|')
-      
+      lines.push('| Title | Amount | Date | Category | Vendor |')
+      lines.push('|-------|--------|------|----------|--------|')
+
       period.bills.forEach((bill) => {
-        const paidDate = bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : 'N/A'
-        const dueDate = format(new Date(bill.dueDate), 'yyyy-MM-dd')
+        const date = format(new Date(bill.dueDate), 'yyyy-MM-dd')
         const category = bill.category?.name || 'N/A'
         const vendor = bill.vendor?.name || 'N/A'
-        lines.push(`| ${bill.title} | $${Number(bill.amount).toFixed(2)} | ${dueDate} | ${paidDate} | ${category} | ${vendor} |`)
+        lines.push(`| ${bill.title} | $${Number(bill.amount).toFixed(2)} | ${date} | ${category} | ${vendor} |`)
       })
-      
+
       lines.push('')
     })
   } else {
@@ -83,11 +82,11 @@ export function exportToMarkdown(
     const totalAmount = exportPeriods.reduce((sum, period) => sum + period.predictedAmount, 0)
     const totalBills = exportPeriods.reduce((sum, period) => sum + period.billCount, 0)
     lines.push(`- **Total Periods:** ${exportPeriods.length}`)
-    lines.push(`- **Total Bills:** ${totalBills}`)
+    lines.push(`- **Total Entries:** ${totalBills}`)
     lines.push(`- **Total Amount:** $${totalAmount.toFixed(2)}`)
     lines.push(`- **Includes forecast overlay:** ${budgetData.includeForecast ? 'Yes' : 'No'}`)
     lines.push('')
-    
+
     if (budgetData.historicData && budgetData.historicData.length > 0) {
       lines.push('## Historic Comparison')
       lines.push('')
@@ -95,69 +94,36 @@ export function exportToMarkdown(
       lines.push(`- **Historic Total:** $${totalHistoric.toFixed(2)}`)
       lines.push('')
     }
-    
+
     lines.push('## Periods')
     lines.push('')
-    lines.push('| Period | Amount | Bill Count |')
-    lines.push('|--------|--------|------------|')
-    
+    lines.push('| Period | Amount | Entries |')
+    lines.push('|--------|--------|---------|')
+
     exportPeriods.forEach((period) => {
       lines.push(`| ${period.periodLabel} | $${period.predictedAmount.toFixed(2)} | ${period.billCount} |`)
     })
-    
+
     lines.push('')
-    lines.push('## Bill detail')
+    lines.push('## Detail')
     lines.push('')
-    
+
     exportPeriods.forEach((period) => {
       lines.push(`### ${period.periodLabel}`)
       lines.push('')
-      lines.push(`**Predicted Total:** $${period.predictedAmount.toFixed(2)} | **Count:** ${period.billCount}`)
+      lines.push(`**Total:** $${period.predictedAmount.toFixed(2)} | **Count:** ${period.billCount}`)
       lines.push('')
-      lines.push('| Title | Amount | Due Date | Method | Confidence | Source |')
-      lines.push('|-------|--------|----------|--------|------------|--------|')
-      
+      lines.push('| Title | Amount | Date | Source |')
+      lines.push('|-------|--------|------|--------|')
+
       period.bills.forEach((bill) => {
-        const dueDate = format(new Date(bill.dueDate), 'yyyy-MM-dd')
-        let source = 'Recurrence Pattern'
-        if (bill.source === 'detected') {
-          source = 'Detected Pattern'
-        } else if (bill.source === 'historical-analysis') {
-          source = 'Historical Analysis'
-        }
-        
-        const method = bill.method || 'Base'
-        const confidence = bill.confidence !== undefined ? `${Math.round(bill.confidence * 100)}%` : 'N/A'
-        lines.push(`| ${bill.title} | $${bill.amount.toFixed(2)} | ${dueDate} | ${method} | ${confidence} | ${source} |`)
+        const date = format(new Date(bill.dueDate), 'yyyy-MM-dd')
+        const source = bill.source === 'actual' ? 'Actual' : 'Projected'
+        lines.push(`| ${bill.title} | $${bill.amount.toFixed(2)} | ${date} | ${source} |`)
       })
-      
+
       lines.push('')
     })
-    
-    // Show information about prediction methods used
-    const hasDetectedPatterns = budgetData.predictions.some((p) =>
-      p.bills.some((b) => b.source === 'detected')
-    )
-    const hasEnhancedPredictions = budgetData.predictions.some((p) =>
-      p.bills.some((b) => b.method && b.method !== 'synthetic')
-    )
-    
-    if (hasDetectedPatterns || hasEnhancedPredictions) {
-      lines.push('')
-      lines.push('## Prediction Methods')
-      lines.push('')
-      lines.push('The system uses intelligent forecasting algorithms:')
-      lines.push('- **Trend**: Linear regression for bills with clear increasing/decreasing patterns')
-      lines.push('- **Weighted Avg**: Weighted moving average when trend is unclear')
-      lines.push('- **Seasonal**: Average of same month across multiple years')
-      lines.push('- **Synthetic**: Virtual bills generated for recurring bills with < 3 data points')
-      lines.push('- **Average**: Simple average for bills with limited data')
-      lines.push('')
-      if (hasDetectedPatterns) {
-        lines.push('> **Note:** Some predictions are based on automatically detected patterns from historical bills.')
-        lines.push('')
-      }
-    }
   }
 
   // Footer
@@ -180,7 +146,7 @@ export default function MarkdownExporter({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${type === 'history' ? 'historic-bills' : 'budget-predictions'}-${format(new Date(), 'yyyy-MM-dd')}.md`
+    a.download = `${type === 'history' ? 'historic-spend' : 'budget'}-${format(new Date(), 'yyyy-MM-dd')}.md`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -195,7 +161,7 @@ export default function MarkdownExporter({
         <!DOCTYPE html>
         <html>
           <head>
-            <title>${type === 'history' ? 'Historic Bills Analysis' : 'Budget Predictions'}</title>
+            <title>${type === 'history' ? 'Historic Spend Analysis' : 'Budget'}</title>
             <style>
               body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
