@@ -1,7 +1,7 @@
-import { Role, BillStatus, RecurrenceFrequency } from '@/generated/prisma/client'
+import { Role, BillStatus, RecurrenceFrequency, CategoryKind, EnvelopePeriod } from '@/generated/prisma/client'
 import { Decimal } from '@/generated/prisma/internal/prismaNamespace'
 
-export type { Role, BillStatus, RecurrenceFrequency }
+export type { Role, BillStatus, RecurrenceFrequency, CategoryKind, EnvelopePeriod }
 
 // Flexible decimal type: Prisma Decimal on server, string after JSON serialization on client
 export type DecimalValue = Decimal | string | number
@@ -10,7 +10,6 @@ export type DecimalValue = Decimal | string | number
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export enum BillStatusEnum {
-  PREDICTED = 'PREDICTED',
   PENDING = 'PENDING',
   DUE_SOON = 'DUE_SOON',
   OVERDUE = 'OVERDUE',
@@ -41,6 +40,7 @@ export interface Category {
   name: string
   description?: string | null
   color?: string | null
+  kind: CategoryKind // FIXED -> projected from obligations; VARIABLE -> from envelopes
   isGlobal: boolean
   userId?: string | null
   createdAt: Date
@@ -65,6 +65,8 @@ export interface VendorAccount {
   accountType?: string | null  // Legacy field for backward compatibility
   balance?: DecimalValue | null  // Prisma Decimal on server, string on client
   interestRate?: DecimalValue | null  // Prisma Decimal on server, string on client
+  initialValue?: DecimalValue | null  // Original principal / starting value
+  avgMonthlyPayment?: DecimalValue | null  // Typical monthly payment
   nickname?: string | null
   notes?: string | null
   isActive: boolean
@@ -114,8 +116,6 @@ export interface RecurrencePattern {
   updatedAt: Date
 }
 
-export type PredictionMethod = 'trend' | 'weighted' | 'seasonal' | 'average' | 'synthetic'
-
 export interface Bill {
   id: string
   title: string
@@ -133,9 +133,6 @@ export interface Bill {
   nextDueDate?: Date | null
   invoiceNumber?: string | null
   tags?: string[] // Array of tag strings (max 128 chars each)
-  templateBillId?: string | null // FK to the recurring bill that generated this prediction
-  predictionConfidence?: number | null // 0.00–1.00 confidence score
-  predictionMethod?: PredictionMethod | null // Method used to forecast amount
   createdAt: Date
   updatedAt: Date
   category?: Category
@@ -143,14 +140,42 @@ export interface Bill {
   vendorAccount?: VendorAccount | null
   createdBy?: User | null
   recurrencePattern?: RecurrencePattern | null
-  templateBill?: Bill | null
-  predictions?: Bill[]
+  expense?: Expense | null
   comments?: Comment[]
   attachments?: Attachment[]
   _count?: {
     comments: number
     attachments: number
   }
+}
+
+export interface Expense {
+  id: string
+  date: Date
+  amount: number
+  categoryId: string
+  payee?: string | null
+  note?: string | null
+  vendorId?: string | null
+  billId?: string | null // Set when this expense is the payment of an obligation
+  createdById?: string | null
+  createdAt: Date
+  updatedAt: Date
+  category?: Category
+  vendor?: Vendor | null
+  bill?: Bill | null
+  createdBy?: User | null
+}
+
+export interface BudgetEnvelope {
+  id: string
+  userId: string
+  categoryId: string
+  amount: number
+  period: EnvelopePeriod
+  createdAt: Date
+  updatedAt: Date
+  category?: Category
 }
 
 export interface Comment {
@@ -198,10 +223,10 @@ export interface DashboardStats {
   overdueBills: number
   paidBills: number
   skippedBills: number
-  predictedBills: number // Predicted bills awaiting actualization
-  missingBills: number // Predicted bills past due date
   upcomingBills: number // Bills due in next 7 days
   upcomingBills30: number // Bills due in next 30 days
+  /** False only when the user has no bills, expenses, or envelopes */
+  hasAnyData?: boolean
   categoryBreakdown: {
     categoryId: string
     categoryName: string
@@ -216,6 +241,15 @@ export interface DashboardStats {
     count: number
     totalAmount: number
   }[]
+  /** Per-envelope budget vs this-period spend (variable categories) */
+  budgetVsActual: {
+    categoryId: string
+    categoryName: string
+    color: string | null
+    budget: number
+    spent: number
+    remaining: number
+  }[]
   /** Recurring forecast merged with actuals; only when includeForecast=true */
   forecastCategoryBreakdown?: {
     categoryId: string
@@ -227,7 +261,6 @@ export interface DashboardStats {
   recentBills: Bill[]
   upcomingBillsList: Bill[]
   overdueBillsList: Bill[]
-  predictedBillsList: Bill[] // Predicted bills for next 30 days
 }
 
 export type AnalysisPeriod = 'monthly' | 'quarterly' | 'yearly' | 'custom'
@@ -248,13 +281,12 @@ export interface PredictedBill {
   title: string
   amount: number
   dueDate: Date
-  source: 'recurrence' | 'historical-analysis' | 'detected'
+  /** 'actual' = a real ledger expense; 'recurrence' = a projected obligation. */
+  source: 'recurrence' | 'actual'
   billId?: string
   categoryId?: string
   vendorId?: string | null
   vendorAccountId?: string | null
-  method?: PredictionMethod
-  confidence?: number
 }
 
 export interface BudgetPredictionPeriodData {

@@ -38,7 +38,6 @@ interface BillEditFormProps {
   onDelete?: () => Promise<void> // Optional delete handler (only for existing bills)
   isSaving?: boolean
   title?: string // Optional custom title (defaults to "Edit Bill" or "Create New Bill")
-  isPredicted?: boolean // Whether this bill is a prediction awaiting actualization
 }
 
 export default function BillEditForm({
@@ -48,7 +47,6 @@ export default function BillEditForm({
   onDelete,
   isSaving = false,
   title,
-  isPredicted = false,
 }: BillEditFormProps) {
   const [categories, setCategories] = useState<Category[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
@@ -305,15 +303,8 @@ export default function BillEditForm({
       return
     }
 
-    // When saving a predicted bill, auto-transition status from PREDICTED to PENDING
-    // unless the user explicitly set it to something else
-    const dataToSave = { ...formData }
-    if (isPredicted && dataToSave.status === ('PREDICTED' as BillStatus)) {
-      dataToSave.status = 'PENDING' as BillStatus
-    }
-
     const recurrenceDataToSend = isRecurring && showRecurrenceSection ? recurrenceData : undefined
-    await onSave(dataToSave, recurrenceDataToSend)
+    await onSave(formData, recurrenceDataToSend)
   }
 
   const handleDelete = async () => {
@@ -333,10 +324,10 @@ export default function BillEditForm({
     }
   }
 
-  const formTitle = title || (isPredicted ? 'Confirm Predicted Bill' : (bill ? 'Edit Bill' : 'Create New Bill'))
-  const submitButtonText = isPredicted
-    ? (isSaving ? 'Confirming...' : 'Confirm & Save')
-    : bill ? (isSaving ? 'Saving...' : 'Save Changes') : (isSaving ? 'Creating...' : 'Create Bill')
+  const formTitle = title || (bill ? 'Edit Bill' : 'Create New Bill')
+  const submitButtonText = bill
+    ? (isSaving ? 'Saving...' : 'Save Changes')
+    : (isSaving ? 'Creating...' : 'Create Bill')
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -492,7 +483,6 @@ export default function BillEditForm({
               onChange={(e) => setFormData({ ...formData, status: e.target.value as BillStatus })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
-              <option value="PREDICTED">Predicted</option>
               <option value="PENDING">Pending</option>
               <option value="DUE_SOON">Due Soon</option>
               <option value="OVERDUE">Overdue</option>

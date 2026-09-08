@@ -137,7 +137,7 @@ export default function AdminUsersPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="app-page-container">
+      <main className="app-page-container-wide">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">User Management</h1>
 
         {/* Stats */}

@@ -26,7 +26,7 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full my-8">
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
@@ -117,6 +117,22 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
                         {account.accountNumber}
                         {account.accountNumber && account.accountNumber.length >= 4 && ` (Last 4: ${account.accountNumber.slice(-4)})`}
                       </div>
+                      {(account.balance ||
+                        account.initialValue ||
+                        account.avgMonthlyPayment ||
+                        account.interestRate) && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          {[
+                            account.balance != null && `Balance $${Number(account.balance).toFixed(2)}`,
+                            account.initialValue != null && `Original $${Number(account.initialValue).toFixed(2)}`,
+                            account.avgMonthlyPayment != null &&
+                              `Avg $${Number(account.avgMonthlyPayment).toFixed(2)}/mo`,
+                            account.interestRate != null && `${Number(account.interestRate).toFixed(2)}%`,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

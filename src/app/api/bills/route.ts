@@ -8,6 +8,7 @@ import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
 import { emitToAll, SocketEvents } from '@/lib/socketio-server'
 import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
+import { syncExpenseForBill } from '@/lib/business/ledger'
 
 // Accept amount as string or number, coerce to string for Decimal precision
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
@@ -50,7 +51,6 @@ export async function GET(req: NextRequest) {
     const vendorId = searchParams.get('vendorId')
     const isRecurring = searchParams.get('isRecurring')
     const tags = searchParams.get('tags') // Comma-separated list of tags
-    const includePredicted = searchParams.get('includePredicted') === 'true'
 
     // Build where clause
     const where: any = {}
@@ -65,9 +65,6 @@ export async function GET(req: NextRequest) {
 
     if (status) {
       where.status = status
-    } else if (!includePredicted) {
-      // By default, exclude PREDICTED bills from the main bill list
-      where.status = { not: 'PREDICTED' }
     }
 
     if (categoryId) {
@@ -208,39 +205,44 @@ export async function POST(req: NextRequest) {
           .filter((tag: string) => tag.length > 0 && tag.length <= 128)
       : []
 
-    // Create bill
-    const bill = await prisma.bill.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        amount: data.amount,
-        dueDate: data.dueDate,
-        paidDate: data.paidDate ? new Date(data.paidDate) : null,
-        status,
-        categoryId: data.categoryId,
-        vendorId: data.vendorId,
-        vendorAccountId: data.vendorAccountId,
-        createdById: session.user.id,
-        isRecurring: data.isRecurring || false,
-        invoiceNumber: data.invoiceNumber || null,
-        tags: tagsArray,
-      },
-      include: {
-        category: true,
-        vendor: true,
-        vendorAccount: {
-          include: {
-            type: true,
+    // Create bill (and, if already paid, its linked ledger expense) atomically
+    const bill = await prisma.$transaction(async (tx) => {
+      const created = await tx.bill.create({
+        data: {
+          title: data.title,
+          description: data.description,
+          amount: data.amount,
+          dueDate: data.dueDate,
+          paidDate: data.paidDate ? new Date(data.paidDate) : null,
+          status,
+          categoryId: data.categoryId,
+          vendorId: data.vendorId,
+          vendorAccountId: data.vendorAccountId,
+          createdById: session.user.id,
+          isRecurring: data.isRecurring || false,
+          invoiceNumber: data.invoiceNumber || null,
+          tags: tagsArray,
+        },
+        include: {
+          category: true,
+          vendor: true,
+          vendorAccount: {
+            include: {
+              type: true,
+            },
+          },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      })
+      // Unified ledger: a bill created as PAID records its expense immediately.
+      await syncExpenseForBill(tx, created)
+      return created
     })
 
     // Set account balance if provided

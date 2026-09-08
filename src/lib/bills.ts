@@ -18,11 +18,6 @@ export function calculateBillStatus(
     return currentStatus
   }
 
-  // If bill is PREDICTED and no paidDate, keep PREDICTED (don't auto-transition)
-  if (currentStatus === BillStatus.PREDICTED && !paidDate) {
-    return BillStatus.PREDICTED
-  }
-
   // If paidDate is set, mark as paid
   if (paidDate) {
     return BillStatus.PAID

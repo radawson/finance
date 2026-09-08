@@ -4,7 +4,7 @@ import type { LayoutItem } from 'react-grid-layout'
 
 export const WIDGET_IDS = {
   STATS: 'stats',
-  EXPECTED_BILLS: 'expected-bills',
+  BUDGET: 'budget-burndown',
   CREDIT_CARD: 'credit-card',
   UPCOMING_BILLS: 'upcoming-bills',
   OVERDUE_BILLS: 'overdue-bills',
@@ -26,11 +26,11 @@ export interface WidgetMeta {
 export const WIDGET_META: Record<WidgetId, WidgetMeta> = {
   [WIDGET_IDS.STATS]: {
     label: 'Overview',
-    description: 'Bill count summary (total, due soon, overdue, predicted, paid)',
+    description: 'Bill count summary (total, due soon, overdue, paid)',
   },
-  [WIDGET_IDS.EXPECTED_BILLS]: {
-    label: 'Expected Bills',
-    description: 'Predicted bills for the next 30 days',
+  [WIDGET_IDS.BUDGET]: {
+    label: 'Budget Burn-down',
+    description: 'Budget vs actual spend this month for your variable categories',
   },
   [WIDGET_IDS.CREDIT_CARD]: {
     label: 'Credit Card Balances',
@@ -97,7 +97,7 @@ export type DashboardLayouts = Record<Breakpoint, LayoutItem[]>
 
 const lgLayout: LayoutItem[] = [
   { i: WIDGET_IDS.STATS,              x: 0, y: 0,  w: 12, h: 2, minH: 2 },
-  { i: WIDGET_IDS.EXPECTED_BILLS,     x: 0, y: 2,  w: 12, h: 5, minH: 3, minW: 6 },
+  { i: WIDGET_IDS.BUDGET,     x: 0, y: 2,  w: 12, h: 5, minH: 3, minW: 6 },
   { i: WIDGET_IDS.CREDIT_CARD,        x: 0, y: 7,  w: 12, h: 6, minH: 4, minW: 6 },
   { i: WIDGET_IDS.UPCOMING_BILLS,     x: 0, y: 13, w: 6,  h: 5, minH: 3, minW: 4 },
   { i: WIDGET_IDS.OVERDUE_BILLS,      x: 6, y: 13, w: 6,  h: 5, minH: 3, minW: 4 },
@@ -107,7 +107,7 @@ const lgLayout: LayoutItem[] = [
 
 const mdLayout: LayoutItem[] = [
   { i: WIDGET_IDS.STATS,              x: 0, y: 0,  w: 10, h: 2, minH: 2 },
-  { i: WIDGET_IDS.EXPECTED_BILLS,     x: 0, y: 2,  w: 10, h: 5, minH: 3, minW: 5 },
+  { i: WIDGET_IDS.BUDGET,     x: 0, y: 2,  w: 10, h: 5, minH: 3, minW: 5 },
   { i: WIDGET_IDS.CREDIT_CARD,        x: 0, y: 7,  w: 10, h: 6, minH: 4, minW: 5 },
   { i: WIDGET_IDS.UPCOMING_BILLS,     x: 0, y: 13, w: 5,  h: 5, minH: 3, minW: 4 },
   { i: WIDGET_IDS.OVERDUE_BILLS,      x: 5, y: 13, w: 5,  h: 5, minH: 3, minW: 4 },
@@ -117,7 +117,7 @@ const mdLayout: LayoutItem[] = [
 
 const smLayout: LayoutItem[] = [
   { i: WIDGET_IDS.STATS,              x: 0, y: 0,  w: 6, h: 3, minH: 2 },
-  { i: WIDGET_IDS.EXPECTED_BILLS,     x: 0, y: 3,  w: 6, h: 5, minH: 3 },
+  { i: WIDGET_IDS.BUDGET,     x: 0, y: 3,  w: 6, h: 5, minH: 3 },
   { i: WIDGET_IDS.CREDIT_CARD,        x: 0, y: 8,  w: 6, h: 6, minH: 4 },
   { i: WIDGET_IDS.UPCOMING_BILLS,     x: 0, y: 14, w: 6, h: 5, minH: 3 },
   { i: WIDGET_IDS.OVERDUE_BILLS,      x: 0, y: 19, w: 6, h: 5, minH: 3 },
@@ -127,7 +127,7 @@ const smLayout: LayoutItem[] = [
 
 const xsLayout: LayoutItem[] = [
   { i: WIDGET_IDS.STATS,              x: 0, y: 0,  w: 4, h: 4, minH: 2 },
-  { i: WIDGET_IDS.EXPECTED_BILLS,     x: 0, y: 4,  w: 4, h: 5, minH: 3 },
+  { i: WIDGET_IDS.BUDGET,     x: 0, y: 4,  w: 4, h: 5, minH: 3 },
   { i: WIDGET_IDS.CREDIT_CARD,        x: 0, y: 9,  w: 4, h: 6, minH: 4 },
   { i: WIDGET_IDS.UPCOMING_BILLS,     x: 0, y: 15, w: 4, h: 5, minH: 3 },
   { i: WIDGET_IDS.OVERDUE_BILLS,      x: 0, y: 20, w: 4, h: 5, minH: 3 },
