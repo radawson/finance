@@ -773,14 +773,14 @@ export default function BillsPage() {
 
         {/* Create Modal */}
         {isCreateModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50">
             <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
-            <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="absolute inset-4 sm:inset-y-8 sm:inset-x-4 md:left-1/2 md:right-auto md:w-full md:max-w-2xl md:-translate-x-1/2 flex min-h-0 flex-col overflow-hidden rounded-lg bg-white shadow-xl">
               <h2 className="shrink-0 border-b border-gray-200 px-6 py-4 text-2xl font-bold text-gray-900">
                 New Bill
               </h2>
               <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-                <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Title *
