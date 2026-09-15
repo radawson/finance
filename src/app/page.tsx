@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { DollarSign, LogIn, Plus, Calendar, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ThemeToggle } from '@/components/ThemeProvider'
 
 export default function Home() {
   const router = useRouter()
@@ -100,7 +101,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+    <div className="relative min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">

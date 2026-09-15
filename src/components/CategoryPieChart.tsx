@@ -96,7 +96,7 @@ export default function CategoryPieChart({ data, size = 200 }: CategoryPieChartP
               <path
                 d={slice.path}
                 fill={slice.color}
-                stroke="white"
+                stroke="var(--color-surface)"
                 strokeWidth="2"
                 className="hover:opacity-80 transition-opacity cursor-pointer"
                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
@@ -108,8 +108,8 @@ export default function CategoryPieChart({ data, size = 200 }: CategoryPieChartP
             cx={size / 2}
             cy={size / 2}
             r={size / 4}
-            fill="white"
-            stroke="white"
+            fill="var(--color-surface)"
+            stroke="var(--color-surface)"
             strokeWidth="2"
           />
           {/* Total amount in center */}

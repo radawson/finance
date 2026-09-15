@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
@@ -12,11 +14,128 @@
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
   --color-primary-950: #172554;
+  --color-surface: #ffffff;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+  --tw-ring-offset-color: var(--color-gray-50);
+
+  --color-gray-50: #0b1220;
+  --color-gray-100: #111827;
+  --color-gray-200: #1f2937;
+  --color-gray-300: #374151;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #9ca3af;
+  --color-gray-600: #d1d5db;
+  --color-gray-700: #e5e7eb;
+  --color-gray-800: #f3f4f6;
+  --color-gray-900: #f9fafb;
+  --color-gray-950: #ffffff;
+
+  --color-primary-50: #0f1d3a;
+  --color-primary-100: #172554;
+  --color-primary-200: #1e3a8a;
+
+  --color-blue-50: #172554;
+  --color-blue-100: #1e3a8a;
+  --color-blue-600: #60a5fa;
+  --color-blue-700: #93c5fd;
+
+  --color-green-50: #052e16;
+  --color-green-100: #14532d;
+  --color-green-600: #4ade80;
+  --color-green-700: #86efac;
+  --color-green-800: #bbf7d0;
+
+  --color-red-50: #450a0a;
+  --color-red-100: #7f1d1d;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-red-800: #fecaca;
+
+  --color-amber-50: #451a03;
+  --color-amber-100: #78350f;
+  --color-amber-600: #fbbf24;
+  --color-amber-800: #fde68a;
+
+  --color-yellow-100: #713f12;
+  --color-yellow-800: #fde68a;
+
+  --color-purple-50: #2e1065;
+  --color-purple-600: #c084fc;
+
+  --color-surface: #111827;
 }
 
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
+  }
+}
+
+/* Cards, inputs, and panels use bg-white in light mode. Keep --color-white
+   as true white so primary buttons stay readable, and retarget surfaces. */
+html.dark .bg-white,
+html.dark .card,
+html.dark .card-flush,
+html.dark .input,
+html.dark .select,
+html.dark .textarea,
+html.dark .btn-secondary,
+html.dark .app-sidebar,
+html.dark .app-topbar {
+  background-color: var(--color-surface);
+}
+
+html.dark .hover\:bg-white:hover {
+  background-color: var(--color-surface);
+}
+
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 16rem;
+  z-index: 40;
+}
+
+.app-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+}
+
+@media (min-width: 768px) {
+  .app-topbar {
+    left: 16rem;
+  }
+}
+
+body.has-app-shell {
+  padding-top: 4rem;
+}
+
+@media (min-width: 768px) {
+  body.has-app-shell {
+    padding-left: 16rem;
+  }
+
+  body.has-app-shell .min-h-screen {
+    min-height: calc(100dvh - 4rem);
+  }
+}
+
+@media (max-width: 767px) {
+  body.has-app-shell .min-h-screen {
+    min-height: calc(100dvh - 4rem);
   }
 }
 
@@ -138,14 +257,25 @@
   }
 }
 
+.dark .react-grid-item.react-grid-placeholder {
+  background: rgb(59 130 246 / 0.28) !important;
+}
+
 @media print {
+  .app-sidebar,
+  .app-topbar,
   nav,
   .no-print {
     display: none !important;
   }
 
+  body.has-app-shell {
+    padding: 0 !important;
+  }
+
   body {
     background: white !important;
+    color: black !important;
   }
 
   .print-break {
@@ -156,4 +286,3 @@
     color: black;
   }
 }
-

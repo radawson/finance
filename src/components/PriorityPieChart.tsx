@@ -111,7 +111,7 @@ export default function PriorityPieChart({ data, size = 120 }: PriorityPieChartP
           </g>
         ))}
         {/* Center circle for donut effect */}
-        <circle cx="50" cy="50" r="30" fill="white" />
+        <circle cx="50" cy="50" r="30" fill="var(--color-surface)" />
         <text
           x="50"
           y="50"

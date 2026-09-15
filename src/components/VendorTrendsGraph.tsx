@@ -124,7 +124,7 @@ export default function VendorTrendsGraph({ data, period }: VendorTrendsGraphPro
                   y1={y}
                   x2={width - padding.right}
                   y2={y}
-                  stroke="#e5e7eb"
+                  stroke="var(--color-gray-200)"
                   strokeWidth="1"
                   strokeDasharray="4 4"
                 />
@@ -147,7 +147,7 @@ export default function VendorTrendsGraph({ data, period }: VendorTrendsGraphPro
             y1={padding.top + chartHeight}
             x2={width - padding.right}
             y2={padding.top + chartHeight}
-            stroke="#374151"
+            stroke="var(--color-gray-700)"
             strokeWidth="2"
           />
 
@@ -157,7 +157,7 @@ export default function VendorTrendsGraph({ data, period }: VendorTrendsGraphPro
             y1={padding.top}
             x2={padding.left}
             y2={padding.top + chartHeight}
-            stroke="#374151"
+            stroke="var(--color-gray-700)"
             strokeWidth="2"
           />
 
