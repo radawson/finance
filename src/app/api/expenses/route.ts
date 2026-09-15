@@ -20,6 +20,7 @@ const expenseSchema = z.object({
   payee: z.string().max(256).optional().nullable(),
   note: z.string().optional().nullable(),
   vendorId: z.string().regex(UUID_REGEX).optional().nullable(),
+  isTaxItem: z.boolean().optional(),
 })
 
 /**
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
         payee: data.payee ?? null,
         note: data.note ?? null,
         vendorId: data.vendorId ?? null,
+        isTaxItem: data.isTaxItem || false,
         createdById: session.user.id,
       },
       include: { category: true, vendor: true },

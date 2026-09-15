@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "expenses" ADD COLUMN IF NOT EXISTS "isTaxItem" BOOLEAN NOT NULL DEFAULT false;

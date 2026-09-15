@@ -23,6 +23,7 @@ export interface BillFormData {
   invoiceNumber: string
   tags: string[]
   accountBalance: string
+  isTaxItem: boolean
 }
 
 export interface RecurrenceFormData {
@@ -67,6 +68,7 @@ export default function BillEditForm({
     invoiceNumber: initialValues?.invoiceNumber || '',
     tags: initialValues?.tags || [],
     accountBalance: initialValues?.accountBalance || '',
+    isTaxItem: initialValues?.isTaxItem || false,
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -139,6 +141,7 @@ export default function BillEditForm({
         invoiceNumber: bill.invoiceNumber || '',
         tags: bill.tags || [],
         accountBalance: '', // User enters current balance when needed
+        isTaxItem: Boolean(bill.isTaxItem),
       })
 
       // Set recurrence state if bill has recurrence pattern
@@ -552,6 +555,19 @@ export default function BillEditForm({
             Add tags to organize and filter bills. Tags can contain spaces and special characters.
           </p>
         </div>
+
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.isTaxItem}
+            onChange={(e) => setFormData({ ...formData, isTaxItem: e.target.checked })}
+            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+          />
+          <span className="text-sm font-medium text-gray-700">Tax item</span>
+        </label>
+        <p className="-mt-2 text-xs text-gray-500">
+          Include this bill on the yearly tax items report (medical, donations, etc.).
+        </p>
 
         {/* Account Balance */}
         {formData.vendorAccountId && (

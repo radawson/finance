@@ -19,6 +19,7 @@ const expenseUpdateSchema = z.object({
   payee: z.string().max(256).optional().nullable(),
   note: z.string().optional().nullable(),
   vendorId: z.string().regex(UUID_REGEX).optional().nullable(),
+  isTaxItem: z.boolean().optional(),
 })
 
 async function loadOwned(id: string, session: any) {
@@ -60,6 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(data.payee !== undefined && { payee: data.payee }),
         ...(data.note !== undefined && { note: data.note }),
         ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
+        ...(data.isTaxItem !== undefined && { isTaxItem: data.isTaxItem }),
       },
       include: { category: true, vendor: true },
     })

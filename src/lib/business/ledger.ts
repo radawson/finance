@@ -24,6 +24,7 @@ export type BillForLedger = {
   title: string
   createdById?: string | null
   vendor?: { name: string } | null
+  isTaxItem?: boolean
 }
 
 export interface ExpenseSyncData {
@@ -33,6 +34,7 @@ export interface ExpenseSyncData {
   vendorId: string | null
   payee: string
   createdById: string | null
+  isTaxItem: boolean
 }
 
 export type ExpenseSyncPlan =
@@ -55,6 +57,7 @@ export function planExpenseForBill(bill: BillForLedger): ExpenseSyncPlan {
         vendorId: bill.vendorId ?? null,
         payee: bill.vendor?.name ?? bill.title,
         createdById: bill.createdById ?? null,
+        isTaxItem: Boolean(bill.isTaxItem),
       },
     }
   }
@@ -89,6 +92,7 @@ export async function syncExpenseForBill(tx: LedgerTx, bill: BillForLedger): Pro
         vendorId: plan.data.vendorId,
         payee: plan.data.payee,
         createdById: plan.data.createdById,
+        isTaxItem: plan.data.isTaxItem,
       },
       update: {
         date: plan.data.date,
@@ -96,6 +100,7 @@ export async function syncExpenseForBill(tx: LedgerTx, bill: BillForLedger): Pro
         categoryId: plan.data.categoryId,
         vendorId: plan.data.vendorId,
         payee: plan.data.payee,
+        isTaxItem: plan.data.isTaxItem,
       },
     })
     return

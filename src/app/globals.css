@@ -138,3 +138,22 @@
   }
 }
 
+@media print {
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .print-break {
+    break-inside: avoid;
+  }
+
+  .print-report {
+    color: black;
+  }
+}
+

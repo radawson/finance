@@ -33,6 +33,7 @@ describe('planExpenseForBill', () => {
     expect(plan.data.categoryId).toBe('cat-1')
     expect(plan.data.payee).toBe('Power Co')
     expect(plan.data.createdById).toBe('user-1')
+    expect(plan.data.isTaxItem).toBe(false)
   })
 
   it('falls back to dueDate when a PAID bill has no paidDate', () => {
@@ -46,6 +47,17 @@ describe('planExpenseForBill', () => {
     if (plan.action !== 'upsert') throw new Error('expected upsert')
     expect(plan.data.payee).toBe('Electric bill')
     expect(plan.data.vendorId).toBeNull()
+  })
+
+  it('copies the bill tax flag onto the linked expense', () => {
+    const plan = planExpenseForBill({
+      ...baseBill,
+      status: 'PAID',
+      paidDate: new Date('2026-06-20'),
+      isTaxItem: true,
+    })
+    if (plan.action !== 'upsert') throw new Error('expected upsert')
+    expect(plan.data.isTaxItem).toBe(true)
   })
 
   it('deletes the linked expense when the bill is not PAID', () => {

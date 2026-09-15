@@ -133,6 +133,7 @@ export interface Bill {
   nextDueDate?: Date | null
   invoiceNumber?: string | null
   tags?: string[] // Array of tag strings (max 128 chars each)
+  isTaxItem?: boolean
   createdAt: Date
   updatedAt: Date
   category?: Category
@@ -160,6 +161,7 @@ export interface Expense {
   note?: string | null
   vendorId?: string | null
   billId?: string | null // Set when this expense is the payment of an obligation
+  isTaxItem?: boolean
   createdById?: string | null
   createdAt: Date
   updatedAt: Date
@@ -358,3 +360,127 @@ export interface Note {
 }
 
 export type NotificationBadgeType = 'notification' | 'todo'
+
+export interface EobProcedure {
+  id: string
+  eobId: string
+  sortOrder: number
+  dateOfService: Date
+  procedureCode?: string | null
+  description: string
+  billedAmount: number
+  allowedAmount?: number | null
+  insurancePaid: number
+  patientResponsibility: number
+}
+
+export interface EobAttachment {
+  id: string
+  fileName: string
+  filePath: string
+  fileSize: number
+  mimeType: string
+  eobId: string
+  uploadedById?: string | null
+  createdAt: Date
+  uploadedBy?: User | null
+}
+
+export interface Eob {
+  id: string
+  payerName: string
+  vendorId?: string | null
+  providerName: string
+  claimNumber?: string | null
+  memberId?: string | null
+  eobDate: Date
+  serviceStart?: Date | null
+  serviceEnd?: Date | null
+  billedAmount: number
+  insurancePaid: number
+  adjustmentAmount: number
+  patientResponsibility: number
+  tags: string[]
+  isTaxItem: boolean
+  notes?: string | null
+  createdById?: string | null
+  createdAt: Date
+  updatedAt: Date
+  vendor?: Vendor | null
+  createdBy?: User | null
+  procedures?: EobProcedure[]
+  attachments?: EobAttachment[]
+}
+
+export interface TaxItemBillRow {
+  source: 'bill'
+  id: string
+  date: Date
+  title: string
+  categoryName: string | null
+  tags: string[]
+  amount: number
+}
+
+export interface TaxItemEobRow {
+  source: 'eob'
+  id: string
+  date: Date
+  serviceStart: Date | null
+  serviceEnd: Date | null
+  providerName: string
+  payerName: string
+  tags: string[]
+  billedAmount: number
+  insurancePaid: number
+  patientResponsibility: number
+}
+
+export interface TaxItemExpenseRow {
+  source: 'expense'
+  id: string
+  date: Date
+  title: string
+  categoryName: string | null
+  tags: string[]
+  amount: number
+}
+
+export interface TaxItemsReport {
+  startDate: string
+  endDate: string
+  tags: string[]
+  bills: TaxItemBillRow[]
+  eobs: TaxItemEobRow[]
+  expenses: TaxItemExpenseRow[]
+  billTotal: number
+  eobPatientTotal: number
+  expenseTotal: number
+  combinedTotal: number
+}
+
+export interface MonthlyBudgetRow {
+  id: string
+  date: Date
+  title: string
+  description: string | null
+  categoryName: string | null
+  vendorName: string | null
+  tags: string[]
+  amount: number
+  isTaxItem: boolean
+}
+
+export interface MonthlyBudgetPeriod {
+  periodLabel: string
+  rows: MonthlyBudgetRow[]
+  subtotal: number
+}
+
+export interface MonthlyBudgetReport {
+  startDate: string
+  endDate: string
+  tags: string[]
+  periods: MonthlyBudgetPeriod[]
+  grandTotal: number
+}

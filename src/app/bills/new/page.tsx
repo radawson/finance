@@ -73,6 +73,7 @@ export default function NewBillPage() {
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
           invoiceNumber: formData.invoiceNumber || undefined,
           isRecurring: !!recurrenceData,
+          isTaxItem: formData.isTaxItem,
           ...(formData.accountBalance ? { accountBalance: formData.accountBalance } : {}),
         }),
       })

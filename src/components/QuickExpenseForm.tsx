@@ -19,6 +19,7 @@ const emptyForm = (date: string, categoryId: string) => ({
   categoryId,
   payee: '',
   note: '',
+  isTaxItem: false,
 })
 
 export default function QuickExpenseForm({
@@ -64,6 +65,7 @@ export default function QuickExpenseForm({
           categoryId: form.categoryId,
           payee: form.payee.trim() || undefined,
           note: form.note.trim() || undefined,
+          isTaxItem: form.isTaxItem,
         }),
       })
       if (!res.ok) {
@@ -73,7 +75,7 @@ export default function QuickExpenseForm({
       }
       const created: Expense = await res.json()
       toast.success('Expense logged')
-      // Keep date + category for fast repeated entry; clear the rest.
+      // Keep date, category, and tax flag for fast repeated entry; clear the rest.
       setForm((f) => ({ ...f, amount: '', payee: '', note: '' }))
       onCreated?.(created)
     } catch {
@@ -155,6 +157,19 @@ export default function QuickExpenseForm({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         />
       </div>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={form.isTaxItem}
+          onChange={(e) => setForm({ ...form, isTaxItem: e.target.checked })}
+          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+        />
+        <span className="text-sm font-medium text-gray-700">Tax item</span>
+      </label>
+      <p className="-mt-2 text-xs text-gray-500">
+        Include this expense on the yearly tax items report. Leave unchecked for ordinary spend.
+      </p>
 
       <button
         type="submit"

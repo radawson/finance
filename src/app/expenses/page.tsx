@@ -44,6 +44,29 @@ export default function ExpensesPage() {
     }
   }
 
+  const handleToggleTax = async (expense: Expense) => {
+    if (expense.billId) {
+      toast.error('This expense is a bill payment — edit it via the bill')
+      return
+    }
+    try {
+      const res = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTaxItem: !expense.isTaxItem }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error || 'Failed to update expense')
+        return
+      }
+      const updated: Expense = await res.json()
+      setExpenses((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)))
+    } catch {
+      toast.error('Failed to update expense')
+    }
+  }
+
   const handleDelete = async (expense: Expense) => {
     if (expense.billId) {
       toast.error('This expense is a bill payment — edit it via the bill')
@@ -124,6 +147,7 @@ export default function ExpensesPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store / payee</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -159,6 +183,27 @@ export default function ExpensesPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                         {expense.note || <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {expense.billId ? (
+                          expense.isTaxItem ? (
+                            <span className="inline-flex items-center text-xs font-medium text-amber-800 bg-amber-100 rounded-full px-2 py-0.5">
+                              Tax
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">—</span>
+                          )
+                        ) : (
+                          <label className="inline-flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(expense.isTaxItem)}
+                              onChange={() => handleToggleTax(expense)}
+                              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                            <span className="text-sm text-gray-700">Tax item</span>
+                          </label>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button

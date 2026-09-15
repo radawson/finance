@@ -101,6 +101,7 @@ export default function BillDetailPage() {
           paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
           invoiceNumber: formData.invoiceNumber || null,
           isRecurring: !!recurrenceData,
+          isTaxItem: formData.isTaxItem,
           ...(formData.accountBalance ? { accountBalance: formData.accountBalance } : {}),
         }),
       })

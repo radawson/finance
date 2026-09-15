@@ -53,6 +53,7 @@ export default function BillsPage() {
     invoiceNumber: '',
     tags: [] as string[],
     accountBalance: '',
+    isTaxItem: false,
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -278,6 +279,7 @@ export default function BillsPage() {
         paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
         invoiceNumber: formData.invoiceNumber || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
+        isTaxItem: formData.isTaxItem,
         isRecurring: isRecurring,
         ...(formData.accountBalance ? { accountBalance: formData.accountBalance } : {}),
       }
@@ -347,6 +349,7 @@ export default function BillsPage() {
         invoiceNumber: '',
         tags: [],
         accountBalance: '',
+        isTaxItem: false,
       })
       setIsRecurring(false)
       setShowRecurrenceSection(false)
@@ -427,6 +430,7 @@ export default function BillsPage() {
                 invoiceNumber: '',
                 tags: [],
                 accountBalance: '',
+                isTaxItem: false,
               })
               setIsCreateModalOpen(true)
             }}
@@ -595,6 +599,7 @@ export default function BillsPage() {
                   invoiceNumber: '',
                   tags: [],
                   accountBalance: '',
+                  isTaxItem: false,
                 })
                 setIsCreateModalOpen(true)
               }}
@@ -1024,6 +1029,19 @@ export default function BillsPage() {
                   </p>
                 </div>
 
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isTaxItem}
+                    onChange={(e) => setFormData({ ...formData, isTaxItem: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Tax item</span>
+                </label>
+                <p className="-mt-2 text-xs text-gray-500">
+                  Include this bill on the yearly tax items report (medical, donations, etc.).
+                </p>
+
                 {/* Recurrence Section */}
                 <div className="border-t border-gray-200 pt-4">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -1164,6 +1182,7 @@ export default function BillsPage() {
                         invoiceNumber: '',
                         tags: [],
                         accountBalance: '',
+                        isTaxItem: false,
                       })
                       setIsRecurring(false)
                       setShowRecurrenceSection(false)

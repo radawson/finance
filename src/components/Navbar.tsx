@@ -5,7 +5,7 @@ import { signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard, BarChart3, ShoppingCart, Wallet, Menu, X } from 'lucide-react'
+import { LogOut, LayoutDashboard, Receipt, Building2, Shield, Users, Calendar, CreditCard, BarChart3, ShoppingCart, Wallet, Menu, X, FileText, Printer } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
 
 export default function Navbar() {
@@ -29,6 +29,8 @@ export default function Navbar() {
         { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/bills', label: 'My Bills', icon: Receipt },
         { href: '/expenses', label: 'Expenses', icon: ShoppingCart },
+        { href: '/eobs', label: 'EOBs', icon: FileText },
+        { href: '/reports', label: 'Reports', icon: Printer },
         { href: '/budget', label: 'Budget', icon: Wallet },
         { href: '/bills/calendar', label: 'Calendar', icon: Calendar },
         { href: '/vendors', label: 'Vendors', icon: Building2 },
@@ -39,7 +41,9 @@ export default function Navbar() {
   const isActive = (href: string) =>
     pathname === href ||
     (href === '/bills/calendar' && pathname?.startsWith('/bills/calendar')) ||
-    (href === '/analysis' && pathname?.startsWith('/analysis'))
+    (href === '/analysis' && pathname?.startsWith('/analysis')) ||
+    (href === '/eobs' && pathname?.startsWith('/eobs')) ||
+    (href === '/reports' && pathname?.startsWith('/reports'))
 
   const linkClasses = (href: string) =>
     `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${

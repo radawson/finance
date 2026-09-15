@@ -34,6 +34,7 @@ const updateBillSchema = z.object({
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
+  isTaxItem: z.boolean().optional(),
   accountBalance: nonnegativeDecimalString.optional(),
 })
 
@@ -267,6 +268,7 @@ export async function PATCH(
           ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
           ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
           ...(tagsArray !== undefined && { tags: tagsArray }),
+          ...(data.isTaxItem !== undefined && { isTaxItem: data.isTaxItem }),
           ...(isBeingAssigned && { createdById: session.user.id }),
         },
         include: {

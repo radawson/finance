@@ -59,6 +59,7 @@ const billSchema = z.object({
   isRecurring: z.boolean().optional(),
   invoiceNumber: z.string().optional().nullable(),
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
+  isTaxItem: z.boolean().optional(),
   accountBalance: nonnegativeDecimalString.optional(),
 })
 
@@ -247,6 +248,7 @@ export async function POST(req: NextRequest) {
           isRecurring: data.isRecurring || false,
           invoiceNumber: data.invoiceNumber || null,
           tags: tagsArray,
+          isTaxItem: data.isTaxItem || false,
         },
         include: {
           category: true,
