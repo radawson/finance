@@ -21,14 +21,19 @@ import {
   X,
   FileText,
   Printer,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import NotificationCenter from './NotificationCenter'
 import { ThemeToggle } from './ThemeProvider'
+
+const SIDEBAR_STORAGE_KEY = 'kontado-sidebar-collapsed'
 
 export default function Navbar() {
   const { data: session } = useSession()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -40,8 +45,19 @@ export default function Navbar() {
   }, [session])
 
   useEffect(() => {
+    setCollapsed(document.documentElement.classList.contains('sidebar-collapsed'))
+  }, [])
+
+  useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
+
+  const toggleCollapsed = () => {
+    const next = !document.documentElement.classList.contains('sidebar-collapsed')
+    document.documentElement.classList.toggle('sidebar-collapsed', next)
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0')
+    setCollapsed(next)
+  }
 
   if (!session) return null
 
@@ -84,39 +100,53 @@ export default function Navbar() {
   const adminToggleLabel = isAdminRoute ? 'User View' : 'Admin View'
   const homeHref = isAdmin && isAdminRoute ? '/admin/dashboard' : '/dashboard'
 
-  const linkClasses = (href: string) =>
-    `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-      isActive(href) ? 'bg-primary-100 text-primary-700 dark:text-primary-300' : 'text-gray-700 hover:bg-gray-100'
-    }`
-
-  const sidebar = (
+  const renderSidebar = (compact: boolean) => (
     <div className="flex h-full min-h-0 flex-col">
       <Link
         href={homeHref}
-        className="flex items-center gap-3 px-4 h-16 border-b border-gray-200 shrink-0 hover:opacity-80 transition-opacity"
+        title="Kontado"
+        className={`flex items-center h-16 border-b border-gray-200 shrink-0 hover:opacity-80 transition-opacity ${
+          compact ? 'justify-center px-2' : 'gap-3 px-4'
+        }`}
       >
-        <Image src="/logo.png" alt="Kontado Logo" width={32} height={32} className="h-8 w-8" />
-        <span className="text-xl font-bold text-primary-600">Kontado</span>
+        <Image src="/logo.png" alt="Kontado Logo" width={32} height={32} className="h-8 w-8 shrink-0" />
+        {!compact && <span className="text-xl font-bold text-primary-600 truncate">Kontado</span>}
       </Link>
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+      <nav className={`flex-1 overflow-y-auto space-y-1 ${compact ? 'p-2' : 'p-3'}`}>
         {navLinks.map((link) => {
           const Icon = link.icon
           return (
-            <Link key={link.href} href={link.href} className={linkClasses(link.href)}>
+            <Link
+              key={link.href}
+              href={link.href}
+              title={link.label}
+              aria-label={link.label}
+              className={`flex items-center rounded-md text-sm font-medium transition-colors ${
+                compact ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'
+              } ${
+                isActive(link.href)
+                  ? 'bg-primary-100 text-primary-700 dark:text-primary-300'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
               <Icon size={18} className="shrink-0" />
-              {link.label}
+              {!compact && <span className="truncate">{link.label}</span>}
             </Link>
           )
         })}
       </nav>
       {isAdmin && (
-        <div className="p-3 border-t border-gray-200">
+        <div className={`border-t border-gray-200 ${compact ? 'p-2' : 'p-3'}`}>
           <Link
             href={adminToggleHref}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+            title={adminToggleLabel}
+            aria-label={adminToggleLabel}
+            className={`flex items-center rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors ${
+              compact ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'
+            }`}
           >
             <Shield size={18} className="shrink-0" />
-            {adminToggleLabel}
+            {!compact && <span className="truncate">{adminToggleLabel}</span>}
           </Link>
         </div>
       )}
@@ -126,7 +156,22 @@ export default function Navbar() {
   return (
     <>
       <aside className="app-sidebar hidden md:flex flex-col bg-white border-r border-gray-200">
-        {sidebar}
+        {renderSidebar(collapsed)}
+        <div className={`border-t border-gray-200 ${collapsed ? 'p-2' : 'p-3'}`}>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            className={`flex items-center w-full rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors ${
+              collapsed ? 'justify-center px-2 py-2' : 'gap-3 px-3 py-2'
+            }`}
+          >
+            {collapsed ? <ChevronsRight size={18} className="shrink-0" /> : <ChevronsLeft size={18} className="shrink-0" />}
+            {!collapsed && <span>Collapse</span>}
+          </button>
+        </div>
       </aside>
 
       {mobileOpen && (
@@ -146,7 +191,7 @@ export default function Navbar() {
             >
               <X size={20} />
             </button>
-            {sidebar}
+            {renderSidebar(false)}
           </aside>
         </div>
       )}
@@ -160,6 +205,15 @@ export default function Navbar() {
             aria-label="Open navigation"
           >
             <Menu size={22} />
+          </button>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="hidden md:inline-flex items-center p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronsRight size={20} /> : <ChevronsLeft size={20} />}
           </button>
 
           <div className="flex-1 min-w-0" />

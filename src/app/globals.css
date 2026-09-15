@@ -96,13 +96,22 @@ html.dark .hover\:bg-white:hover {
   background-color: var(--color-surface);
 }
 
+:root {
+  --app-sidebar-width: 16rem;
+}
+
+html.sidebar-collapsed {
+  --app-sidebar-width: 4.5rem;
+}
+
 .app-sidebar {
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  width: 16rem;
+  width: var(--app-sidebar-width);
   z-index: 40;
+  transition: width 200ms ease;
 }
 
 .app-topbar {
@@ -111,11 +120,12 @@ html.dark .hover\:bg-white:hover {
   left: 0;
   right: 0;
   z-index: 30;
+  transition: left 200ms ease;
 }
 
 @media (min-width: 768px) {
   .app-topbar {
-    left: 16rem;
+    left: var(--app-sidebar-width);
   }
 }
 
@@ -125,7 +135,8 @@ body.has-app-shell {
 
 @media (min-width: 768px) {
   body.has-app-shell {
-    padding-left: 16rem;
+    padding-left: var(--app-sidebar-width);
+    transition: padding-left 200ms ease;
   }
 
   body.has-app-shell .min-h-screen {
