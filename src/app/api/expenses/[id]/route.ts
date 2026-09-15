@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
         ...(data.isTaxItem !== undefined && { isTaxItem: data.isTaxItem }),
       },
-      include: { category: true, vendor: true },
+      include: { category: true, vendor: true, bill: { select: { id: true, title: true } } },
     })
 
     return NextResponse.json(updated)
