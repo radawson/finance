@@ -1,13 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BillEditForm, { BillFormData, RecurrenceFormData } from '@/components/BillEditForm'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+
+function NewBillForm({
+  isSaving,
+  onSave,
+  onCancel,
+}: {
+  isSaving: boolean
+  onSave: (formData: BillFormData, recurrenceData?: RecurrenceFormData) => Promise<void>
+  onCancel: () => void
+}) {
+  const searchParams = useSearchParams()
+  const initialValues: Partial<BillFormData> = {
+    title: searchParams.get('title') || '',
+    vendorId: searchParams.get('vendorId') || '',
+    vendorAccountId: searchParams.get('vendorAccountId') || '',
+    categoryId: searchParams.get('categoryId') || '',
+    dueDate: searchParams.get('dueDate') || '',
+  }
+
+  return (
+    <BillEditForm
+      bill={null}
+      initialValues={initialValues}
+      onSave={onSave}
+      onCancel={onCancel}
+      isSaving={isSaving}
+    />
+  )
+}
 
 export default function NewBillPage() {
   const { data: session } = useSession()
@@ -85,7 +114,11 @@ export default function NewBillPage() {
         }
       }
 
-      toast.success('Bill created successfully')
+      toast.success(
+        createdBill.matchedForecast
+          ? `Bill created — covers expected ${createdBill.matchedTitle}`
+          : 'Bill created successfully',
+      )
       // Redirect to the new bill's detail page
       router.push(`/bills/${createdBill.id}`)
     } catch (error) {
@@ -123,13 +156,17 @@ export default function NewBillPage() {
           Back to Dashboard
         </Link>
 
-        {/* Create Form */}
-        <BillEditForm
-          bill={null}
-          onSave={handleSave}
-          onCancel={() => router.push('/dashboard')}
-          isSaving={isSaving}
-        />
+        <Suspense
+          fallback={
+            <div className="bg-white rounded-lg shadow-md p-6 text-gray-600">Loading form…</div>
+          }
+        >
+          <NewBillForm
+            isSaving={isSaving}
+            onSave={handleSave}
+            onCancel={() => router.push('/dashboard')}
+          />
+        </Suspense>
       </main>
     </div>
   )

@@ -17,6 +17,7 @@ import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, RotateCcw, LayoutGri
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { format } from 'date-fns'
 import CategoryPieChart from '@/components/CategoryPieChart'
 import CreditCardBalanceGraph from '@/components/CreditCardBalanceGraph'
 import AccountTypeBalanceGraph from '@/components/AccountTypeBalanceGraph'
@@ -965,6 +966,16 @@ export default function DashboardPage() {
                           key={`${bill.id}-${new Date(bill.dueDate).toISOString()}`}
                           bill={bill}
                           onClick={() => {
+                            if (bill.isForecast) {
+                              const params = new URLSearchParams()
+                              if (bill.title) params.set('title', bill.title)
+                              if (bill.vendorId) params.set('vendorId', bill.vendorId)
+                              if (bill.vendorAccountId) params.set('vendorAccountId', bill.vendorAccountId)
+                              if (bill.categoryId) params.set('categoryId', bill.categoryId)
+                              params.set('dueDate', format(new Date(bill.dueDate), 'yyyy-MM-dd'))
+                              router.push(`/bills/new?${params.toString()}`)
+                              return
+                            }
                             setSelectedBill(bill)
                             setIsModalOpen(true)
                           }}

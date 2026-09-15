@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import BillStatusBadge from '@/components/BillStatusBadge'
 import BillViewModal from '@/components/BillViewModal'
-import { Bill, Category, Vendor, VendorAccount, BillStatus, RecurrenceFrequencyEnum } from '@/types'
+import TagInput from '@/components/TagInput'
+import BillTitleAutocomplete from '@/components/BillTitleAutocomplete'
+import { Bill, Category, Vendor, VendorAccount, BillStatus, RecurrenceFrequencyEnum, BillTitleSuggestion } from '@/types'
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import TagInput from '@/components/TagInput'
 
 type SortColumn = 'title' | 'amount' | 'dueDate' | 'status' | 'category' | 'vendor' | null
 type SortDirection = 'asc' | 'desc' | null
@@ -327,7 +328,11 @@ export default function BillsPage() {
         }
       }
 
-      toast.success('Bill created')
+      toast.success(
+        createdBill.matchedForecast
+          ? `Bill created — covers expected ${createdBill.matchedTitle}`
+          : 'Bill created',
+      )
       setIsCreateModalOpen(false)
       setFormData({
         title: '',
@@ -785,12 +790,19 @@ export default function BillsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Title *
                   </label>
-                  <input
-                    type="text"
+                  <BillTitleAutocomplete
                     required
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    onChange={(titleValue) => setFormData({ ...formData, title: titleValue })}
+                    onSelectSuggestion={(suggestion: BillTitleSuggestion) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: suggestion.title,
+                        categoryId: suggestion.categoryId || prev.categoryId,
+                        vendorId: suggestion.vendorId || '',
+                        vendorAccountId: suggestion.vendorAccountId || '',
+                      }))
+                    }}
                   />
                 </div>
 
@@ -849,9 +861,15 @@ export default function BillsPage() {
                       Vendor
                     </label>
                     <select
-                      value={formData.vendorId && formData.vendorAccountId 
-                        ? `${formData.vendorId}:${formData.vendorAccountId}` 
-                        : formData.vendorId || ''}
+                      value={(() => {
+                        if (!formData.vendorId) return ''
+                        const vendor = vendors.find((v) => v.id === formData.vendorId)
+                        const accounts = vendor?.accounts || []
+                        if (accounts.length > 1 && formData.vendorAccountId) {
+                          return `${formData.vendorId}:${formData.vendorAccountId}`
+                        }
+                        return formData.vendorId
+                      })()}
                       onChange={(e) => {
                         const value = e.target.value
                         if (!value) {

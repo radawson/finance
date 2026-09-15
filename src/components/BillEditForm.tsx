@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Bill, Category, Vendor, BillStatus, RecurrenceFrequencyEnum } from '@/types'
+import { Bill, Category, Vendor, BillStatus, RecurrenceFrequencyEnum, BillTitleSuggestion } from '@/types'
 import { Save, Delete, X, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import CategoryModal from '@/components/CategoryModal'
 import { addTemporaryClass } from '@/lib/visual-feedback'
 import TagInput from '@/components/TagInput'
+import BillTitleAutocomplete from '@/components/BillTitleAutocomplete'
 
 export interface BillFormData {
   title: string
@@ -38,6 +39,7 @@ interface BillEditFormProps {
   onDelete?: () => Promise<void> // Optional delete handler (only for existing bills)
   isSaving?: boolean
   title?: string // Optional custom title (defaults to "Edit Bill" or "Create New Bill")
+  initialValues?: Partial<BillFormData>
 }
 
 export default function BillEditForm({
@@ -47,23 +49,24 @@ export default function BillEditForm({
   onDelete,
   isSaving = false,
   title,
+  initialValues,
 }: BillEditFormProps) {
   const [categories, setCategories] = useState<Category[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [vendorAccounts, setVendorAccounts] = useState<{ id: string; nickname?: string | null; accountType?: string | null; accountNumber?: string | null }[]>([])
   const [formData, setFormData] = useState<BillFormData>({
-    title: '',
-    amount: '',
-    dueDate: '',
-    categoryId: '',
-    vendorId: '',
-    vendorAccountId: '',
-    description: '',
-    status: 'PENDING' as BillStatus,
-    paidDate: '',
-    invoiceNumber: '',
-    tags: [],
-    accountBalance: '',
+    title: initialValues?.title || '',
+    amount: initialValues?.amount || '',
+    dueDate: initialValues?.dueDate || '',
+    categoryId: initialValues?.categoryId || '',
+    vendorId: initialValues?.vendorId || '',
+    vendorAccountId: initialValues?.vendorAccountId || '',
+    description: initialValues?.description || '',
+    status: (initialValues?.status as BillStatus) || ('PENDING' as BillStatus),
+    paidDate: initialValues?.paidDate || '',
+    invoiceNumber: initialValues?.invoiceNumber || '',
+    tags: initialValues?.tags || [],
+    accountBalance: initialValues?.accountBalance || '',
   })
   const [isRecurring, setIsRecurring] = useState(false)
   const [showRecurrenceSection, setShowRecurrenceSection] = useState(false)
@@ -337,12 +340,19 @@ export default function BillEditForm({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Title *
           </label>
-          <input
-            type="text"
+          <BillTitleAutocomplete
             required
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            onChange={(titleValue) => setFormData({ ...formData, title: titleValue })}
+            onSelectSuggestion={(suggestion: BillTitleSuggestion) => {
+              setFormData((prev) => ({
+                ...prev,
+                title: suggestion.title,
+                categoryId: suggestion.categoryId || prev.categoryId,
+                vendorId: suggestion.vendorId || '',
+                vendorAccountId: suggestion.vendorAccountId || '',
+              }))
+            }}
           />
         </div>
 

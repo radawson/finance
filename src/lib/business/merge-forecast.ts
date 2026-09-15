@@ -1,5 +1,5 @@
 import { Bill, PredictedBill, DecimalValue } from '@/types'
-import { isDateMatch } from './recurring-bills'
+import { findMatchingForecastSlot } from './recurring-bills'
 
 export interface MergeableBill {
   title: string
@@ -12,58 +12,29 @@ export interface MergeableBill {
   source?: PredictedBill['source']
 }
 
-function matchGroupKey(
-  categoryId: string,
-  vendorId: string | null | undefined,
-  vendorAccountId: string | null | undefined,
-): string {
-  return `${vendorId ?? 'null'}-${categoryId}-${vendorAccountId ?? 'null'}`
-}
-
 /**
- * Merge actual bills with forecast slots. Actuals win when dates match within tolerance.
+ * Merge actual bills with forecast slots. Actuals win when a slot is fulfilled
+ * (same vendor + due date within tolerance, title as tie-break).
  * Returns one row per obligation (no duplicate template + forecast for same slot).
  */
 export function mergeBillsWithForecast(
   actuals: MergeableBill[],
   forecastSlots: MergeableBill[],
-  toleranceDays: number = 3,
+  toleranceDays: number = 2,
 ): MergeableBill[] {
   const result: MergeableBill[] = []
-  const usedForecastIndices = new Set<number>()
+  const unused = [...forecastSlots]
 
   for (const actual of actuals) {
-    const actualDate = new Date(actual.dueDate)
-    const key = matchGroupKey(actual.categoryId, actual.vendorId, actual.vendorAccountId)
-
-    let matchedForecastIdx = -1
-    for (let i = 0; i < forecastSlots.length; i++) {
-      if (usedForecastIndices.has(i)) continue
-      const forecast = forecastSlots[i]
-      const forecastKey = matchGroupKey(
-        forecast.categoryId,
-        forecast.vendorId,
-        forecast.vendorAccountId,
-      )
-      if (forecastKey !== key) continue
-      if (isDateMatch(actualDate, new Date(forecast.dueDate), toleranceDays)) {
-        matchedForecastIdx = i
-        break
-      }
+    const matched = findMatchingForecastSlot(actual, unused, toleranceDays)
+    if (matched) {
+      const idx = unused.indexOf(matched)
+      if (idx >= 0) unused.splice(idx, 1)
     }
-
-    if (matchedForecastIdx >= 0) {
-      usedForecastIndices.add(matchedForecastIdx)
-    }
-
     result.push(actual)
   }
 
-  for (let i = 0; i < forecastSlots.length; i++) {
-    if (!usedForecastIndices.has(i)) {
-      result.push(forecastSlots[i])
-    }
-  }
+  result.push(...unused)
 
   return result.sort(
     (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),

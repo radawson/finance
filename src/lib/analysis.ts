@@ -7,8 +7,14 @@ import {
   DecimalValue,
 } from '@/types'
 import { getDueDatesInRange } from './recurrence'
-import { format, getQuarter } from 'date-fns'
-import { shouldMatchBill, estimateRecurringAmount } from './business/recurring-bills'
+import { addDays, format, getQuarter } from 'date-fns'
+import {
+  shouldMatchBill,
+  estimateRecurringAmount,
+  seriesKey,
+  findMatchingForecastSlot,
+  ForecastMatchable,
+} from './business/recurring-bills'
 import { filterExpensesInPeriod } from './business/ledger'
 import {
   mergeBillsWithForecast,
@@ -125,7 +131,7 @@ export function groupExpensesByPeriodAsHistoric(
 /**
  * Project recurring obligations forward across [startDate, endDate].
  * Each slot's amount is estimated with the last-paid + seasonal rule
- * (see estimateRecurringAmount). One template per vendor/account/category.
+ * (see estimateRecurringAmount). One template per title + vendor.
  */
 export function forecastObligations(
   recurringBills: Bill[],
@@ -133,12 +139,12 @@ export function forecastObligations(
   endDate: Date,
   historicalBills: Bill[] = [],
 ): PredictedBill[] {
-  // Deduplicate templates by vendor/account/category (most recent due date wins).
+  // Deduplicate templates by title + vendor (most recent due date wins).
   const templates: Bill[] = []
   const seen = new Set<string>()
   for (const bill of recurringBills) {
     if (!bill.recurrencePattern) continue
-    const key = `${bill.vendorId || 'null'}-${bill.categoryId}-${bill.vendorAccountId || 'null'}`
+    const key = seriesKey(bill.title, bill.vendorId)
     if (seen.has(key)) {
       const existing = templates.find((b) => shouldMatchBill(bill, b))
       if (existing && new Date(bill.dueDate) > new Date(existing.dueDate)) {
@@ -181,6 +187,24 @@ export function forecastObligations(
     }
   }
   return slots
+}
+
+/**
+ * After a bill is created, find the unique forecast slot it fulfills (if any).
+ * Look at slots in the ±2 day window around the new bill's due date.
+ */
+export function matchNewBillToForecast(
+  bill: ForecastMatchable,
+  recurringBills: Bill[],
+  historicalBills: Bill[] = [],
+): PredictedBill | null {
+  const due = new Date(bill.dueDate)
+  const start = addDays(due, -2)
+  start.setHours(0, 0, 0, 0)
+  const end = addDays(due, 2)
+  end.setHours(23, 59, 59, 999)
+  const slots = forecastObligations(recurringBills, start, end, historicalBills)
+  return findMatchingForecastSlot(bill, slots)
 }
 
 /**

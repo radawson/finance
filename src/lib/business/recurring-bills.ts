@@ -1,14 +1,30 @@
 import { Bill } from '@/types'
 import { differenceInDays, getMonth } from 'date-fns'
 
+export function normalizeBillTitle(title: string): string {
+  return title.trim().toLowerCase()
+}
+
+export function seriesKey(title: string, vendorId: string | null | undefined): string {
+  return `${normalizeBillTitle(title)}::${vendorId ?? 'null'}`
+}
+
+export interface ForecastMatchable {
+  title: string
+  dueDate: Date | string
+  vendorId?: string | null
+}
+
 /**
- * Determines if a bill matches a recurring bill template
- * Bills match if they have the same vendor, vendor account, and category
+ * Series identity: bills belong to the same recurring obligation when they
+ * share a normalized title and vendor (the spelling autocomplete keeps stable).
  */
-export function shouldMatchBill(bill: Bill, template: Bill): boolean {
-  if (bill.categoryId !== template.categoryId) return false
-  if (bill.vendorId !== template.vendorId) return false
-  if (bill.vendorAccountId !== template.vendorAccountId) return false
+export function shouldMatchBill(
+  bill: Pick<Bill, 'title' | 'vendorId'>,
+  template: Pick<Bill, 'title' | 'vendorId'>,
+): boolean {
+  if (normalizeBillTitle(bill.title) !== normalizeBillTitle(template.title)) return false
+  if ((bill.vendorId ?? null) !== (template.vendorId ?? null)) return false
   return true
 }
 
@@ -25,10 +41,50 @@ export function matchBillToRecurringPattern(bill: Bill, recurringBills: Bill[]):
 }
 
 /**
- * Checks if an actual due date matches a forecast date within a tolerance window (±3 days).
+ * Checks if an actual due date matches a forecast date within a tolerance window (±2 days).
  */
-export function isDateMatch(actualDate: Date, predictedDate: Date, toleranceDays: number = 3): boolean {
+export function isDateMatch(actualDate: Date, predictedDate: Date, toleranceDays: number = 2): boolean {
   return Math.abs(differenceInDays(actualDate, predictedDate)) <= toleranceDays
+}
+
+/**
+ * Slot fulfillment: this entered bill is the predicted one for this cycle.
+ *
+ * 1. Candidates whose due date is within ±2 days
+ * 2. Same vendorId as the entered bill
+ * 3. If more than one candidate, keep the one with the same normalized title
+ * 4. If still more than one, do not auto-match
+ * 5. If the bill has no vendor, fall back to a unique title + date match
+ */
+export function findMatchingForecastSlot<T extends ForecastMatchable>(
+  actual: ForecastMatchable,
+  slots: T[],
+  toleranceDays: number = 2,
+): T | null {
+  const actualDate = new Date(actual.dueDate)
+  const dateMatches = slots.filter((slot) =>
+    isDateMatch(actualDate, new Date(slot.dueDate), toleranceDays),
+  )
+
+  if (actual.vendorId) {
+    const vendorMatches = dateMatches.filter(
+      (slot) => (slot.vendorId ?? null) === actual.vendorId,
+    )
+    if (vendorMatches.length === 0) return null
+    if (vendorMatches.length === 1) return vendorMatches[0]
+
+    const titleMatches = vendorMatches.filter(
+      (slot) => normalizeBillTitle(slot.title) === normalizeBillTitle(actual.title),
+    )
+    if (titleMatches.length === 1) return titleMatches[0]
+    return null
+  }
+
+  const titleMatches = dateMatches.filter(
+    (slot) => normalizeBillTitle(slot.title) === normalizeBillTitle(actual.title),
+  )
+  if (titleMatches.length === 1) return titleMatches[0]
+  return null
 }
 
 /**
@@ -40,7 +96,7 @@ export function isDateMatch(actualDate: Date, predictedDate: Date, toleranceDays
  *   3. Template — otherwise fall back to the template's set amount.
  *
  * `matchingHistory` should already be the bills that match the template
- * (same vendor/account/category); SKIPPED bills are ignored.
+ * (same normalized title and vendor); SKIPPED bills are ignored.
  */
 export function estimateRecurringAmount(
   template: Bill,

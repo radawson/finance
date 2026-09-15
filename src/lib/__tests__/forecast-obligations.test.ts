@@ -1,5 +1,5 @@
 import { Bill } from '@/types'
-import { forecastObligations } from '../analysis'
+import { forecastObligations, matchNewBillToForecast } from '../analysis'
 
 const d = (year: number, month: number, day: number) => new Date(year, month - 1, day)
 
@@ -61,5 +61,55 @@ describe('forecastObligations', () => {
       history,
     )
     expect(slots[0].amount).toBe(99)
+  })
+
+  it('emits separate slots for two templates with the same vendor and different titles', () => {
+    const kathy = template({
+      id: 'tmpl-kathy',
+      title: 'Kathy Amex',
+      vendorId: 'amex',
+      categoryId: 'cat-cc',
+      recurrencePattern: {
+        id: 'pat-kathy',
+        frequency: 'MONTHLY',
+        dayOfMonth: 15,
+        startDate: d(2024, 1, 15),
+        endDate: null,
+        billId: 'tmpl-kathy',
+        createdAt: d(2024, 1, 1),
+        updatedAt: d(2024, 1, 1),
+      },
+    })
+    const john = template({
+      id: 'tmpl-john',
+      title: 'John Amex',
+      vendorId: 'amex',
+      categoryId: 'cat-cc',
+      recurrencePattern: {
+        id: 'pat-john',
+        frequency: 'MONTHLY',
+        dayOfMonth: 20,
+        startDate: d(2024, 1, 20),
+        endDate: null,
+        billId: 'tmpl-john',
+        createdAt: d(2024, 1, 1),
+        updatedAt: d(2024, 1, 1),
+      },
+    })
+
+    const slots = forecastObligations([kathy, john], d(2026, 9, 1), d(2026, 9, 30))
+    expect(slots).toHaveLength(2)
+    expect(slots.map((s) => s.title).sort()).toEqual(['John Amex', 'Kathy Amex'])
+  })
+})
+
+describe('matchNewBillToForecast', () => {
+  it('treats a nearby same-vendor bill as covering the predicted slot', () => {
+    const match = matchNewBillToForecast(
+      { title: 'Electric', dueDate: d(2026, 9, 16), vendorId: 'v-1' },
+      [template()],
+    )
+    expect(match?.billId).toBe('tmpl-1')
+    expect(match?.title).toBe('Electric')
   })
 })

@@ -59,6 +59,71 @@ describe('mergeBillsWithForecast', () => {
     expect(merged).toHaveLength(2)
     expect(merged.map((m) => m.title)).toContain('Rent')
   })
+
+  it('suppresses a forecast when vendor and due date match even if category differs', () => {
+    const actuals = [
+      {
+        title: 'Kathy Amex',
+        amount: 200,
+        dueDate: new Date('2026-03-16'),
+        categoryId: 'cat-other',
+        vendorId: 'amex',
+        vendorAccountId: null,
+        billId: 'actual-kathy',
+      },
+    ]
+    const forecast = [
+      {
+        title: 'Kathy Amex',
+        amount: 180,
+        dueDate: new Date('2026-03-15'),
+        categoryId: 'cat-cc',
+        vendorId: 'amex',
+        vendorAccountId: 'acct-1',
+      },
+    ]
+
+    const merged = mergeBillsWithForecast(actuals, forecast)
+    expect(merged).toHaveLength(1)
+    expect(merged[0].billId).toBe('actual-kathy')
+  })
+
+  it('keeps two same-vendor forecast slots when only one title is fulfilled', () => {
+    const actuals = [
+      {
+        title: 'Kathy Amex',
+        amount: 200,
+        dueDate: new Date('2026-03-15'),
+        categoryId: 'cat-cc',
+        vendorId: 'amex',
+        vendorAccountId: null,
+        billId: 'actual-kathy',
+      },
+    ]
+    const forecast = [
+      {
+        title: 'Kathy Amex',
+        amount: 180,
+        dueDate: new Date('2026-03-15'),
+        categoryId: 'cat-cc',
+        vendorId: 'amex',
+        vendorAccountId: null,
+      },
+      {
+        title: 'John Amex',
+        amount: 90,
+        dueDate: new Date('2026-03-15'),
+        categoryId: 'cat-cc',
+        vendorId: 'amex',
+        vendorAccountId: null,
+      },
+    ]
+
+    const merged = mergeBillsWithForecast(actuals, forecast)
+    expect(merged).toHaveLength(2)
+    expect(merged.map((m) => m.title)).toEqual(expect.arrayContaining(['Kathy Amex', 'John Amex']))
+    expect(merged.find((m) => m.title === 'Kathy Amex')?.billId).toBe('actual-kathy')
+  })
 })
 
 describe('isActualBill', () => {

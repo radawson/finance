@@ -14,7 +14,7 @@ import {
   categoryBreakdownFromExpenses,
 } from '@/lib/business/ledger'
 import { categoryBreakdownFromMergeables, predictedBillToMergeable } from '@/lib/business/merge-forecast'
-import { isDateMatch, shouldMatchBill } from '@/lib/business/recurring-bills'
+import { findMatchingForecastSlot } from '@/lib/business/recurring-bills'
 
 function normalizeBillFromPrisma(raw: any): Bill {
   return {
@@ -47,6 +47,7 @@ function forecastSlotToDashboardBill(slot: PredictedBill, template: Bill): Bill 
     dueDate,
     paidDate: null,
     status: calculateBillStatus(dueDate, null),
+    isForecast: true,
   }
 }
 
@@ -200,15 +201,14 @@ export async function GET(req: NextRequest) {
       })
       .filter((b): b is Bill => b != null)
 
-    const upcomingBillsList = [...upcomingActuals7]
-    for (const forecastBill of forecastUpcoming) {
-      const alreadyListed = upcomingBillsList.some(
-        (actual) =>
-          shouldMatchBill(actual, forecastBill) &&
-          isDateMatch(new Date(actual.dueDate), new Date(forecastBill.dueDate)),
-      )
-      if (!alreadyListed) upcomingBillsList.push(forecastBill)
+    const unmatchedForecasts = [...forecastUpcoming]
+    for (const actual of upcomingActuals7) {
+      const matched = findMatchingForecastSlot(actual, unmatchedForecasts)
+      if (matched) {
+        unmatchedForecasts.splice(unmatchedForecasts.indexOf(matched), 1)
+      }
     }
+    const upcomingBillsList = [...upcomingActuals7, ...unmatchedForecasts]
     upcomingBillsList.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
     const upcomingBillsListTrimmed = upcomingBillsList.slice(0, 10)
 

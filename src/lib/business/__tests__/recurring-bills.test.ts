@@ -1,4 +1,4 @@
-import { estimateRecurringAmount, shouldMatchBill, isDateMatch } from '../recurring-bills'
+import { estimateRecurringAmount, shouldMatchBill, isDateMatch, findMatchingForecastSlot } from '../recurring-bills'
 import { Bill } from '@/types'
 
 function bill(over: Partial<Bill>): Bill {
@@ -53,15 +53,67 @@ describe('estimateRecurringAmount', () => {
 })
 
 describe('matchers', () => {
-  const template = bill({ categoryId: 'c', vendorId: 'v', vendorAccountId: 'a' })
+  const template = bill({ title: 'Kathy Amex', categoryId: 'c', vendorId: 'v', vendorAccountId: 'a' })
 
-  it('matches on category + vendor + account', () => {
-    expect(shouldMatchBill(bill({ categoryId: 'c', vendorId: 'v', vendorAccountId: 'a' }), template)).toBe(true)
-    expect(shouldMatchBill(bill({ categoryId: 'x', vendorId: 'v', vendorAccountId: 'a' }), template)).toBe(false)
+  it('matches on normalized title + vendor, ignoring category and account', () => {
+    expect(
+      shouldMatchBill(
+        bill({ title: 'kathy amex', categoryId: 'other', vendorId: 'v', vendorAccountId: 'other-acct' }),
+        template,
+      ),
+    ).toBe(true)
+    expect(shouldMatchBill(bill({ title: 'Kathy Amex', vendorId: 'other' }), template)).toBe(false)
+    expect(shouldMatchBill(bill({ title: 'John Amex', vendorId: 'v' }), template)).toBe(false)
   })
 
-  it('isDateMatch within ±3 days', () => {
+  it('isDateMatch within ±2 days', () => {
     expect(isDateMatch(new Date('2026-06-15'), new Date('2026-06-17'))).toBe(true)
+    expect(isDateMatch(new Date('2026-06-15'), new Date('2026-06-18'))).toBe(false)
     expect(isDateMatch(new Date('2026-06-15'), new Date('2026-06-20'))).toBe(false)
+  })
+})
+
+describe('findMatchingForecastSlot', () => {
+  const kathy = {
+    title: 'Kathy Amex',
+    dueDate: new Date('2026-06-15'),
+    vendorId: 'amex',
+  }
+  const john = {
+    title: 'John Amex',
+    dueDate: new Date('2026-06-15'),
+    vendorId: 'amex',
+  }
+
+  it('matches a unique vendor + nearby due date even if category/title differ', () => {
+    const match = findMatchingForecastSlot(
+      { title: 'Kathy Amex', dueDate: new Date('2026-06-17'), vendorId: 'amex' },
+      [kathy],
+    )
+    expect(match).toEqual(kathy)
+  })
+
+  it('uses title to pick among multiple same-vendor nearby slots', () => {
+    const match = findMatchingForecastSlot(
+      { title: 'Kathy Amex', dueDate: new Date('2026-06-15'), vendorId: 'amex' },
+      [kathy, john],
+    )
+    expect(match).toEqual(kathy)
+  })
+
+  it('does not auto-match when vendor + date is ambiguous and titles do not uniquely match', () => {
+    const match = findMatchingForecastSlot(
+      { title: 'AMEX', dueDate: new Date('2026-06-15'), vendorId: 'amex' },
+      [kathy, john],
+    )
+    expect(match).toBeNull()
+  })
+
+  it('falls back to unique title + date when the bill has no vendor', () => {
+    const match = findMatchingForecastSlot(
+      { title: 'Kathy Amex', dueDate: new Date('2026-06-16'), vendorId: null },
+      [kathy, john],
+    )
+    expect(match).toEqual(kathy)
   })
 })

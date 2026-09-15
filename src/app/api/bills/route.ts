@@ -9,6 +9,8 @@ import { UUID_REGEX } from '@/types'
 import { emitToAll, SocketEvents } from '@/lib/socketio-server'
 import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
 import { syncExpenseForBill } from '@/lib/business/ledger'
+import { matchNewBillToForecast } from '@/lib/analysis'
+import { Bill } from '@/types'
 
 // Accept amount as string or number, coerce to string for Decimal precision
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
@@ -20,6 +22,29 @@ const nonnegativeDecimalString = decimalString.refine(
   (v) => !isNaN(Number(v)) && Number(v) >= 0,
   { message: 'Value must be a non-negative number' }
 )
+
+function toBillForForecast(raw: any): Bill {
+  return {
+    ...raw,
+    amount: Number(raw.amount),
+    dueDate: new Date(raw.dueDate),
+    createdAt: new Date(raw.createdAt),
+    updatedAt: new Date(raw.updatedAt),
+    paidDate: raw.paidDate ? new Date(raw.paidDate) : null,
+    nextDueDate: raw.nextDueDate ? new Date(raw.nextDueDate) : null,
+    recurrencePattern: raw.recurrencePattern
+      ? {
+          ...raw.recurrencePattern,
+          startDate: new Date(raw.recurrencePattern.startDate),
+          endDate: raw.recurrencePattern.endDate
+            ? new Date(raw.recurrencePattern.endDate)
+            : null,
+          createdAt: new Date(raw.recurrencePattern.createdAt),
+          updatedAt: new Date(raw.recurrencePattern.updatedAt),
+        }
+      : null,
+  } as Bill
+}
 
 const billSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -264,7 +289,31 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(bill, { status: 201 })
+    const templateWhere: any = { isRecurring: true }
+    if (session.user.role !== Role.ADMIN) {
+      templateWhere.OR = [{ createdById: session.user.id }, { createdById: null }]
+    }
+    const templateRows = await prisma.bill.findMany({
+      where: templateWhere,
+      include: { recurrencePattern: true },
+    })
+    const match = matchNewBillToForecast(
+      {
+        title: bill.title,
+        dueDate: new Date(bill.dueDate),
+        vendorId: bill.vendorId,
+      },
+      templateRows.map(toBillForForecast),
+    )
+
+    return NextResponse.json(
+      {
+        ...bill,
+        matchedForecast: Boolean(match),
+        ...(match ? { matchedTitle: match.title } : {}),
+      },
+      { status: 201 },
+    )
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -140,6 +140,8 @@ export interface Bill {
   vendorAccount?: VendorAccount | null
   createdBy?: User | null
   recurrencePattern?: RecurrencePattern | null
+  /** True when this row is an ephemeral forecast slot, not a stored bill. */
+  isForecast?: boolean
   expense?: Expense | null
   comments?: Comment[]
   attachments?: Attachment[]
@@ -287,6 +289,14 @@ export interface PredictedBill {
   categoryId?: string
   vendorId?: string | null
   vendorAccountId?: string | null
+}
+
+export interface BillTitleSuggestion {
+  title: string
+  categoryId: string
+  vendorId: string | null
+  vendorAccountId: string | null
+  occurrenceCount: number
 }
 
 export interface BudgetPredictionPeriodData {

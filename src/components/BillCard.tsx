@@ -16,7 +16,13 @@ export default function BillCard({ bill, onClick }: BillCardProps) {
     >
         <div className="flex items-start justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">{bill.title}</h3>
-          <BillStatusBadge status={bill.status} />
+          {bill.isForecast ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              Expected
+            </span>
+          ) : (
+            <BillStatusBadge status={bill.status} />
+          )}
         </div>
 
         <div className="space-y-2">
