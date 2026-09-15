@@ -1,64 +1,52 @@
 #!/bin/bash
 
 # Kontado Deployment Script
-# This script builds and deploys the application to PM2
+# Builds the app and (re)starts it under systemd as kontado.service.
 
-set -e  # Exit on any error
+set -e
 
-echo "🚀 Starting deployment..."
-
-# Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Check if PM2 is installed
-if ! command -v pm2 &> /dev/null; then
-    echo -e "${RED}❌ PM2 is not installed. Installing PM2...${NC}"
-    npm install -g pm2
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+UNIT_SRC="$REPO_DIR/deploy/kontado.service"
+UNIT_DST="/etc/systemd/system/kontado.service"
 
-# Check if .env file exists
+cd "$REPO_DIR"
+
+echo "Starting Kontado deployment..."
+
 if [ ! -f .env ]; then
-    echo -e "${RED}❌ Error: .env file not found!${NC}"
+    echo -e "${RED}Error: .env file not found!${NC}"
     echo "Please create a .env file with the required environment variables."
     exit 1
 fi
 
-echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+if [ ! -f "$UNIT_SRC" ]; then
+    echo -e "${RED}Error: systemd unit not found at $UNIT_SRC${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}Installing dependencies...${NC}"
 npm ci
 
-echo -e "${YELLOW}🔨 Building application...${NC}"
+echo -e "${YELLOW}Building application...${NC}"
 npm run build
 
-echo -e "${YELLOW}🧹 Cleaning up dev dependencies...${NC}"
-npm prune --omit=dev
-
-echo -e "${YELLOW}🗄️  Running database migrations...${NC}"
+echo -e "${YELLOW}Running database migrations...${NC}"
 npx prisma migrate deploy
 
-echo -e "${YELLOW}📁 Creating logs directory...${NC}"
-mkdir -p logs
-
-echo -e "${YELLOW}🔄 Stopping existing PM2 process (if any)...${NC}"
-pm2 delete Kontado 2>/dev/null || echo "No existing process to stop"
-
-echo -e "${YELLOW}🚀 Starting application with PM2...${NC}"
-pm2 start ecosystem.config.js
-
-echo -e "${YELLOW}💾 Saving PM2 process list...${NC}"
-pm2 save
-
-echo -e "${YELLOW}⚙️  Setting up PM2 startup script...${NC}"
-pm2 startup systemd -u $USER --hp $HOME || echo "PM2 startup already configured"
-
-echo -e "${GREEN}✅ Deployment complete!${NC}"
+echo -e "${YELLOW}Build and migrate complete.${NC}"
+echo "Install or restart the systemd unit with:"
+echo "  sudo bash $REPO_DIR/deploy/install-kontado-systemd.sh"
 echo ""
-echo "Useful PM2 commands:"
-echo "  pm2 status            - Check application status"
-echo "  pm2 logs Kontado    - View application logs"
-echo "  pm2 restart Kontado - Restart the application"
-echo "  pm2 stop Kontado    - Stop the application"
-echo "  pm2 monit             - Monitor application"
-
+echo "That copies $UNIT_SRC to $UNIT_DST, enables the unit,"
+echo "drops leftover PM2 'kontado', and starts the service."
+echo ""
+echo "Afterwards:"
+echo "  systemctl status kontado"
+echo "  journalctl -u kontado -f"
+echo "  sudo systemctl restart kontado"

@@ -1,0 +1,20 @@
+[Unit]
+Description=Kontado bill tracking
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=torvaldsl
+Group=torvaldsl
+WorkingDirectory=/home/torvaldsl/finance
+Environment=NODE_ENV=production
+# server.js loads .env via dotenv (PORT, DATABASE_URL, NEXTAUTH_*, etc.)
+ExecStart=/bin/bash -c 'NODE=$(ls -1d /home/torvaldsl/.nvm/versions/node/v* | sort -V | tail -1)/bin/node; exec "$NODE" server.js'
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+SyslogIdentifier=kontado
+
+[Install]
+WantedBy=multi-user.target
