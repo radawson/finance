@@ -100,18 +100,17 @@ describe('categoryBreakdownFromExpenses', () => {
 
 describe('filterExpensesInPeriod', () => {
   it('includes expenses within the inclusive day range and excludes others', () => {
-    // All local datetimes so day-boundary normalization is timezone-consistent.
     const expenses = [
-      makeExpense({ id: 'in-start', date: new Date('2026-06-01T00:00:00') }),
-      makeExpense({ id: 'in-mid', date: new Date('2026-06-15T12:00:00') }),
-      makeExpense({ id: 'in-end', date: new Date('2026-06-30T23:00:00') }),
-      makeExpense({ id: 'before', date: new Date('2026-05-31T23:00:00') }),
-      makeExpense({ id: 'after', date: new Date('2026-07-01T01:00:00') }),
+      makeExpense({ id: 'in-start', date: new Date('2026-06-01T12:00:00.000Z') }),
+      makeExpense({ id: 'in-mid', date: new Date('2026-06-15T12:00:00.000Z') }),
+      makeExpense({ id: 'in-end', date: new Date('2026-06-30T12:00:00.000Z') }),
+      makeExpense({ id: 'before', date: new Date('2026-05-31T12:00:00.000Z') }),
+      makeExpense({ id: 'after', date: new Date('2026-07-01T12:00:00.000Z') }),
     ]
     const result = filterExpensesInPeriod(
       expenses,
-      new Date('2026-06-01T00:00:00'),
-      new Date('2026-06-30T00:00:00'),
+      new Date('2026-06-01T12:00:00.000Z'),
+      new Date('2026-06-30T12:00:00.000Z'),
     )
     expect(result.map((e) => e.id).sort()).toEqual(['in-end', 'in-mid', 'in-start'])
   })

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Bill, Category, Vendor, BillStatus, RecurrenceFrequencyEnum, BillTitleSuggestion } from '@/types'
 import { Save, Delete, X, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
+import { calendarDateInputValue, calendarDayOfMonth } from '@/lib/date-utils'
 import CategoryModal from '@/components/CategoryModal'
 import { addTemporaryClass } from '@/lib/visual-feedback'
 import TagInput from '@/components/TagInput'
@@ -131,13 +131,13 @@ export default function BillEditForm({
       setFormData({
         title: bill.title,
         amount: Number(bill.amount).toFixed(2),
-        dueDate: format(dueDate, 'yyyy-MM-dd'),
+        dueDate: calendarDateInputValue(dueDate),
         categoryId: bill.categoryId,
         vendorId: bill.vendorId || '',
         vendorAccountId: bill.vendorAccountId || '',
         description: bill.description || '',
         status: bill.status,
-        paidDate: bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : '',
+        paidDate: bill.paidDate ? calendarDateInputValue(bill.paidDate) : '',
         invoiceNumber: bill.invoiceNumber || '',
         tags: bill.tags || [],
         accountBalance: '', // User enters current balance when needed
@@ -151,8 +151,8 @@ export default function BillEditForm({
         setRecurrenceData({
           frequency: bill.recurrencePattern.frequency as RecurrenceFrequencyEnum,
           dayOfMonth: bill.recurrencePattern.dayOfMonth,
-          startDate: format(new Date(bill.recurrencePattern.startDate), 'yyyy-MM-dd'),
-          endDate: bill.recurrencePattern.endDate ? format(new Date(bill.recurrencePattern.endDate), 'yyyy-MM-dd') : '',
+          startDate: calendarDateInputValue(bill.recurrencePattern.startDate),
+          endDate: bill.recurrencePattern.endDate ? calendarDateInputValue(bill.recurrencePattern.endDate) : '',
         })
       } else {
         // Initialize with defaults based on due date
@@ -160,8 +160,8 @@ export default function BillEditForm({
         setShowRecurrenceSection(false)
         setRecurrenceData({
           frequency: RecurrenceFrequencyEnum.MONTHLY,
-          dayOfMonth: dueDate.getDate(),
-          startDate: format(dueDate, 'yyyy-MM-dd'),
+          dayOfMonth: calendarDayOfMonth(dueDate),
+          startDate: calendarDateInputValue(dueDate),
           endDate: '',
         })
       }
@@ -291,11 +291,10 @@ export default function BillEditForm({
   // Update recurrence defaults when due date changes (if recurrence is enabled but not yet configured)
   useEffect(() => {
     if (isRecurring && formData.dueDate && !bill?.recurrencePatternId) {
-      const dueDate = new Date(formData.dueDate)
       setRecurrenceData(prev => ({
         ...prev,
-        dayOfMonth: dueDate.getDate(),
-        startDate: format(dueDate, 'yyyy-MM-dd'),
+        dayOfMonth: calendarDayOfMonth(formData.dueDate),
+        startDate: formData.dueDate,
       }))
     }
   }, [formData.dueDate, isRecurring, bill?.recurrencePatternId])
@@ -604,11 +603,10 @@ export default function BillEditForm({
                 setShowRecurrenceSection(e.target.checked)
                 // If enabling, update defaults based on current due date
                 if (e.target.checked && formData.dueDate) {
-                  const dueDate = new Date(formData.dueDate)
                   setRecurrenceData({
                     frequency: RecurrenceFrequencyEnum.MONTHLY,
-                    dayOfMonth: dueDate.getDate(),
-                    startDate: format(dueDate, 'yyyy-MM-dd'),
+                    dayOfMonth: calendarDayOfMonth(formData.dueDate),
+                    startDate: formData.dueDate,
                     endDate: '',
                   })
                 }

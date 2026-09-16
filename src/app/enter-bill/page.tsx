@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { DollarSign, Calendar, FileText, Tag } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeProvider'
+import { calendarDateToIso } from '@/lib/date-utils'
 
 interface Category {
   id: string
@@ -55,7 +56,7 @@ export default function EnterBillPage() {
         body: JSON.stringify({
           title: formData.title,
           amount: formData.amount,
-          dueDate: new Date(formData.dueDate).toISOString(),
+          dueDate: calendarDateToIso(formData.dueDate),
           categoryId: formData.categoryId,
           description: formData.description || undefined,
         }),

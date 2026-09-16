@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { UUID_REGEX } from '@/types'
 import { canViewHouseholdRecord } from '@/lib/household-visibility'
 import { eobInclude, serializeEob } from '@/lib/eobs'
+import { asCalendarDate } from '@/lib/date-utils'
 
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
 const nonnegativeDecimalString = decimalString.refine(
@@ -90,7 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             data: data.procedures.map((p, index) => ({
               eobId: eob!.id,
               sortOrder: index,
-              dateOfService: new Date(p.dateOfService as any),
+              dateOfService: asCalendarDate(p.dateOfService),
               procedureCode: p.procedureCode || null,
               description: p.description,
               billedAmount: p.billedAmount,
@@ -110,12 +111,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           ...(data.providerName !== undefined && { providerName: data.providerName }),
           ...(data.claimNumber !== undefined && { claimNumber: data.claimNumber }),
           ...(data.memberId !== undefined && { memberId: data.memberId }),
-          ...(data.eobDate !== undefined && { eobDate: new Date(data.eobDate as any) }),
+          ...(data.eobDate !== undefined && { eobDate: asCalendarDate(data.eobDate) }),
           ...(data.serviceStart !== undefined && {
-            serviceStart: data.serviceStart ? new Date(data.serviceStart as any) : null,
+            serviceStart: data.serviceStart ? asCalendarDate(data.serviceStart) : null,
           }),
           ...(data.serviceEnd !== undefined && {
-            serviceEnd: data.serviceEnd ? new Date(data.serviceEnd as any) : null,
+            serviceEnd: data.serviceEnd ? asCalendarDate(data.serviceEnd) : null,
           }),
           ...(data.billedAmount !== undefined && { billedAmount: data.billedAmount }),
           ...(data.insurancePaid !== undefined && { insurancePaid: data.insurancePaid }),

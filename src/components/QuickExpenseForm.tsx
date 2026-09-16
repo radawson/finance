@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Category, Expense } from '@/types'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
 import { Plus } from 'lucide-react'
+import { calendarDateToIso, todayCalendarDate } from '@/lib/date-utils'
 
 interface QuickExpenseFormProps {
   categories: Category[]
@@ -27,7 +27,7 @@ export default function QuickExpenseForm({
   onCreated,
   defaultCategoryName = 'Food',
 }: QuickExpenseFormProps) {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayCalendarDate()
   const [form, setForm] = useState(emptyForm(today, ''))
   const [isSaving, setIsSaving] = useState(false)
 
@@ -61,7 +61,7 @@ export default function QuickExpenseForm({
           amount: form.amount,
           // Anchor to local noon so the date never crosses a day boundary when
           // displayed in a non-UTC timezone (a date-only value, not an instant).
-          date: new Date(`${form.date}T12:00:00`).toISOString(),
+          date: calendarDateToIso(form.date),
           categoryId: form.categoryId,
           payee: form.payee.trim() || undefined,
           note: form.note.trim() || undefined,

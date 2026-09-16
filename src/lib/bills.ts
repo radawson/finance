@@ -1,5 +1,16 @@
 import { BillStatus } from '@/generated/prisma/client'
 import { addDays, isBefore, isAfter, differenceInDays } from 'date-fns'
+import { calendarDateInputValue, calendarYmdToLocalDate, todayCalendarDate } from './date-utils'
+
+function localDueVsToday(dueDate: Date, now: Date = new Date()) {
+  const dueLocal = calendarYmdToLocalDate(calendarDateInputValue(dueDate))
+  const todayLocal = calendarYmdToLocalDate(todayCalendarDate(now))
+  return {
+    dueLocal,
+    todayLocal,
+    daysUntilDue: differenceInDays(dueLocal, todayLocal),
+  }
+}
 
 /**
  * Calculate bill status based on due date and current date
@@ -23,16 +34,10 @@ export function calculateBillStatus(
     return BillStatus.PAID
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const due = new Date(dueDate)
-  due.setHours(0, 0, 0, 0)
-
-  const daysUntilDue = differenceInDays(due, today)
+  const { dueLocal, todayLocal, daysUntilDue } = localDueVsToday(dueDate)
 
   // Overdue: due date has passed
-  if (isBefore(due, today)) {
+  if (isBefore(dueLocal, todayLocal)) {
     return BillStatus.OVERDUE
   }
 
@@ -52,13 +57,7 @@ export function calculateBillStatus(
  * @returns true if bill is due within the specified days
  */
 export function isDueSoon(dueDate: Date, days: number = 7): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const due = new Date(dueDate)
-  due.setHours(0, 0, 0, 0)
-
-  const daysUntilDue = differenceInDays(due, today)
+  const { daysUntilDue } = localDueVsToday(dueDate)
   return daysUntilDue >= 0 && daysUntilDue <= days
 }
 
@@ -68,13 +67,8 @@ export function isDueSoon(dueDate: Date, days: number = 7): boolean {
  * @returns true if bill is overdue
  */
 export function isOverdue(dueDate: Date): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const due = new Date(dueDate)
-  due.setHours(0, 0, 0, 0)
-
-  return isBefore(due, today)
+  const { dueLocal, todayLocal } = localDueVsToday(dueDate)
+  return isBefore(dueLocal, todayLocal)
 }
 
 /**
@@ -121,18 +115,15 @@ export function getUpcomingBills<T extends { dueDate: Date; status?: BillStatus 
   bills: T[],
   days: number = 30
 ): T[] {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const futureDate = addDays(today, days)
+  const todayLocal = calendarYmdToLocalDate(todayCalendarDate())
+  const futureDate = addDays(todayLocal, days)
 
   return bills.filter((bill) => {
-    const due = new Date(bill.dueDate)
-    due.setHours(0, 0, 0, 0)
+    const dueLocal = calendarYmdToLocalDate(calendarDateInputValue(bill.dueDate))
 
     return (
-      (isAfter(due, today) || due.getTime() === today.getTime()) &&
-      isBefore(due, futureDate) &&
+      (isAfter(dueLocal, todayLocal) || dueLocal.getTime() === todayLocal.getTime()) &&
+      isBefore(dueLocal, futureDate) &&
       bill.status !== BillStatus.PAID &&
       bill.status !== BillStatus.SKIPPED
     )

@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { calendarDateInputValue } from '@/lib/date-utils'
 import {
   MonthlyBudgetPeriod,
   MonthlyBudgetReport,
@@ -25,13 +25,10 @@ export function matchesAnyTag(itemTags: string[] | undefined, filterTags: string
 }
 
 export function inDateRange(date: Date | string, start: Date, end: Date): boolean {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  const s = new Date(start)
-  s.setHours(0, 0, 0, 0)
-  const e = new Date(end)
-  e.setHours(23, 59, 59, 999)
-  return d >= s && d <= e
+  const d = calendarDateInputValue(date)
+  const s = calendarDateInputValue(start)
+  const e = calendarDateInputValue(end)
+  return Boolean(d && s && e && d >= s && d <= e)
 }
 
 export function buildTaxItemsReport(input: {
@@ -127,8 +124,8 @@ export function buildTaxItemsReport(input: {
   const expenseTotal = expenses.reduce((sum, e) => sum + e.amount, 0)
 
   return {
-    startDate: format(input.startDate, 'yyyy-MM-dd'),
-    endDate: format(input.endDate, 'yyyy-MM-dd'),
+    startDate: calendarDateInputValue(input.startDate),
+    endDate: calendarDateInputValue(input.endDate),
     tags: input.tags,
     bills,
     eobs,
@@ -176,7 +173,7 @@ export function buildMonthlyBudgetReport(input: {
 
   const periodMap = new Map<string, MonthlyBudgetRow[]>()
   for (const row of rows) {
-    const label = format(row.date, 'yyyy-MM')
+    const label = calendarDateInputValue(row.date).slice(0, 7)
     const list = periodMap.get(label) || []
     list.push(row)
     periodMap.set(label, list)
@@ -191,8 +188,8 @@ export function buildMonthlyBudgetReport(input: {
     }))
 
   return {
-    startDate: format(input.startDate, 'yyyy-MM-dd'),
-    endDate: format(input.endDate, 'yyyy-MM-dd'),
+    startDate: calendarDateInputValue(input.startDate),
+    endDate: calendarDateInputValue(input.endDate),
     tags: input.tags,
     periods,
     grandTotal: rows.reduce((sum, r) => sum + r.amount, 0),

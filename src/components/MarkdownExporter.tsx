@@ -3,6 +3,7 @@
 import { HistoricBillsData, BudgetPredictionData } from '@/types'
 import { Download, Printer } from 'lucide-react'
 import { format } from 'date-fns'
+import { calendarDateInputValue } from '@/lib/date-utils'
 
 interface MarkdownExporterProps {
   type: 'history' | 'budget'
@@ -25,7 +26,7 @@ export function exportToMarkdown(
   lines.push('')
   lines.push(`**Generated:** ${format(now, 'yyyy-MM-dd HH:mm:ss')}`)
   if (startDate && endDate) {
-    lines.push(`**Date Range:** ${format(new Date(startDate), 'yyyy-MM-dd')} to ${format(new Date(endDate), 'yyyy-MM-dd')}`)
+    lines.push(`**Date Range:** ${calendarDateInputValue(startDate)} to ${calendarDateInputValue(endDate)}`)
   }
   lines.push(`**Period:** ${data.period}`)
   lines.push('')
@@ -64,7 +65,7 @@ export function exportToMarkdown(
       lines.push('|-------|--------|------|----------|--------|')
 
       period.bills.forEach((bill) => {
-        const date = format(new Date(bill.dueDate), 'yyyy-MM-dd')
+        const date = calendarDateInputValue(bill.dueDate)
         const category = bill.category?.name || 'N/A'
         const vendor = bill.vendor?.name || 'N/A'
         lines.push(`| ${bill.title} | $${Number(bill.amount).toFixed(2)} | ${date} | ${category} | ${vendor} |`)
@@ -117,7 +118,7 @@ export function exportToMarkdown(
       lines.push('|-------|--------|------|--------|')
 
       period.bills.forEach((bill) => {
-        const date = format(new Date(bill.dueDate), 'yyyy-MM-dd')
+        const date = calendarDateInputValue(bill.dueDate)
         const source = bill.source === 'actual' ? 'Actual' : 'Projected'
         lines.push(`| ${bill.title} | $${bill.amount.toFixed(2)} | ${date} | ${source} |`)
       })

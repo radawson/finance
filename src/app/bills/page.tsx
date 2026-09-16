@@ -12,7 +12,7 @@ import { Bill, Category, Vendor, VendorAccount, BillStatus, RecurrenceFrequencyE
 import { Plus, Filter, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Repeat } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
+import { calendarDateToIso, calendarDayOfMonth, formatCalendarDate, inCalendarYmdRange } from '@/lib/date-utils'
 
 type SortColumn = 'title' | 'amount' | 'dueDate' | 'status' | 'category' | 'vendor' | null
 type SortDirection = 'asc' | 'desc' | null
@@ -75,11 +75,10 @@ export default function BillsPage() {
   // Update recurrence defaults when due date changes (if recurrence is enabled)
   useEffect(() => {
     if (isRecurring && formData.dueDate) {
-      const dueDate = new Date(formData.dueDate)
       setRecurrenceData(prev => ({
         ...prev,
-        dayOfMonth: dueDate.getDate(),
-        startDate: format(dueDate, 'yyyy-MM-dd'),
+        dayOfMonth: calendarDayOfMonth(formData.dueDate),
+        startDate: formData.dueDate,
       }))
     }
   }, [formData.dueDate, isRecurring])
@@ -164,15 +163,10 @@ export default function BillsPage() {
       }
     }
 
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom)
-      filtered = filtered.filter((bill) => new Date(bill.dueDate) >= fromDate)
-    }
-
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo)
-      toDate.setHours(23, 59, 59, 999)
-      filtered = filtered.filter((bill) => new Date(bill.dueDate) <= toDate)
+    if (filters.dateFrom || filters.dateTo) {
+      filtered = filtered.filter((bill) =>
+        inCalendarYmdRange(bill.dueDate, filters.dateFrom || undefined, filters.dateTo || undefined),
+      )
     }
 
     if (filters.isRecurring !== '') {
@@ -270,13 +264,13 @@ export default function BillsPage() {
       const requestBody = {
         title: formData.title,
         amount: formData.amount,
-        dueDate: new Date(formData.dueDate).toISOString(),
+        dueDate: calendarDateToIso(formData.dueDate),
         categoryId: formData.categoryId,
         vendorId: formData.vendorId || undefined,
         vendorAccountId: formData.vendorAccountId || undefined,
         description: formData.description || undefined,
         status: formData.status,
-        paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
+        paidDate: formData.paidDate ? calendarDateToIso(formData.paidDate) : undefined,
         invoiceNumber: formData.invoiceNumber || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         isTaxItem: formData.isTaxItem,
@@ -702,7 +696,7 @@ export default function BillsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {format(new Date(bill.dueDate), 'MMM d, yyyy')}
+                          {formatCalendarDate(bill.dueDate)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1053,11 +1047,10 @@ export default function BillsPage() {
                         setShowRecurrenceSection(e.target.checked)
                         // If enabling, update defaults based on current due date
                         if (e.target.checked && formData.dueDate) {
-                          const dueDate = new Date(formData.dueDate)
                           setRecurrenceData({
                             frequency: RecurrenceFrequencyEnum.MONTHLY,
-                            dayOfMonth: dueDate.getDate(),
-                            startDate: format(dueDate, 'yyyy-MM-dd'),
+                            dayOfMonth: calendarDayOfMonth(formData.dueDate),
+                            startDate: formData.dueDate,
                             endDate: '',
                           })
                         }

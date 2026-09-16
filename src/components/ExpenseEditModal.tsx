@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Category, Expense } from '@/types'
-import { format } from 'date-fns'
+import { calendarDateInputValue, calendarDateToIso, formatCalendarDate } from '@/lib/date-utils'
 import { Calendar, DollarSign, Link2, Save, Tag, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -17,7 +17,7 @@ interface ExpenseEditModalProps {
 }
 
 function toDateInput(value: Date | string) {
-  return format(new Date(value), 'yyyy-MM-dd')
+  return calendarDateInputValue(value)
 }
 
 export default function ExpenseEditModal({
@@ -86,7 +86,7 @@ export default function ExpenseEditModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: form.amount,
-          date: new Date(`${form.date}T12:00:00`).toISOString(),
+          date: calendarDateToIso(form.date),
           categoryId: form.categoryId,
           payee: form.payee.trim() || null,
           note: form.note.trim() || null,
@@ -171,7 +171,7 @@ export default function ExpenseEditModal({
                 <Calendar className="w-5 h-5 mr-3 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Date</div>
-                  <div className="font-medium">{format(new Date(expense.date), 'MMM d, yyyy')}</div>
+                  <div className="font-medium">{formatCalendarDate(expense.date)}</div>
                 </div>
               </div>
               <div className="flex items-center text-gray-700">

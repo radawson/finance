@@ -1,4 +1,5 @@
 import { BillStatus, DecimalValue } from '@/types'
+import { isStoredDateInLocalRange } from '@/lib/date-utils'
 
 /**
  * The unified ledger seam.
@@ -116,15 +117,7 @@ export function filterExpensesInPeriod<T extends { date: Date | string }>(
   periodStart: Date,
   periodEnd: Date,
 ): T[] {
-  const start = new Date(periodStart)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(periodEnd)
-  end.setHours(23, 59, 59, 999)
-
-  return expenses.filter((e) => {
-    const d = new Date(e.date)
-    return d >= start && d <= end
-  })
+  return expenses.filter((e) => isStoredDateInLocalRange(e.date, periodStart, periodEnd))
 }
 
 export interface CategoryBreakdownEntry {

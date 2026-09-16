@@ -7,7 +7,8 @@ import {
   DecimalValue,
 } from '@/types'
 import { getDueDatesInRange } from './recurrence'
-import { addDays, format, getQuarter } from 'date-fns'
+import { addDays, getQuarter } from 'date-fns'
+import { calendarDateInputValue, calendarYmdToLocalDate } from './date-utils'
 import {
   shouldMatchBill,
   estimateRecurringAmount,
@@ -62,15 +63,17 @@ export function groupBillsByPeriod(
  * Format period label based on period type
  */
 export function formatPeriodLabel(date: Date, period: 'monthly' | 'quarterly' | 'yearly' | 'custom'): string {
+  const ymd = calendarDateInputValue(date)
+  const local = calendarYmdToLocalDate(ymd)
   switch (period) {
     case 'monthly':
-      return format(date, 'yyyy-MM')
+      return ymd.slice(0, 7)
     case 'quarterly':
-      return `${format(date, 'yyyy')}-Q${getQuarter(date)}`
+      return `${ymd.slice(0, 4)}-Q${getQuarter(local)}`
     case 'yearly':
-      return format(date, 'yyyy')
+      return ymd.slice(0, 4)
     default:
-      return format(date, 'yyyy-MM-dd')
+      return ymd
   }
 }
 

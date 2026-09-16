@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { calculateBillStatus } from '@/lib/bills'
 import { UUID_REGEX } from '@/types'
+import { asCalendarDate } from '@/lib/date-utils'
 
 // Accept amount as string or number, coerce to string for Decimal precision
 const positiveDecimalString = z.union([z.string(), z.number()])
@@ -27,13 +28,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const parsedData = anonymousBillSchema.parse({
       ...body,
-      dueDate: body.dueDate ? new Date(body.dueDate) : new Date(),
+      dueDate: body.dueDate ? asCalendarDate(body.dueDate) : new Date(),
     })
 
     // Ensure dueDate is a Date object
     const data = {
       ...parsedData,
-      dueDate: parsedData.dueDate instanceof Date ? parsedData.dueDate : new Date(parsedData.dueDate),
+      dueDate: asCalendarDate(parsedData.dueDate),
     }
 
     // Verify category exists

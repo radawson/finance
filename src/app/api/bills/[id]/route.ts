@@ -9,6 +9,7 @@ import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
 import { emitToBill, emitToUser, SocketEvents } from '@/lib/socketio-server'
 import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
+import { asCalendarDate } from '@/lib/date-utils'
 
 // Accept amount as string or number, coerce to string for Decimal precision
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
@@ -160,7 +161,7 @@ export async function PATCH(
     const body = await req.json()
     const data = updateBillSchema.parse({
       ...body,
-      dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+      dueDate: body.dueDate ? asCalendarDate(body.dueDate) : undefined,
     })
 
     // Verify category exists if updating
@@ -229,8 +230,8 @@ export async function PATCH(
     // Calculate status if dueDate changed or status not explicitly set
     let status = data.status
     if (!status && (data.dueDate || data.paidDate !== undefined)) {
-      const dueDate = data.dueDate ? new Date(data.dueDate) : existingBill.dueDate
-      const paidDate = data.paidDate !== undefined ? (data.paidDate ? new Date(data.paidDate) : null) : existingBill.paidDate
+      const dueDate = data.dueDate ? asCalendarDate(data.dueDate) : existingBill.dueDate
+      const paidDate = data.paidDate !== undefined ? (data.paidDate ? asCalendarDate(data.paidDate) : null) : existingBill.paidDate
       status = calculateBillStatus(dueDate, paidDate, existingBill.status)
     }
 
@@ -256,14 +257,14 @@ export async function PATCH(
         data: {
           ...(data.title && { title: data.title }),
           ...(data.amount !== undefined && { amount: data.amount }),
-          ...(data.dueDate && { dueDate: new Date(data.dueDate) }),
+          ...(data.dueDate && { dueDate: asCalendarDate(data.dueDate) }),
           ...(data.categoryId && { categoryId: data.categoryId }),
           ...(data.description !== undefined && { description: data.description }),
           ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
           ...(data.vendorAccountId !== undefined && { vendorAccountId: data.vendorAccountId }),
           ...(status && { status }),
           ...(data.paidDate !== undefined && {
-            paidDate: data.paidDate ? new Date(data.paidDate) : null,
+            paidDate: data.paidDate ? asCalendarDate(data.paidDate) : null,
           }),
           ...(data.isRecurring !== undefined && { isRecurring: data.isRecurring }),
           ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),

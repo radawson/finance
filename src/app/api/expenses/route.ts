@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
+import { asCalendarDate, parseCalendarDateEnd, parseCalendarDateStart } from '@/lib/date-utils'
 
 // Accept amount as string or number, coerce to string for Decimal precision
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
@@ -46,8 +47,8 @@ export async function GET(req: NextRequest) {
     if (categoryId) where.categoryId = categoryId
     if (startDate || endDate) {
       where.date = {}
-      if (startDate) where.date.gte = new Date(startDate)
-      if (endDate) where.date.lte = new Date(endDate)
+      if (startDate) where.date.gte = parseCalendarDateStart(startDate)
+      if (endDate) where.date.lte = parseCalendarDateEnd(endDate)
     }
 
     const expenses = await prisma.expense.findMany({
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
     const expense = await prisma.expense.create({
       data: {
         amount: data.amount,
-        date: data.date ? new Date(data.date as any) : new Date(),
+        date: data.date ? asCalendarDate(data.date) : new Date(),
         categoryId: data.categoryId,
         payee: data.payee ?? null,
         note: data.note ?? null,

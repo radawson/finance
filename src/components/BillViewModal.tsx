@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Bill } from '@/types'
 import BillStatusBadge from './BillStatusBadge'
-import { format } from 'date-fns'
+import { formatCalendarDate, todayCalendarDate } from '@/lib/date-utils'
 import { X, Edit, DollarSign, Calendar, Tag, Building2, CreditCard, MessageSquare, Paperclip, FileText, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -40,7 +40,7 @@ export default function BillViewModal({ bill, isOpen, onClose, onUpdate }: BillV
 
     setIsMarkingPaid(true)
     try {
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+      const today = todayCalendarDate()
       
       const response = await fetch(`/api/bills/${currentBill.id}`, {
         method: 'PATCH',
@@ -120,7 +120,7 @@ export default function BillViewModal({ bill, isOpen, onClose, onUpdate }: BillV
               <Calendar className="w-5 h-5 mr-3 text-gray-400" />
               <div>
                 <div className="text-sm text-gray-500">Due Date</div>
-                <div className="font-semibold">{format(new Date(currentBill.dueDate), 'MMM d, yyyy')}</div>
+                <div className="font-semibold">{formatCalendarDate(currentBill.dueDate)}</div>
               </div>
             </div>
 
@@ -129,7 +129,7 @@ export default function BillViewModal({ bill, isOpen, onClose, onUpdate }: BillV
                 <Calendar className="w-5 h-5 mr-3 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Paid Date</div>
-                  <div className="font-semibold">{format(new Date(currentBill.paidDate), 'MMM d, yyyy')}</div>
+                  <div className="font-semibold">{formatCalendarDate(currentBill.paidDate)}</div>
                 </div>
               </div>
             )}
@@ -200,7 +200,7 @@ export default function BillViewModal({ bill, isOpen, onClose, onUpdate }: BillV
               <div className="text-sm font-medium text-blue-900">Recurring Bill</div>
               {currentBill.nextDueDate && (
                 <div className="text-sm text-blue-700 mt-1">
-                  Next due: {format(new Date(currentBill.nextDueDate), 'MMM d, yyyy')}
+                  Next due: {formatCalendarDate(currentBill.nextDueDate)}
                 </div>
               )}
             </div>

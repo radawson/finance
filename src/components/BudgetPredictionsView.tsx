@@ -4,7 +4,7 @@ import { useState } from 'react'
 import React from 'react'
 import { BudgetPredictionData, BudgetPredictionPeriodData } from '@/types'
 import { ChevronDown, ChevronRight, AlertCircle } from 'lucide-react'
-import { format } from 'date-fns'
+import { calendarDateInputValue } from '@/lib/date-utils'
 import MarkdownExporter from './MarkdownExporter'
 
 interface BudgetPredictionsViewProps {
@@ -112,7 +112,7 @@ function PeriodTable({ periods, amountLabel }: { periods: BudgetPredictionPeriod
                                         ${bill.amount.toFixed(2)}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-500">
-                                        {format(dueDate, 'yyyy-MM-dd')}
+                                        {calendarDateInputValue(dueDate)}
                                       </td>
                                     </tr>
                                   )

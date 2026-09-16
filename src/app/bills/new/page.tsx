@@ -8,6 +8,7 @@ import BillEditForm, { BillFormData, RecurrenceFormData } from '@/components/Bil
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { calendarDateToIso } from '@/lib/date-utils'
 
 function NewBillForm({
   isSaving,
@@ -64,13 +65,13 @@ export default function NewBillPage() {
         body: JSON.stringify({
           title: formData.title,
           amount: formData.amount,
-          dueDate: new Date(formData.dueDate).toISOString(),
+          dueDate: calendarDateToIso(formData.dueDate),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || undefined,
           vendorAccountId: formData.vendorAccountId || undefined,
           description: formData.description || undefined,
           status: formData.status,
-          paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : undefined,
+          paidDate: formData.paidDate ? calendarDateToIso(formData.paidDate) : undefined,
           invoiceNumber: formData.invoiceNumber || undefined,
           isRecurring: !!recurrenceData,
           isTaxItem: formData.isTaxItem,

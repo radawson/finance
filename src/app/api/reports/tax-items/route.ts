@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { householdVisibilityWhere } from '@/lib/household-visibility'
 import { buildTaxItemsReport, parseTagFilter } from '@/lib/business/reports'
+import { parseCalendarDateEnd, parseCalendarDateStart } from '@/lib/date-utils'
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,8 +20,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'startDate and endDate are required' }, { status: 400 })
     }
 
-    const startDate = new Date(startDateRaw)
-    const endDate = new Date(endDateRaw)
+    const startDate = parseCalendarDateStart(startDateRaw)
+    const endDate = parseCalendarDateEnd(endDateRaw)
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return NextResponse.json({ error: 'Invalid date range' }, { status: 400 })
     }

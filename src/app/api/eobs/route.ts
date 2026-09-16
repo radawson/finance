@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { UUID_REGEX } from '@/types'
 import { householdVisibilityWhere } from '@/lib/household-visibility'
 import { eobInclude, serializeEob } from '@/lib/eobs'
+import { asCalendarDate } from '@/lib/date-utils'
 
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
 const nonnegativeDecimalString = decimalString.refine(
@@ -90,9 +91,9 @@ export async function POST(req: NextRequest) {
         providerName: data.providerName,
         claimNumber: data.claimNumber || null,
         memberId: data.memberId || null,
-        eobDate: new Date(data.eobDate as any),
-        serviceStart: data.serviceStart ? new Date(data.serviceStart as any) : null,
-        serviceEnd: data.serviceEnd ? new Date(data.serviceEnd as any) : null,
+        eobDate: asCalendarDate(data.eobDate),
+        serviceStart: data.serviceStart ? asCalendarDate(data.serviceStart) : null,
+        serviceEnd: data.serviceEnd ? asCalendarDate(data.serviceEnd) : null,
         billedAmount: data.billedAmount,
         insurancePaid: data.insurancePaid,
         adjustmentAmount: data.adjustmentAmount || '0',
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
         procedures: {
           create: procedures.map((p, index) => ({
             sortOrder: index,
-            dateOfService: new Date(p.dateOfService as any),
+            dateOfService: asCalendarDate(p.dateOfService),
             procedureCode: p.procedureCode || null,
             description: p.description,
             billedAmount: p.billedAmount,

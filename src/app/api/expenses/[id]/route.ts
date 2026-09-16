@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
 import { UUID_REGEX } from '@/types'
+import { asCalendarDate } from '@/lib/date-utils'
 
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
 const positiveDecimalString = decimalString.refine(
@@ -56,7 +57,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id: expense!.id },
       data: {
         ...(data.amount !== undefined && { amount: data.amount }),
-        ...(data.date !== undefined && { date: new Date(data.date as any) }),
+        ...(data.date !== undefined && { date: asCalendarDate(data.date) }),
         ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
         ...(data.payee !== undefined && { payee: data.payee }),
         ...(data.note !== undefined && { note: data.note }),

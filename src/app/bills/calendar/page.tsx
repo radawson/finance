@@ -8,6 +8,7 @@ import { Bill } from '@/types'
 import { Calendar, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import Link from 'next/link'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
+import { isSameCalendarDay } from '@/lib/date-utils'
 import toast from 'react-hot-toast'
 
 export default function BillCalendarPage() {
@@ -47,10 +48,7 @@ export default function BillCalendarPage() {
 
   // Get bills for a specific date
   const getBillsForDate = (date: Date) => {
-    return bills.filter(bill => {
-      const billDate = new Date(bill.dueDate)
-      return isSameDay(billDate, date)
-    })
+    return bills.filter(bill => isSameCalendarDay(bill.dueDate, date))
   }
 
   // Get status color for a bill

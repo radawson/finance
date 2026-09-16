@@ -1,4 +1,5 @@
 import { Bill } from '@/types'
+import { isStoredDateInLocalRange } from '@/lib/date-utils'
 
 /**
  * Bills that represent real spend events (not recurring templates).
@@ -18,13 +19,9 @@ export function filterActualBillsInPeriod(
   periodStart: Date,
   periodEnd: Date,
 ): Bill[] {
-  const start = normalizeDayStart(periodStart)
-  const end = normalizeDayEnd(periodEnd)
-
   return bills.filter((bill) => {
     if (!isActualBill(bill)) return false
-    const due = normalizeDayStart(new Date(bill.dueDate))
-    return due >= start && due <= end
+    return isStoredDateInLocalRange(bill.dueDate, periodStart, periodEnd)
   })
 }
 

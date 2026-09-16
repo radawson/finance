@@ -10,6 +10,7 @@ import {
 } from '@/lib/analysis'
 import { AnalysisPeriod, Bill } from '@/types'
 import { isActualBill } from '@/lib/business/period-ledger'
+import { parseCalendarDateEnd, parseCalendarDateStart } from '@/lib/date-utils'
 
 function normalizeBillFromPrisma(raw: any): Bill {
   return {
@@ -49,9 +50,9 @@ export async function GET(req: NextRequest) {
     const includeHistoric = searchParams.get('includeHistoric') === 'true'
     const includeForecast = searchParams.get('includeForecast') === 'true'
 
-    const startDate = startDateParam ? new Date(startDateParam) : new Date()
+    const startDate = startDateParam ? parseCalendarDateStart(startDateParam) : new Date()
     const endDate = endDateParam
-      ? new Date(endDateParam)
+      ? parseCalendarDateEnd(endDateParam)
       : (() => {
           const date = new Date()
           date.setFullYear(date.getFullYear() + 1)

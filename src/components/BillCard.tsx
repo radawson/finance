@@ -1,6 +1,6 @@
 import { Bill } from '@/types'
 import BillStatusBadge from './BillStatusBadge'
-import { format } from 'date-fns'
+import { formatCalendarDate } from '@/lib/date-utils'
 import { DollarSign, Calendar, Tag } from 'lucide-react'
 
 interface BillCardProps {
@@ -33,7 +33,7 @@ export default function BillCard({ bill, onClick }: BillCardProps) {
 
           <div className="flex items-center text-gray-600">
             <Calendar className="w-4 h-4 mr-2" />
-            <span>Due: {format(new Date(bill.dueDate), 'MMM d, yyyy')}</span>
+            <span>Due: {formatCalendarDate(bill.dueDate)}</span>
           </div>
 
           {bill.category && (

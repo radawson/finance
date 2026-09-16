@@ -12,6 +12,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useSocket } from '@/components/SocketProvider'
 import { SocketEvents } from '@/lib/socketio-server'
+import { calendarDateToIso } from '@/lib/date-utils'
 
 export default function BillDetailPage() {
   const { data: session } = useSession()
@@ -92,13 +93,13 @@ export default function BillDetailPage() {
         body: JSON.stringify({
           title: formData.title,
           amount: formData.amount,
-          dueDate: new Date(formData.dueDate).toISOString(),
+          dueDate: calendarDateToIso(formData.dueDate),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || null,
           vendorAccountId: formData.vendorAccountId || null,
           description: formData.description || null,
           status: formData.status,
-          paidDate: formData.paidDate ? new Date(formData.paidDate).toISOString() : null,
+          paidDate: formData.paidDate ? calendarDateToIso(formData.paidDate) : null,
           invoiceNumber: formData.invoiceNumber || null,
           isRecurring: !!recurrenceData,
           isTaxItem: formData.isTaxItem,

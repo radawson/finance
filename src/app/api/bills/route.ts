@@ -11,6 +11,7 @@ import { recordBalanceSnapshot } from '@/lib/balance-snapshots'
 import { syncExpenseForBill } from '@/lib/business/ledger'
 import { matchNewBillToForecast } from '@/lib/analysis'
 import { Bill } from '@/types'
+import { asCalendarDate } from '@/lib/date-utils'
 
 // Accept amount as string or number, coerce to string for Decimal precision
 const decimalString = z.union([z.string(), z.number()]).transform((v) => String(v))
@@ -166,14 +167,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const parsedData = billSchema.parse({
       ...body,
-      dueDate: body.dueDate ? new Date(body.dueDate) : new Date(),
+      dueDate: body.dueDate ? asCalendarDate(body.dueDate) : new Date(),
     })
 
     // Ensure dates are Date objects
     const data = {
       ...parsedData,
-      dueDate: new Date(parsedData.dueDate as any),
-      paidDate: parsedData.paidDate ? new Date(parsedData.paidDate as any) : null,
+      dueDate: asCalendarDate(parsedData.dueDate as any),
+      paidDate: parsedData.paidDate ? asCalendarDate(parsedData.paidDate as any) : null,
     }
 
     // Verify category exists

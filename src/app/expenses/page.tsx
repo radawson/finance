@@ -20,7 +20,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
+import { formatCalendarDate, inCalendarYmdRange } from '@/lib/date-utils'
 
 type SortColumn = 'date' | 'amount' | 'category' | 'payee' | 'note' | 'tax' | null
 type SortDirection = 'asc' | 'desc' | null
@@ -91,15 +91,10 @@ export default function ExpensesPage() {
       filtered = filtered.filter((expense) => expense.categoryId === filters.categoryId)
     }
 
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom)
-      filtered = filtered.filter((expense) => new Date(expense.date) >= fromDate)
-    }
-
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo)
-      toDate.setHours(23, 59, 59, 999)
-      filtered = filtered.filter((expense) => new Date(expense.date) <= toDate)
+    if (filters.dateFrom || filters.dateTo) {
+      filtered = filtered.filter((expense) =>
+        inCalendarYmdRange(expense.date, filters.dateFrom || undefined, filters.dateTo || undefined),
+      )
     }
 
     if (filters.isTaxItem !== '') {
@@ -467,7 +462,7 @@ export default function ExpensesPage() {
                       onClick={() => openEditModal(expense)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(new Date(expense.date), 'MMM d, yyyy')}
+                        {formatCalendarDate(expense.date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                         ${Number(expense.amount).toFixed(2)}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { RecurrenceFrequencyEnum } from '@/types'
-import { format } from 'date-fns'
+import { calendarDateInputValue, calendarDayOfMonth } from '@/lib/date-utils'
 
 interface RecurrenceFormProps {
   billDueDate: Date
@@ -33,8 +33,8 @@ export default function RecurrenceForm({
 }: RecurrenceFormProps) {
   const [formData, setFormData] = useState<RecurrenceFormData>({
     frequency: RecurrenceFrequencyEnum.MONTHLY,
-    dayOfMonth: new Date(billDueDate).getDate(),
-    startDate: format(new Date(billDueDate), 'yyyy-MM-dd'),
+    dayOfMonth: calendarDayOfMonth(billDueDate),
+    startDate: calendarDateInputValue(billDueDate),
     endDate: '',
   })
 
@@ -43,9 +43,9 @@ export default function RecurrenceForm({
       setFormData({
         frequency: recurrencePattern.frequency,
         dayOfMonth: recurrencePattern.dayOfMonth,
-        startDate: format(new Date(recurrencePattern.startDate), 'yyyy-MM-dd'),
+        startDate: calendarDateInputValue(recurrencePattern.startDate),
         endDate: recurrencePattern.endDate
-          ? format(new Date(recurrencePattern.endDate), 'yyyy-MM-dd')
+          ? calendarDateInputValue(recurrencePattern.endDate)
           : '',
       })
     } else {
@@ -53,8 +53,8 @@ export default function RecurrenceForm({
       const dueDate = new Date(billDueDate)
       setFormData({
         frequency: RecurrenceFrequencyEnum.MONTHLY,
-        dayOfMonth: dueDate.getDate(),
-        startDate: format(dueDate, 'yyyy-MM-dd'),
+        dayOfMonth: calendarDayOfMonth(dueDate),
+        startDate: calendarDateInputValue(dueDate),
         endDate: '',
       })
     }

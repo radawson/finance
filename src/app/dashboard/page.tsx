@@ -17,11 +17,10 @@ import { DollarSign, Clock, CheckCircle, AlertCircle, Plus, RotateCcw, LayoutGri
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
 import CategoryPieChart from '@/components/CategoryPieChart'
 import CreditCardBalanceGraph from '@/components/CreditCardBalanceGraph'
 import AccountTypeBalanceGraph from '@/components/AccountTypeBalanceGraph'
-import { CategoryPeriod } from '@/lib/date-utils'
+import { CategoryPeriod, calendarDateInputValue } from '@/lib/date-utils'
 import {
   WIDGET_IDS,
   WIDGET_INSTANCE_KIND,
@@ -972,7 +971,7 @@ export default function DashboardPage() {
                               if (bill.vendorId) params.set('vendorId', bill.vendorId)
                               if (bill.vendorAccountId) params.set('vendorAccountId', bill.vendorAccountId)
                               if (bill.categoryId) params.set('categoryId', bill.categoryId)
-                              params.set('dueDate', format(new Date(bill.dueDate), 'yyyy-MM-dd'))
+                              params.set('dueDate', calendarDateInputValue(bill.dueDate))
                               router.push(`/bills/new?${params.toString()}`)
                               return
                             }

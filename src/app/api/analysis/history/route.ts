@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { Role } from '@/generated/prisma/client'
 import { groupExpensesByPeriodAsHistoric } from '@/lib/analysis'
 import { AnalysisPeriod } from '@/types'
+import { parseCalendarDateEnd, parseCalendarDateStart } from '@/lib/date-utils'
 
 /**
  * Historic spend from the ledger (Expense): groceries, one-offs, and bill
@@ -32,11 +33,9 @@ export async function GET(req: NextRequest) {
     // Filter by spend date range if provided
     if (startDateParam || endDateParam) {
       where.date = {}
-      if (startDateParam) where.date.gte = new Date(startDateParam)
+      if (startDateParam) where.date.gte = parseCalendarDateStart(startDateParam)
       if (endDateParam) {
-        const end = new Date(endDateParam)
-        end.setHours(23, 59, 59, 999)
-        where.date.lte = end
+        where.date.lte = parseCalendarDateEnd(endDateParam)
       }
     }
 

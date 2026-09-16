@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Eob, EobAttachment } from '@/types'
-import { format } from 'date-fns'
 import { Plus, Save, Trash2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import TagInput from '@/components/TagInput'
+import { calendarDateInputValue, calendarDateToIso, todayCalendarDate } from '@/lib/date-utils'
 
 type ProcedureRow = {
   key: string
@@ -49,7 +49,7 @@ function emptyProcedure(date: string): ProcedureRow {
 
 function toDateInput(value?: Date | string | null) {
   if (!value) return ''
-  return format(new Date(value), 'yyyy-MM-dd')
+  return calendarDateInputValue(value)
 }
 
 function money(n: number | string | null | undefined) {
@@ -62,7 +62,7 @@ function buildPayload(form: EobFormData) {
   const procedures = form.procedures
     .filter((p) => p.description.trim() && p.dateOfService)
     .map((p) => ({
-      dateOfService: new Date(`${p.dateOfService}T12:00:00`).toISOString(),
+      dateOfService: calendarDateToIso(p.dateOfService),
       procedureCode: p.procedureCode.trim() || null,
       description: p.description.trim(),
       billedAmount: p.billedAmount || '0',
@@ -75,9 +75,9 @@ function buildPayload(form: EobFormData) {
     providerName: form.providerName.trim(),
     claimNumber: form.claimNumber.trim() || null,
     memberId: form.memberId.trim() || null,
-    eobDate: new Date(`${form.eobDate}T12:00:00`).toISOString(),
-    serviceStart: form.serviceStart ? new Date(`${form.serviceStart}T12:00:00`).toISOString() : null,
-    serviceEnd: form.serviceEnd ? new Date(`${form.serviceEnd}T12:00:00`).toISOString() : null,
+    eobDate: calendarDateToIso(form.eobDate),
+    serviceStart: form.serviceStart ? calendarDateToIso(form.serviceStart) : null,
+    serviceEnd: form.serviceEnd ? calendarDateToIso(form.serviceEnd) : null,
     billedAmount: form.billedAmount || '0',
     insurancePaid: form.insurancePaid || '0',
     adjustmentAmount: form.adjustmentAmount || '0',
@@ -97,7 +97,7 @@ interface EobFormProps {
 }
 
 export default function EobForm({ eob, onSaved, onCancel, isSaving = false }: EobFormProps) {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const today = todayCalendarDate()
   const [form, setForm] = useState<EobFormData>({
     payerName: eob?.payerName || '',
     providerName: eob?.providerName || '',

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { DollarSign, LogIn, Plus, Calendar, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ThemeToggle } from '@/components/ThemeProvider'
+import { calendarDateToIso } from '@/lib/date-utils'
 
 export default function Home() {
   const router = useRouter()
@@ -71,7 +72,7 @@ export default function Home() {
         body: JSON.stringify({
           title: formData.title,
           amount: formData.amount,
-          dueDate: new Date(formData.dueDate).toISOString(),
+          dueDate: calendarDateToIso(formData.dueDate),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || undefined,
           description: formData.description || undefined,

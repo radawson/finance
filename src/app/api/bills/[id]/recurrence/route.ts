@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { Role } from '@/generated/prisma/client'
 import { calculateNextDueDate, validateRecurrencePattern } from '@/lib/recurrence'
+import { asCalendarDate } from '@/lib/date-utils'
 
 const recurrenceSchema = z.object({
   frequency: z.enum(['MONTHLY', 'QUARTERLY', 'BIANNUALLY', 'YEARLY']),
@@ -50,15 +51,15 @@ export async function POST(
     const body = await req.json()
     const parsedData = recurrenceSchema.parse({
       ...body,
-      startDate: body.startDate ? new Date(body.startDate) : bill.dueDate,
-      endDate: body.endDate ? new Date(body.endDate) : null,
+      startDate: asCalendarDate(body.startDate || bill.dueDate),
+      endDate: body.endDate ? asCalendarDate(body.endDate) : null,
     })
 
     // Ensure dates are Date objects
     const data = {
       ...parsedData,
-      startDate: parsedData.startDate instanceof Date ? parsedData.startDate : new Date(parsedData.startDate),
-      endDate: parsedData.endDate instanceof Date ? parsedData.endDate : (parsedData.endDate ? new Date(parsedData.endDate) : null),
+      startDate: asCalendarDate(parsedData.startDate),
+      endDate: parsedData.endDate ? asCalendarDate(parsedData.endDate) : null,
     }
 
     // Validate recurrence pattern
@@ -176,15 +177,15 @@ export async function PATCH(
     const body = await req.json()
     const data = recurrenceSchema.partial().parse({
       ...body,
-      startDate: body.startDate ? new Date(body.startDate) : undefined,
-      endDate: body.endDate !== undefined ? (body.endDate ? new Date(body.endDate) : null) : undefined,
+      startDate: body.startDate ? asCalendarDate(body.startDate) : undefined,
+      endDate: body.endDate !== undefined ? (body.endDate ? asCalendarDate(body.endDate) : null) : undefined,
     })
 
     // Use existing values if not provided
     const frequency = data.frequency || bill.recurrencePattern.frequency
     const dayOfMonth = data.dayOfMonth ?? bill.recurrencePattern.dayOfMonth
-    const startDate = data.startDate ? new Date(data.startDate) : bill.recurrencePattern.startDate
-    const endDate = data.endDate !== undefined ? (data.endDate ? new Date(data.endDate) : null) : bill.recurrencePattern.endDate
+    const startDate = data.startDate ? asCalendarDate(data.startDate) : bill.recurrencePattern.startDate
+    const endDate = data.endDate !== undefined ? (data.endDate ? asCalendarDate(data.endDate) : null) : bill.recurrencePattern.endDate
 
     // Validate recurrence pattern
     const validation = validateRecurrencePattern(frequency, dayOfMonth, startDate, endDate)

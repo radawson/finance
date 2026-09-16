@@ -8,6 +8,7 @@ import { MonthlyBudgetReport, TaxItemsReport } from '@/types'
 import { Download, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns'
+import { calendarDateInputValue, formatCalendarDate } from '@/lib/date-utils'
 
 type ReportTab = 'tax' | 'monthly'
 
@@ -94,7 +95,7 @@ export default function ReportsPage() {
         ['Type', 'Date', 'Title', 'Category', 'Tags', 'Amount'],
         ...taxReport.bills.map((b) => [
           'Bill',
-          format(new Date(b.date), 'yyyy-MM-dd'),
+          calendarDateInputValue(b.date),
           b.title,
           b.categoryName || '',
           b.tags.join('; '),
@@ -102,7 +103,7 @@ export default function ReportsPage() {
         ]),
         ...taxReport.eobs.map((e) => [
           'EOB',
-          format(new Date(e.date), 'yyyy-MM-dd'),
+          calendarDateInputValue(e.date),
           `${e.providerName} / ${e.payerName}`,
           '',
           e.tags.join('; '),
@@ -110,7 +111,7 @@ export default function ReportsPage() {
         ]),
         ...taxReport.expenses.map((e) => [
           'Expense',
-          format(new Date(e.date), 'yyyy-MM-dd'),
+          calendarDateInputValue(e.date),
           e.title,
           e.categoryName || '',
           e.tags.join('; '),
@@ -130,7 +131,7 @@ export default function ReportsPage() {
       for (const period of monthlyReport.periods) {
         for (const row of period.rows) {
           rows.push([
-            format(new Date(row.date), 'yyyy-MM-dd'),
+            calendarDateInputValue(row.date),
             row.vendorName || row.title,
             row.description || row.title,
             row.categoryName || '',
@@ -256,7 +257,7 @@ export default function ReportsPage() {
               <ReportTable
                 headers={['Date', 'Title', 'Category', 'Tags', 'Amount']}
                 rows={taxReport.bills.map((b) => [
-                  format(new Date(b.date), 'MMM d, yyyy'),
+                  formatCalendarDate(b.date),
                   b.title,
                   b.categoryName || '—',
                   b.tags.join(', ') || '—',
@@ -272,7 +273,7 @@ export default function ReportsPage() {
               <ReportTable
                 headers={['Date', 'Provider', 'Payer', 'Tags', 'Patient']}
                 rows={taxReport.eobs.map((e) => [
-                  format(new Date(e.date), 'MMM d, yyyy'),
+                  formatCalendarDate(e.date),
                   e.providerName,
                   e.payerName,
                   e.tags.join(', ') || '—',
@@ -288,7 +289,7 @@ export default function ReportsPage() {
               <ReportTable
                 headers={['Date', 'Payee', 'Category', 'Tags', 'Amount']}
                 rows={taxReport.expenses.map((e) => [
-                  format(new Date(e.date), 'MMM d, yyyy'),
+                  formatCalendarDate(e.date),
                   e.title,
                   e.categoryName || '—',
                   e.tags.join(', ') || '—',
@@ -319,7 +320,7 @@ export default function ReportsPage() {
                   <ReportTable
                     headers={['Date', 'Payee', 'Description', 'Category', 'Tags', 'Amount']}
                     rows={period.rows.map((row) => [
-                      format(new Date(row.date), 'MMM d, yyyy'),
+                      formatCalendarDate(row.date),
                       row.vendorName || row.title,
                       row.description || row.title,
                       row.categoryName || '—',

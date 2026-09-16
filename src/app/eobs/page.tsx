@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar'
 import { Eob } from '@/types'
 import { Plus, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
+import { formatCalendarDate } from '@/lib/date-utils'
 
 export default function EobsPage() {
   const { data: session } = useSession()
@@ -97,7 +97,7 @@ export default function EobsPage() {
                     <tr key={eob.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link href={`/eobs/${eob.id}`} className="text-primary-700 hover:underline">
-                          {format(new Date(eob.eobDate), 'MMM d, yyyy')}
+                          {formatCalendarDate(eob.eobDate)}
                         </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">{eob.providerName}</td>

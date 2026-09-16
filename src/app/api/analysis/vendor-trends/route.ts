@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { Role, BillStatus } from '@/generated/prisma/client'
 import { groupBillsByPeriod, formatPeriodLabel } from '@/lib/analysis'
 import { AnalysisPeriod } from '@/types'
+import { parseCalendarDateEnd, parseCalendarDateStart } from '@/lib/date-utils'
 
 /**
  * Get vendor trend data for selected vendors across a time period
@@ -54,13 +55,12 @@ export async function GET(req: NextRequest) {
     if (startDateParam) {
       where.paidDate = {
         ...where.paidDate,
-        gte: new Date(startDateParam),
+        gte: parseCalendarDateStart(startDateParam),
       }
     }
 
     if (endDateParam) {
-      const endDate = new Date(endDateParam)
-      endDate.setHours(23, 59, 59, 999)
+      const endDate = parseCalendarDateEnd(endDateParam)
       where.paidDate = {
         ...where.paidDate,
         lte: endDate,

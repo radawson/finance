@@ -4,7 +4,7 @@ import { useState } from 'react'
 import React from 'react'
 import { HistoricBillsData, Bill } from '@/types'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { format } from 'date-fns'
+import { calendarDateInputValue } from '@/lib/date-utils'
 import MarkdownExporter from './MarkdownExporter'
 
 interface HistoricBillsViewProps {
@@ -145,10 +145,10 @@ export default function HistoricBillsView({
                                         ${Number(bill.amount).toFixed(2)}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-500">
-                                        {format(new Date(bill.dueDate), 'yyyy-MM-dd')}
+                                        {calendarDateInputValue(bill.dueDate)}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-500">
-                                        {bill.paidDate ? format(new Date(bill.paidDate), 'yyyy-MM-dd') : 'N/A'}
+                                        {bill.paidDate ? calendarDateInputValue(bill.paidDate) : 'N/A'}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-500">
                                         {bill.category?.name || 'N/A'}
