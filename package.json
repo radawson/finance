@@ -5,12 +5,12 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint src/",
     "test": "jest",
     "test:e2e": "playwright test",
-    "postinstall": "npx prisma generate",
+    "postinstall": "prisma generate",
     "version-major": "npm version major",
     "version-minor": "npm version minor",
     "version-patch": "npm version patch",
@@ -78,10 +78,10 @@
     "node": "^20.19 || ^22.12 || >=24.0"
   },
   "allowScripts": {
-    "prisma@7.8.0": true,
+    "prisma@7.10.0": true,
     "sharp@0.34.5": true,
     "esbuild@0.28.1": true,
     "unrs-resolver@1.11.1": true,
-    "@prisma/engines@7.8.0": true
+    "@prisma/engines@7.10.0": true
   }
 }

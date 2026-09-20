@@ -33,6 +33,9 @@ fi
 echo -e "${YELLOW}Installing dependencies...${NC}"
 npm ci
 
+echo -e "${YELLOW}Generating Prisma client...${NC}"
+npx prisma generate
+
 echo -e "${YELLOW}Building application...${NC}"
 npm run build
 
