@@ -37,6 +37,8 @@ const updateBillSchema = z.object({
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
   isTaxItem: z.boolean().optional(),
   accountBalance: nonnegativeDecimalString.optional(),
+  minimumPayment: nonnegativeDecimalString.optional().nullable(),
+  paidAmount: nonnegativeDecimalString.optional().nullable(),
 })
 
 export async function GET(
@@ -250,6 +252,12 @@ export async function PATCH(
     // it gets assigned to that user
     const isBeingAssigned = existingBill.createdById === null && session.user.id !== null
 
+    const nextStatus = status || existingBill.status
+    let paidAmount = data.paidAmount
+    if (paidAmount === undefined && nextStatus === 'PAID' && existingBill.paidAmount == null) {
+      paidAmount = data.amount ?? String(existingBill.amount)
+    }
+
     // Update bill (and reconcile its linked ledger expense) atomically
     const bill = await prisma.$transaction(async (tx) => {
       const updated = await tx.bill.update({
@@ -270,6 +278,8 @@ export async function PATCH(
           ...(data.invoiceNumber !== undefined && { invoiceNumber: data.invoiceNumber }),
           ...(tagsArray !== undefined && { tags: tagsArray }),
           ...(data.isTaxItem !== undefined && { isTaxItem: data.isTaxItem }),
+          ...(data.minimumPayment !== undefined && { minimumPayment: data.minimumPayment }),
+          ...(paidAmount !== undefined && { paidAmount }),
           ...(isBeingAssigned && { createdById: session.user.id }),
         },
         include: {

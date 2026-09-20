@@ -13,6 +13,8 @@ import BillTitleAutocomplete from '@/components/BillTitleAutocomplete'
 export interface BillFormData {
   title: string
   amount: string
+  minimumPayment: string
+  paidAmount: string
   dueDate: string
   categoryId: string
   vendorId: string
@@ -58,6 +60,8 @@ export default function BillEditForm({
   const [formData, setFormData] = useState<BillFormData>({
     title: initialValues?.title || '',
     amount: initialValues?.amount || '',
+    minimumPayment: initialValues?.minimumPayment || '',
+    paidAmount: initialValues?.paidAmount || '',
     dueDate: initialValues?.dueDate || '',
     categoryId: initialValues?.categoryId || '',
     vendorId: initialValues?.vendorId || '',
@@ -131,6 +135,8 @@ export default function BillEditForm({
       setFormData({
         title: bill.title,
         amount: Number(bill.amount).toFixed(2),
+        minimumPayment: bill.minimumPayment != null ? Number(bill.minimumPayment).toFixed(2) : '',
+        paidAmount: bill.paidAmount != null ? Number(bill.paidAmount).toFixed(2) : '',
         dueDate: calendarDateInputValue(dueDate),
         categoryId: bill.categoryId,
         vendorId: bill.vendorId || '',
@@ -309,7 +315,11 @@ export default function BillEditForm({
     }
 
     const recurrenceDataToSend = isRecurring && showRecurrenceSection ? recurrenceData : undefined
-    await onSave(formData, recurrenceDataToSend)
+    const toSave =
+      formData.status === 'PAID' && !formData.paidAmount
+        ? { ...formData, paidAmount: formData.amount }
+        : formData
+    await onSave(toSave, recurrenceDataToSend)
   }
 
   const handleDelete = async () => {
@@ -372,6 +382,7 @@ export default function BillEditForm({
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+            <p className="text-xs text-gray-500 mt-1">Statement amount due</p>
           </div>
 
           <div>
@@ -385,6 +396,38 @@ export default function BillEditForm({
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Minimum payment
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.minimumPayment}
+              onChange={(e) => setFormData({ ...formData, minimumPayment: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">Statement minimum due</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment{formData.status === 'PAID' ? ' *' : ''}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              required={formData.status === 'PAID'}
+              value={formData.paidAmount}
+              onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">Amount actually paid (ledger uses this when paid)</p>
           </div>
         </div>
 

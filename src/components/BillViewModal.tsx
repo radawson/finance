@@ -50,6 +50,7 @@ export default function BillViewModal({ bill, isOpen, onClose, onUpdate }: BillV
         body: JSON.stringify({
           status: 'PAID',
           paidDate: today,
+          paidAmount: currentBill.paidAmount ?? currentBill.amount,
         }),
       })
 

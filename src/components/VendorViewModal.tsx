@@ -119,12 +119,14 @@ export default function VendorViewModal({ vendor, isOpen, onClose }: VendorViewM
                       </div>
                       {(account.balance ||
                         account.initialValue ||
+                        account.creditLimit ||
                         account.avgMonthlyPayment ||
                         account.interestRate) && (
                         <div className="text-sm text-gray-500 mt-1">
                           {[
                             account.balance != null && `Balance $${Number(account.balance).toFixed(2)}`,
                             account.initialValue != null && `Original $${Number(account.initialValue).toFixed(2)}`,
+                            account.creditLimit != null && `Limit $${Number(account.creditLimit).toFixed(2)}`,
                             account.avgMonthlyPayment != null &&
                               `Avg $${Number(account.avgMonthlyPayment).toFixed(2)}/mo`,
                             account.interestRate != null && `${Number(account.interestRate).toFixed(2)}%`,

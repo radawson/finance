@@ -16,6 +16,8 @@ function normalizeBillFromPrisma(raw: any): Bill {
   return {
     ...raw,
     amount: Number(raw.amount),
+    minimumPayment: raw.minimumPayment != null ? Number(raw.minimumPayment) : null,
+    paidAmount: raw.paidAmount != null ? Number(raw.paidAmount) : null,
     dueDate: new Date(raw.dueDate),
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),

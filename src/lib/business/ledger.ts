@@ -20,6 +20,7 @@ export type BillForLedger = {
   paidDate?: Date | null
   dueDate: Date
   amount: DecimalValue
+  paidAmount?: DecimalValue | null
   categoryId: string
   vendorId?: string | null
   title: string
@@ -49,11 +50,12 @@ export type ExpenseSyncPlan =
  */
 export function planExpenseForBill(bill: BillForLedger): ExpenseSyncPlan {
   if (bill.status === 'PAID') {
+    const paid = bill.paidAmount != null && bill.paidAmount !== '' ? Number(bill.paidAmount) : Number(bill.amount)
     return {
       action: 'upsert',
       data: {
         date: bill.paidDate ?? bill.dueDate,
-        amount: Number(bill.amount),
+        amount: paid,
         categoryId: bill.categoryId,
         vendorId: bill.vendorId ?? null,
         payee: bill.vendor?.name ?? bill.title,

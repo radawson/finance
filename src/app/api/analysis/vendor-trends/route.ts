@@ -83,6 +83,8 @@ export async function GET(req: NextRequest) {
     const bills = billsRaw.map((bill) => ({
       ...bill,
       amount: Number(bill.amount),
+      minimumPayment: bill.minimumPayment != null ? Number(bill.minimumPayment) : null,
+      paidAmount: bill.paidAmount != null ? Number(bill.paidAmount) : null,
     }))
 
     // Get vendor information

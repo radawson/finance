@@ -66,6 +66,7 @@ export interface VendorAccount {
   balance?: DecimalValue | null  // Prisma Decimal on server, string on client
   interestRate?: DecimalValue | null  // Prisma Decimal on server, string on client
   initialValue?: DecimalValue | null  // Original principal / starting value
+  creditLimit?: DecimalValue | null  // Revolving credit limit
   avgMonthlyPayment?: DecimalValue | null  // Typical monthly payment
   nickname?: string | null
   notes?: string | null
@@ -121,6 +122,8 @@ export interface Bill {
   title: string
   description?: string | null
   amount: number
+  minimumPayment?: number | null
+  paidAmount?: number | null
   dueDate: Date
   paidDate?: Date | null
   status: BillStatus
@@ -483,4 +486,52 @@ export interface MonthlyBudgetReport {
   tags: string[]
   periods: MonthlyBudgetPeriod[]
   grandTotal: number
+}
+
+export interface AccountsReportRow {
+  accountId: string
+  nickname: string | null
+  vendorName: string
+  accountNumber: string
+  accountNumberLast4: string
+  accountTypeName: string | null
+  originalBalance: number | null
+  currentBalance: number | null
+  creditLimit: number | null
+  availableCredit: number | null
+  utilization: number | null
+  apr: number | null
+  averagePayment: number | null
+  lastPaymentAmount: number | null
+  lastPaymentDate: string | null
+  nextDueDate: string | null
+  paydownPercent: number | null
+  targetBalance: number | null
+  payTo4: number | null
+  payTo9: number | null
+  extraLimitNeeded: number | null
+  analysisLine: string | null
+}
+
+export interface AccountsReportTotals {
+  originalBalance: number
+  currentBalance: number
+  creditLimit: number
+  availableCredit: number
+}
+
+export interface AccountsUtilizationAnalysis {
+  overallUtilization: number | null
+  maxUtilization: number | null
+  utilizationOnlyFicoEstimate: number | null
+  payTo4All: number | null
+  payTo9All: number | null
+  allZeroRecommendation: { accountId: string; reportBalance: number } | null
+  footnote: string
+}
+
+export interface AccountsReport {
+  rows: AccountsReportRow[]
+  totals: AccountsReportTotals
+  utilization: AccountsUtilizationAnalysis
 }

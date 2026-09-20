@@ -60,6 +60,23 @@ describe('planExpenseForBill', () => {
     expect(plan.data.isTaxItem).toBe(true)
   })
 
+  it('posts paidAmount to the ledger when it differs from amount', () => {
+    const plan = planExpenseForBill({
+      ...baseBill,
+      status: 'PAID',
+      amount: 100,
+      paidAmount: 50,
+    })
+    if (plan.action !== 'upsert') throw new Error('expected upsert')
+    expect(plan.data.amount).toBe(50)
+  })
+
+  it('falls back to amount when paidAmount is missing', () => {
+    const plan = planExpenseForBill({ ...baseBill, status: 'PAID' })
+    if (plan.action !== 'upsert') throw new Error('expected upsert')
+    expect(plan.data.amount).toBe(100)
+  })
+
   it('deletes the linked expense when the bill is not PAID', () => {
     expect(planExpenseForBill({ ...baseBill, status: 'PENDING' })).toEqual({ action: 'delete' })
     expect(planExpenseForBill({ ...baseBill, status: 'OVERDUE' })).toEqual({ action: 'delete' })

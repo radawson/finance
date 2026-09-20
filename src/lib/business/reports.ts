@@ -1,5 +1,7 @@
 import { calendarDateInputValue } from '@/lib/date-utils'
 import {
+  AccountsReport,
+  AccountsReportRow,
   MonthlyBudgetPeriod,
   MonthlyBudgetReport,
   MonthlyBudgetRow,
@@ -8,6 +10,23 @@ import {
   TaxItemExpenseRow,
   TaxItemsReport,
 } from '@/types'
+import {
+  UTILIZATION_CEILING,
+  UTILIZATION_FICO_FOOTNOTE,
+  UTILIZATION_TARGET,
+  allZeroReportBalanceCents,
+  analysisLine,
+  availableCreditCents,
+  centsToMoney,
+  combinedUtilizationScore,
+  extraLimitCents,
+  moneyToCents,
+  payToPercentCents,
+  paydownPercent,
+  roundFico,
+  targetBalanceCents,
+  utilizationRatio,
+} from './credit-utilization'
 
 export function parseTagFilter(raw: string | null | undefined): string[] {
   if (!raw) return []
@@ -193,5 +212,223 @@ export function buildMonthlyBudgetReport(input: {
     tags: input.tags,
     periods,
     grandTotal: rows.reduce((sum, r) => sum + r.amount, 0),
+  }
+}
+
+const CREDIT_LOAN_TYPE = /credit|loan|mortgage|heloc|card/i
+
+export function isCreditLoanAccount(account: {
+  creditLimit?: unknown
+  initialValue?: unknown
+  accountType?: string | null
+  type?: { name?: string | null } | null
+}): boolean {
+  const typeName = `${account.type?.name || ''} ${account.accountType || ''}`
+  if (CREDIT_LOAN_TYPE.test(typeName)) return true
+  return moneyToCents(account.creditLimit) != null || moneyToCents(account.initialValue) != null
+}
+
+function paymentCents(bill: { amount: unknown; paidAmount?: unknown }): number {
+  const paid = moneyToCents(bill.paidAmount)
+  if (paid != null) return paid
+  return moneyToCents(bill.amount) ?? 0
+}
+
+function last4(accountNumber: string): string {
+  const compact = accountNumber.replace(/\s/g, '')
+  return compact.slice(-4)
+}
+
+export function buildAccountsReport(input: {
+  accounts: Array<{
+    id: string
+    nickname?: string | null
+    accountNumber: string
+    accountType?: string | null
+    balance?: unknown
+    interestRate?: unknown
+    initialValue?: unknown
+    creditLimit?: unknown
+    isActive?: boolean
+    vendor?: { name?: string | null } | null
+    type?: { name?: string | null } | null
+  }>
+  bills: Array<{
+    vendorAccountId?: string | null
+    status: string
+    isRecurring?: boolean
+    amount: unknown
+    paidAmount?: unknown
+    dueDate: Date | string
+    paidDate?: Date | string | null
+  }>
+}): AccountsReport {
+  const included = input.accounts.filter((a) => a.isActive !== false && isCreditLoanAccount(a))
+  const billsByAccount = new Map<string, typeof input.bills>()
+  for (const bill of input.bills) {
+    if (!bill.vendorAccountId) continue
+    const list = billsByAccount.get(bill.vendorAccountId) || []
+    list.push(bill)
+    billsByAccount.set(bill.vendorAccountId, list)
+  }
+
+  const rows: AccountsReportRow[] = included.map((account) => {
+    const bills = billsByAccount.get(account.id) || []
+    const paidInstances = bills.filter((b) => b.status === 'PAID' && !b.isRecurring)
+    const unpaidInstances = bills.filter(
+      (b) => !b.isRecurring && b.status !== 'PAID' && b.status !== 'SKIPPED',
+    )
+
+    let averagePayment: number | null = null
+    if (paidInstances.length > 0) {
+      const total = paidInstances.reduce((sum, b) => sum + paymentCents(b), 0)
+      averagePayment = centsToMoney(Math.round(total / paidInstances.length))
+    }
+
+    let lastPaymentAmount: number | null = null
+    let lastPaymentDate: string | null = null
+    if (paidInstances.length > 0) {
+      const sorted = [...paidInstances].sort((a, b) => {
+        const aKey = calendarDateInputValue(a.paidDate || a.dueDate)
+        const bKey = calendarDateInputValue(b.paidDate || b.dueDate)
+        return bKey.localeCompare(aKey)
+      })
+      const last = sorted[0]
+      lastPaymentAmount = centsToMoney(paymentCents(last))
+      lastPaymentDate = calendarDateInputValue(last.paidDate || last.dueDate) || null
+    }
+
+    let nextDueDate: string | null = null
+    if (unpaidInstances.length > 0) {
+      const sorted = [...unpaidInstances].sort((a, b) =>
+        calendarDateInputValue(a.dueDate).localeCompare(calendarDateInputValue(b.dueDate)),
+      )
+      nextDueDate = calendarDateInputValue(sorted[0].dueDate) || null
+    }
+
+    const originalCents = moneyToCents(account.initialValue)
+    const balanceCents = moneyToCents(account.balance)
+    const limitCents = moneyToCents(account.creditLimit)
+    const availableCents = availableCreditCents(balanceCents, limitCents)
+    const utilization = utilizationRatio(balanceCents, limitCents)
+    const apr = account.interestRate == null || account.interestRate === ''
+      ? null
+      : Number(account.interestRate)
+
+    let targetBalance: number | null = null
+    let payTo4: number | null = null
+    let payTo9: number | null = null
+    let extraLimitNeeded: number | null = null
+    let line: string | null = null
+    if (limitCents != null && limitCents > 0) {
+      const bal = balanceCents ?? 0
+      const target = targetBalanceCents(limitCents)
+      targetBalance = centsToMoney(target)
+      payTo4 = centsToMoney(payToPercentCents(bal, limitCents, UTILIZATION_TARGET))
+      payTo9 = centsToMoney(payToPercentCents(bal, limitCents, UTILIZATION_CEILING))
+      extraLimitNeeded = centsToMoney(extraLimitCents(bal, limitCents))
+      line = analysisLine({
+        nickname: account.nickname || account.vendor?.name || 'Account',
+        balanceCents: bal,
+        limitCents,
+        utilization: utilization ?? 0,
+        targetCents: target,
+        payTo4Cents: payToPercentCents(bal, limitCents, UTILIZATION_TARGET),
+      })
+    }
+
+    const typeName = account.type?.name || account.accountType || null
+    const number = account.accountNumber || ''
+
+    return {
+      accountId: account.id,
+      nickname: account.nickname ?? null,
+      vendorName: account.vendor?.name || '—',
+      accountNumber: number,
+      accountNumberLast4: last4(number),
+      accountTypeName: typeName,
+      originalBalance: originalCents == null ? null : centsToMoney(originalCents),
+      currentBalance: balanceCents == null ? null : centsToMoney(balanceCents),
+      creditLimit: limitCents == null ? null : centsToMoney(limitCents),
+      availableCredit: availableCents == null ? null : centsToMoney(availableCents),
+      utilization,
+      apr: apr != null && Number.isFinite(apr) ? apr : null,
+      averagePayment,
+      lastPaymentAmount,
+      lastPaymentDate,
+      nextDueDate,
+      paydownPercent: paydownPercent(originalCents, balanceCents),
+      targetBalance,
+      payTo4,
+      payTo9,
+      extraLimitNeeded,
+      analysisLine: line,
+    }
+  }).sort((a, b) => {
+    const vendor = a.vendorName.localeCompare(b.vendorName)
+    if (vendor !== 0) return vendor
+    return (a.nickname || '').localeCompare(b.nickname || '')
+  })
+
+  const sum = (pick: (row: AccountsReportRow) => number | null) =>
+    centsToMoney(rows.reduce((acc, row) => {
+      const cents = moneyToCents(pick(row))
+      return acc + (cents ?? 0)
+    }, 0))
+
+  const revolving = rows.filter((row) => row.creditLimit != null && row.creditLimit > 0)
+  let overallUtilization: number | null = null
+  let maxUtilization: number | null = null
+  let utilizationOnlyFicoEstimate: number | null = null
+  let payTo4All: number | null = null
+  let payTo9All: number | null = null
+  let allZeroRecommendation: { accountId: string; reportBalance: number } | null = null
+
+  if (revolving.length > 0) {
+    const totalBal = revolving.reduce((acc, row) => acc + (moneyToCents(row.currentBalance) ?? 0), 0)
+    const totalLim = revolving.reduce((acc, row) => acc + (moneyToCents(row.creditLimit) ?? 0), 0)
+    overallUtilization = totalLim > 0 ? totalBal / totalLim : null
+    maxUtilization = revolving.reduce((max, row) => {
+      const u = row.utilization ?? 0
+      return u > max ? u : max
+    }, 0)
+    if (overallUtilization != null) {
+      utilizationOnlyFicoEstimate = roundFico(
+        combinedUtilizationScore(overallUtilization, maxUtilization ?? overallUtilization),
+      )
+    }
+    payTo4All = centsToMoney(payToPercentCents(totalBal, totalLim, UTILIZATION_TARGET))
+    payTo9All = centsToMoney(payToPercentCents(totalBal, totalLim, UTILIZATION_CEILING))
+    const allZero = revolving.every((row) => (moneyToCents(row.currentBalance) ?? 0) === 0)
+    if (allZero) {
+      const largest = [...revolving].sort(
+        (a, b) => (moneyToCents(b.creditLimit) ?? 0) - (moneyToCents(a.creditLimit) ?? 0),
+      )[0]
+      allZeroRecommendation = {
+        accountId: largest.accountId,
+        reportBalance: centsToMoney(
+          allZeroReportBalanceCents(moneyToCents(largest.creditLimit) ?? 0),
+        ),
+      }
+    }
+  }
+
+  return {
+    rows,
+    totals: {
+      originalBalance: sum((r) => r.originalBalance),
+      currentBalance: sum((r) => r.currentBalance),
+      creditLimit: sum((r) => r.creditLimit),
+      availableCredit: sum((r) => r.availableCredit),
+    },
+    utilization: {
+      overallUtilization,
+      maxUtilization,
+      utilizationOnlyFicoEstimate,
+      payTo4All,
+      payTo9All,
+      allZeroRecommendation,
+      footnote: UTILIZATION_FICO_FOOTNOTE,
+    },
   }
 }

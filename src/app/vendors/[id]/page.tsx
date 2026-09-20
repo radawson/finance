@@ -18,6 +18,7 @@ const emptyAccountForm = {
   balance: '',
   interestRate: '',
   initialValue: '',
+  creditLimit: '',
   avgMonthlyPayment: '',
   nickname: '',
   notes: '',
@@ -193,6 +194,7 @@ export default function VendorDetailsPage() {
           balance: accountFormData.balance || null,
           interestRate: accountFormData.interestRate || null,
           initialValue: accountFormData.initialValue || null,
+          creditLimit: accountFormData.creditLimit || null,
           avgMonthlyPayment: accountFormData.avgMonthlyPayment || null,
           nickname: accountFormData.nickname || null,
           notes: accountFormData.notes || null,
@@ -270,6 +272,7 @@ export default function VendorDetailsPage() {
       balance: account.balance != null ? String(account.balance) : '',
       interestRate: account.interestRate != null ? String(account.interestRate) : '',
       initialValue: account.initialValue != null ? String(account.initialValue) : '',
+      creditLimit: account.creditLimit != null ? String(account.creditLimit) : '',
       avgMonthlyPayment: account.avgMonthlyPayment != null ? String(account.avgMonthlyPayment) : '',
       nickname: account.nickname || '',
       notes: account.notes || '',
@@ -385,12 +388,15 @@ export default function VendorDetailsPage() {
                         {(account.balance ||
                           account.interestRate ||
                           account.initialValue ||
+                          account.creditLimit ||
                           account.avgMonthlyPayment) && (
                           <p className="text-sm text-gray-600 mt-1">
                             {[
                               formatMoney(account.balance) && `Balance: $${formatMoney(account.balance)}`,
                               formatMoney(account.initialValue) &&
                                 `Original: $${formatMoney(account.initialValue)}`,
+                              formatMoney(account.creditLimit) &&
+                                `Limit: $${formatMoney(account.creditLimit)}`,
                               formatMoney(account.avgMonthlyPayment) &&
                                 `Avg payment: $${formatMoney(account.avgMonthlyPayment)}/mo`,
                               account.interestRate != null &&
@@ -534,7 +540,7 @@ export default function VendorDetailsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Initial value
+                      Original balance
                     </label>
                     <input
                       type="text"
@@ -550,6 +556,25 @@ export default function VendorDetailsPage() {
                       placeholder="Original principal"
                     />
                     <p className="text-xs text-gray-500 mt-1">Starting amount for loans, mortgages, etc.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Credit limit
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={accountFormData.creditLimit}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                          setAccountFormData({ ...accountFormData, creditLimit: val })
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Revolving limit"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Credit cards and HELOCs. Leave blank for installment loans.</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

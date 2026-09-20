@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Navbar from '@/components/Navbar'
 import TagInput from '@/components/TagInput'
-import { MonthlyBudgetReport, TaxItemsReport } from '@/types'
+import { MonthlyBudgetReport, TaxItemsReport, AccountsReport } from '@/types'
 import { Download, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { endOfMonth, endOfYear, format, startOfMonth, startOfYear } from 'date-fns'
 import { calendarDateInputValue, formatCalendarDate } from '@/lib/date-utils'
 
-type ReportTab = 'tax' | 'monthly'
+type ReportTab = 'tax' | 'monthly' | 'accounts'
 
 function csvEscape(value: string | number | null | undefined) {
   const s = value == null ? '' : String(value)
@@ -33,6 +33,15 @@ function money(n: number) {
   return `$${Number(n).toFixed(2)}`
 }
 
+function moneyOrDash(n: number | null | undefined) {
+  return n == null ? '—' : money(n)
+}
+
+function pct(n: number | null | undefined) {
+  if (n == null) return '—'
+  return `${(n * 100).toFixed(1)}%`
+}
+
 export default function ReportsPage() {
   const { data: session } = useSession()
   const now = new Date()
@@ -42,6 +51,7 @@ export default function ReportsPage() {
   const [tags, setTags] = useState<string[]>([])
   const [taxReport, setTaxReport] = useState<TaxItemsReport | null>(null)
   const [monthlyReport, setMonthlyReport] = useState<MonthlyBudgetReport | null>(null)
+  const [accountsReport, setAccountsReport] = useState<AccountsReport | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const taxRange = useMemo(() => {
@@ -61,6 +71,16 @@ export default function ReportsPage() {
   const fetchReport = async () => {
     setIsLoading(true)
     try {
+      if (tab === 'accounts') {
+        const res = await fetch('/api/reports/accounts')
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          toast.error(data.error || 'Failed to load report')
+          return
+        }
+        setAccountsReport(await res.json())
+        return
+      }
       const range = tab === 'tax' ? taxRange : monthlyRange
       const params = new URLSearchParams({
         startDate: range.startDate,
@@ -143,6 +163,61 @@ export default function ReportsPage() {
       }
       rows.push(['', '', '', '', 'Grand total', Number(monthlyReport.grandTotal).toFixed(2)])
       downloadCsv(`monthly-budget-${monthlyRange.startDate}-${monthlyRange.endDate}.csv`, rows)
+      return
+    }
+    if (tab === 'accounts' && accountsReport) {
+      const rows: string[][] = [
+        [
+          'Nickname',
+          'Vendor',
+          'Account number',
+          'Original balance',
+          'Current balance',
+          'Credit limit',
+          'Available credit',
+          'Utilization',
+          'APR',
+          'Average payment',
+          'Last payment',
+          'Last payment date',
+          'Next due',
+          'Paydown',
+          'Target 4%',
+          'Pay to 4%',
+          'Pay to 9%',
+          'Extra limit needed',
+        ],
+        ...accountsReport.rows.map((r) => [
+          r.nickname || '',
+          r.vendorName,
+          r.accountNumber,
+          r.originalBalance == null ? '' : Number(r.originalBalance).toFixed(2),
+          r.currentBalance == null ? '' : Number(r.currentBalance).toFixed(2),
+          r.creditLimit == null ? '' : Number(r.creditLimit).toFixed(2),
+          r.availableCredit == null ? '' : Number(r.availableCredit).toFixed(2),
+          r.utilization == null ? '' : (r.utilization * 100).toFixed(1) + '%',
+          r.apr == null ? '' : Number(r.apr).toFixed(2),
+          r.averagePayment == null ? '' : Number(r.averagePayment).toFixed(2),
+          r.lastPaymentAmount == null ? '' : Number(r.lastPaymentAmount).toFixed(2),
+          r.lastPaymentDate || '',
+          r.nextDueDate || '',
+          r.paydownPercent == null ? '' : (r.paydownPercent * 100).toFixed(1) + '%',
+          r.targetBalance == null ? '' : Number(r.targetBalance).toFixed(2),
+          r.payTo4 == null ? '' : Number(r.payTo4).toFixed(2),
+          r.payTo9 == null ? '' : Number(r.payTo9).toFixed(2),
+          r.extraLimitNeeded == null ? '' : Number(r.extraLimitNeeded).toFixed(2),
+        ]),
+        [
+          'Totals',
+          '',
+          '',
+          Number(accountsReport.totals.originalBalance).toFixed(2),
+          Number(accountsReport.totals.currentBalance).toFixed(2),
+          Number(accountsReport.totals.creditLimit).toFixed(2),
+          Number(accountsReport.totals.availableCredit).toFixed(2),
+        ],
+      ]
+      downloadCsv('credit-loan-accounts.csv', rows)
     }
   }
 
@@ -164,7 +239,7 @@ export default function ReportsPage() {
         <div className="flex items-center justify-between mb-6 no-print">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-            <p className="mt-2 text-gray-600">Printable tax items and monthly budget register</p>
+            <p className="mt-2 text-gray-600">Printable tax items, monthly budget, and credit/loan accounts</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -206,7 +281,17 @@ export default function ReportsPage() {
             >
               Monthly budget
             </button>
+            <button
+              type="button"
+              onClick={() => setTab('accounts')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                tab === 'accounts' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Accounts
+            </button>
           </div>
+          {tab !== 'accounts' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {tab === 'tax' ? (
               <div>
@@ -236,6 +321,7 @@ export default function ReportsPage() {
               <TagInput tags={tags} onChange={setTags} placeholder="Add a tag and press Enter" />
             </div>
           </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -334,6 +420,146 @@ export default function ReportsPage() {
               ))
             )}
             <p className="text-xl font-bold text-right">Grand total {money(monthlyReport.grandTotal)}</p>
+          </div>
+        ) : tab === 'accounts' && accountsReport ? (
+          <div className="space-y-6 print-report print-accounts">
+            <style>{`@media print { @page { size: landscape } }`}</style>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Credit cards and loans</h2>
+              <p className="text-sm text-gray-600">
+                Utilization-only FICO estimate:{' '}
+                {accountsReport.utilization.utilizationOnlyFicoEstimate == null
+                  ? '—'
+                  : accountsReport.utilization.utilizationOnlyFicoEstimate}
+                {accountsReport.utilization.overallUtilization != null && (
+                  <>
+                    {' '}
+                    · overall U = {(accountsReport.utilization.overallUtilization * 100).toFixed(1)}%
+                    {accountsReport.utilization.maxUtilization != null && (
+                      <> · U_max = {(accountsReport.utilization.maxUtilization * 100).toFixed(1)}%</>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+
+            <section className="print-break">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {[
+                          'Nickname',
+                          'Vendor',
+                          'Acct',
+                          'Original',
+                          'Balance',
+                          'Limit',
+                          'Available',
+                          'Util',
+                          'APR',
+                          'Avg pay',
+                          'Last pay',
+                          'Last date',
+                          'Next due',
+                          'Paydown',
+                        ].map((h) => (
+                          <th
+                            key={h}
+                            className="px-2 py-2 text-left font-medium text-gray-500 uppercase whitespace-nowrap"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {accountsReport.rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={14} className="px-2 py-6 text-sm text-gray-500">
+                            No credit card or loan accounts.
+                          </td>
+                        </tr>
+                      ) : (
+                        accountsReport.rows.map((r) => (
+                          <tr key={r.accountId}>
+                            <td className="px-2 py-2 whitespace-nowrap">{r.nickname || '—'}</td>
+                            <td className="px-2 py-2 whitespace-nowrap">{r.vendorName}</td>
+                            <td className="px-2 py-2 whitespace-nowrap">
+                              {r.accountNumberLast4 ? `****${r.accountNumberLast4}` : '—'}
+                            </td>
+                            <td className="px-2 py-2 text-right">{moneyOrDash(r.originalBalance)}</td>
+                            <td className="px-2 py-2 text-right">{moneyOrDash(r.currentBalance)}</td>
+                            <td className="px-2 py-2 text-right">{moneyOrDash(r.creditLimit)}</td>
+                            <td className="px-2 py-2 text-right">{moneyOrDash(r.availableCredit)}</td>
+                            <td className="px-2 py-2 text-right">{pct(r.utilization)}</td>
+                            <td className="px-2 py-2 text-right">
+                              {r.apr == null ? '—' : `${Number(r.apr).toFixed(2)}%`}
+                            </td>
+                            <td className="px-2 py-2 text-right">{moneyOrDash(r.averagePayment)}</td>
+                            <td className="px-2 py-2 text-right">{moneyOrDash(r.lastPaymentAmount)}</td>
+                            <td className="px-2 py-2 whitespace-nowrap">{r.lastPaymentDate || '—'}</td>
+                            <td className="px-2 py-2 whitespace-nowrap">{r.nextDueDate || '—'}</td>
+                            <td className="px-2 py-2 text-right">{pct(r.paydownPercent)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {accountsReport.rows.length > 0 && (
+                      <tfoot>
+                        <tr className="bg-gray-50 font-semibold">
+                          <td className="px-2 py-2" colSpan={3}>
+                            Totals
+                          </td>
+                          <td className="px-2 py-2 text-right">{money(accountsReport.totals.originalBalance)}</td>
+                          <td className="px-2 py-2 text-right">{money(accountsReport.totals.currentBalance)}</td>
+                          <td className="px-2 py-2 text-right">{money(accountsReport.totals.creditLimit)}</td>
+                          <td className="px-2 py-2 text-right">{money(accountsReport.totals.availableCredit)}</td>
+                          <td colSpan={7} />
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section className="print-break bg-white rounded-lg shadow-md p-4 space-y-3">
+              <h3 className="text-lg font-semibold">Utilization analysis</h3>
+              <p className="text-sm text-gray-700">
+                U = balance / creditLimit. Overall U = ΣB / ΣL. FICO scores both overall and the worst card:{' '}
+                S = 0.7×score(U) + 0.3×score(U_max). Target band is 1–9% of limit; B* = 0.04×L (near the 4.1%
+                average for 850 scores). pay_4 = max(0, B − 0.04L). pay_9 = max(0, B − 0.09L). Extra limit ΔL =
+                max(0, B/0.09 − L). There is no 30% cliff.
+              </p>
+              {accountsReport.utilization.payTo4All != null && (
+                <p className="text-sm text-gray-900">
+                  Portfolio: pay {money(accountsReport.utilization.payTo4All)} to reach 4% overall
+                  {accountsReport.utilization.payTo9All != null &&
+                    accountsReport.utilization.payTo9All > 0 &&
+                    `; pay ${money(accountsReport.utilization.payTo9All)} to reach 9%`}.
+                </p>
+              )}
+              {accountsReport.utilization.allZeroRecommendation && (
+                <p className="text-sm text-gray-900">
+                  All revolving balances are $0. Report{' '}
+                  {money(accountsReport.utilization.allZeroRecommendation.reportBalance)} on the largest-limit
+                  card only (0.01×L, at least $1.00) so FICO sees revolving use.
+                </p>
+              )}
+              <ul className="text-sm text-gray-800 space-y-1">
+                {accountsReport.rows
+                  .filter((r) => r.analysisLine)
+                  .map((r) => (
+                    <li key={r.accountId}>
+                      <span className="font-medium">{r.nickname || r.vendorName}:</span> {r.analysisLine}{' '}
+                      pay_9 = {moneyOrDash(r.payTo9)}; ΔL = {moneyOrDash(r.extraLimitNeeded)}.
+                    </li>
+                  ))}
+              </ul>
+              <p className="text-xs text-gray-500">{accountsReport.utilization.footnote}</p>
+            </section>
           </div>
         ) : null}
       </main>

@@ -28,6 +28,8 @@ function toBillForForecast(raw: any): Bill {
   return {
     ...raw,
     amount: Number(raw.amount),
+    minimumPayment: raw.minimumPayment != null ? Number(raw.minimumPayment) : null,
+    paidAmount: raw.paidAmount != null ? Number(raw.paidAmount) : null,
     dueDate: new Date(raw.dueDate),
     createdAt: new Date(raw.createdAt),
     updatedAt: new Date(raw.updatedAt),
@@ -62,6 +64,8 @@ const billSchema = z.object({
   tags: z.array(z.string().max(128, 'Tag must be 128 characters or less')).optional(),
   isTaxItem: z.boolean().optional(),
   accountBalance: nonnegativeDecimalString.optional(),
+  minimumPayment: nonnegativeDecimalString.optional().nullable(),
+  paidAmount: nonnegativeDecimalString.optional().nullable(),
 })
 
 export async function GET(req: NextRequest) {
@@ -250,6 +254,10 @@ export async function POST(req: NextRequest) {
           invoiceNumber: data.invoiceNumber || null,
           tags: tagsArray,
           isTaxItem: data.isTaxItem || false,
+          minimumPayment: data.minimumPayment ?? null,
+          paidAmount:
+            data.paidAmount ??
+            (status === 'PAID' ? data.amount : null),
         },
         include: {
           category: true,

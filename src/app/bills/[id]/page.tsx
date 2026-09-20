@@ -93,6 +93,8 @@ export default function BillDetailPage() {
         body: JSON.stringify({
           title: formData.title,
           amount: formData.amount,
+          minimumPayment: formData.minimumPayment || null,
+          paidAmount: formData.paidAmount || (formData.status === 'PAID' ? formData.amount : null),
           dueDate: calendarDateToIso(formData.dueDate),
           categoryId: formData.categoryId,
           vendorId: formData.vendorId || null,
