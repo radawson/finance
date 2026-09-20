@@ -66,9 +66,9 @@ export default function Navbar() {
 
   const navLinks = isAdmin && isAdminRoute
     ? [
-        { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/admin/bills', label: 'All Bills', icon: Receipt },
-        { href: '/admin/vendors', label: 'Vendors', icon: Building2 },
+        { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/bills', label: 'All Bills', icon: Receipt },
+        { href: '/vendors', label: 'Vendors', icon: Building2 },
         { href: '/admin/users', label: 'Users', icon: Users },
       ]
     : [
@@ -96,9 +96,9 @@ export default function Navbar() {
     (href === '/admin/vendors' && pathname?.startsWith('/admin/vendors')) ||
     (href === '/admin/users' && pathname?.startsWith('/admin/users'))
 
-  const adminToggleHref = isAdminRoute ? '/dashboard' : '/admin/dashboard'
+  const adminToggleHref = isAdminRoute ? '/dashboard' : '/admin/users'
   const adminToggleLabel = isAdminRoute ? 'User View' : 'Admin View'
-  const homeHref = isAdmin && isAdminRoute ? '/admin/dashboard' : '/dashboard'
+  const homeHref = '/dashboard'
 
   const renderSidebar = (compact: boolean) => (
     <div className="flex h-full min-h-0 flex-col">

@@ -13,8 +13,7 @@ export default withAuth(
 
     // Redirect authenticated users away from auth pages
     if ((path === '/login' || path === '/register') && token) {
-      const redirectTo = token.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'
-      return NextResponse.redirect(new URL(redirectTo, req.url))
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
     return NextResponse.next()
