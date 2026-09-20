@@ -281,6 +281,24 @@ async function main() {
   }
 
   console.log(`📂 Categories: ${categoriesCreated} created, ${categoriesUpdated} updated`)
+
+  console.log('🏦 Seeding default account types...')
+  const defaultAccountTypes = [
+    { name: 'Credit Card', description: 'Revolving credit card' },
+    { name: 'Loan', description: 'Installment loan' },
+    { name: 'Mortgage', description: 'Home mortgage' },
+    { name: 'HELOC', description: 'Home equity line of credit' },
+    { name: 'Line of Credit', description: 'Revolving line of credit' },
+  ]
+  let accountTypesCreated = 0
+  for (const type of defaultAccountTypes) {
+    const existing = await prisma.accountType.findUnique({ where: { name: type.name } })
+    if (existing) continue
+    await prisma.accountType.create({ data: type })
+    accountTypesCreated++
+  }
+  console.log(`🏦 Account types: ${accountTypesCreated} created`)
+
   console.log('🎉 Database seeding completed successfully!')
 }
 

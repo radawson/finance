@@ -13,7 +13,7 @@ import {
   utilizationOnlyScore,
   utilizationRatio,
 } from '../credit-utilization'
-import { buildAccountsReport } from '../reports'
+import { buildAccountsReport, isCreditLoanAccount } from '../reports'
 
 describe('money cents', () => {
   it('parses decimal strings to integer cents', () => {
@@ -193,5 +193,36 @@ describe('buildAccountsReport', () => {
     })
     expect(report.rows[0].paydownPercent).toBeCloseTo(0.25)
     expect(report.utilization.utilizationOnlyFicoEstimate).toBeNull()
+  })
+
+  it('includes untyped cards when nickname, Visa/Amex type, or Credit Card bill category matches', () => {
+    expect(isCreditLoanAccount({ nickname: 'Amex Gold' })).toBe(true)
+    expect(isCreditLoanAccount({ type: { name: 'Visa' } })).toBe(true)
+    expect(isCreditLoanAccount({ nickname: 'Freedom' }, ['Credit Card'])).toBe(true)
+    expect(isCreditLoanAccount({ nickname: 'Electric' }, ['Utilities'])).toBe(false)
+
+    const report = buildAccountsReport({
+      accounts: [
+        {
+          id: 'untagged',
+          nickname: 'Freedom',
+          accountNumber: '4444',
+          isActive: true,
+          vendor: { name: 'Chase' },
+        },
+      ],
+      bills: [
+        {
+          vendorAccountId: 'untagged',
+          status: 'PENDING',
+          isRecurring: false,
+          amount: '100.00',
+          dueDate: '2026-04-01',
+          categoryName: 'Credit Card',
+        },
+      ],
+    })
+    expect(report.rows).toHaveLength(1)
+    expect(report.rows[0].nickname).toBe('Freedom')
   })
 })

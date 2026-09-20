@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { seedDefaultAdmin } from '@/lib/seed-admin'
+import { ensureDefaultAccountTypes } from '@/lib/seed-account-types'
 
 /**
  * Initialization endpoint
@@ -9,7 +10,8 @@ import { seedDefaultAdmin } from '@/lib/seed-admin'
 export async function POST() {
   try {
     await seedDefaultAdmin()
-    
+    await ensureDefaultAccountTypes()
+
     return NextResponse.json({ 
       success: true,
       message: 'Initialization complete' 

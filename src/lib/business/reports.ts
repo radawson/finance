@@ -215,16 +215,30 @@ export function buildMonthlyBudgetReport(input: {
   }
 }
 
-const CREDIT_LOAN_TYPE = /credit|loan|mortgage|heloc|card/i
+const CREDIT_LOAN_LABEL =
+  /credit|loan|mortgage|heloc|card|visa|amex|discover|revolving|\bloc\b/i
 
-export function isCreditLoanAccount(account: {
-  creditLimit?: unknown
-  initialValue?: unknown
-  accountType?: string | null
-  type?: { name?: string | null } | null
-}): boolean {
-  const typeName = `${account.type?.name || ''} ${account.accountType || ''}`
-  if (CREDIT_LOAN_TYPE.test(typeName)) return true
+export function isCreditLoanLabel(value: string | null | undefined): boolean {
+  return !!value && CREDIT_LOAN_LABEL.test(value)
+}
+
+export function isCreditLoanAccount(
+  account: {
+    creditLimit?: unknown
+    initialValue?: unknown
+    nickname?: string | null
+    accountType?: string | null
+    type?: { name?: string | null } | null
+  },
+  extraLabels: Array<string | null | undefined> = [],
+): boolean {
+  const labels = [
+    account.type?.name,
+    account.accountType,
+    account.nickname,
+    ...extraLabels,
+  ]
+  if (labels.some(isCreditLoanLabel)) return true
   return moneyToCents(account.creditLimit) != null || moneyToCents(account.initialValue) != null
 }
 
@@ -261,9 +275,9 @@ export function buildAccountsReport(input: {
     paidAmount?: unknown
     dueDate: Date | string
     paidDate?: Date | string | null
+    categoryName?: string | null
   }>
 }): AccountsReport {
-  const included = input.accounts.filter((a) => a.isActive !== false && isCreditLoanAccount(a))
   const billsByAccount = new Map<string, typeof input.bills>()
   for (const bill of input.bills) {
     if (!bill.vendorAccountId) continue
@@ -271,6 +285,11 @@ export function buildAccountsReport(input: {
     list.push(bill)
     billsByAccount.set(bill.vendorAccountId, list)
   }
+  const included = input.accounts.filter((a) => {
+    if (a.isActive === false) return false
+    const categoryNames = (billsByAccount.get(a.id) || []).map((b) => b.categoryName)
+    return isCreditLoanAccount(a, categoryNames)
+  })
 
   const rows: AccountsReportRow[] = included.map((account) => {
     const bills = billsByAccount.get(account.id) || []

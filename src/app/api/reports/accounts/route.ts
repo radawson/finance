@@ -35,13 +35,17 @@ export async function GET() {
           paidAmount: true,
           dueDate: true,
           paidDate: true,
+          category: { select: { name: true } },
         },
       }),
     ])
 
     const report = buildAccountsReport({
       accounts,
-      bills,
+      bills: bills.map((bill) => ({
+        ...bill,
+        categoryName: bill.category?.name ?? null,
+      })),
     })
 
     return NextResponse.json(report)
